@@ -6,6 +6,10 @@ import { useInteraction } from './hooks/useInteraction'
 import { useTheme } from './hooks/useTheme'
 import { useFont } from './hooks/useFont'
 
+// 核心/重型组件：改回静态导入以确保 WebGL 上下文稳定
+import Stage from './engine/Stage'
+import Atmosphere from './engine/Atmosphere'
+
 // 核心/轻量组件：保持静态导入
 import Loading from './components/Loading'
 import FragmentNotification from './components/FragmentNotification'
@@ -15,14 +19,13 @@ import ChatInput from './components/ChatInput'
 import CharacterAvatar from './components/CharacterAvatar'
 import { GlobalDialog } from './components/GlobalDialog'
 
-// 重型/次要组件：改为懒加载 (Lazy Loading)
-const Stage = lazy(() => import('./engine/Stage'))
-const Atmosphere = lazy(() => import('./engine/Atmosphere'))
+// 仅限 UI/次要组件：保留懒加载 (Lazy Loading)
 const ConfigPanel = lazy(() => import('./components/ConfigPanel'))
 const CharacterSelection = lazy(() => import('./components/CharacterSelection'))
 const MainMenu = lazy(() => import('./components/MainMenu'))
 const SaveScreen = lazy(() => import('./components/SaveScreen'))
 const LoadScreen = lazy(() => import('./components/LoadScreen'))
+const HelpScreen = lazy(() => import('./components/HelpScreen'))
 
 const App: React.FC = () => {
   const { isLoading, setIsLoading, currentView, syncImagesFromDb } = useAppStore()
@@ -69,6 +72,12 @@ const App: React.FC = () => {
     >
       <AnimatePresence>{isLoading && <Loading key="loading" />}</AnimatePresence>
       
+      {/* 核心渲染层：直接挂载，但不进行内部加载 */}
+      <Stage>
+        {!isLoading && <Atmosphere />}
+      </Stage>
+
+      {/* UI 控制层：使用 Suspense 包装非核心 UI */}
       <Suspense fallback={null}>
         <ConfigPanel />
         <CharacterSelection />
@@ -77,11 +86,8 @@ const App: React.FC = () => {
           {currentView === 'home' && <MainMenu key="home" />}
           {currentView === 'save' && <SaveScreen key="save" />}
           {currentView === 'load' && <LoadScreen key="load" />}
+          {currentView === 'help' && <HelpScreen key="help" />}
         </AnimatePresence>
-
-        <Stage>
-          {!isLoading && <Atmosphere />}
-        </Stage>
       </Suspense>
 
       {/* 仅在游戏主界面渲染 HUD */}

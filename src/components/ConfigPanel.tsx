@@ -101,11 +101,19 @@ const ConfigPanel: React.FC = () => {
             </div>
 
             <footer className="p-8 pt-4 border-t-0.5 border-gray-100/50 dark:border-gray-800/50 flex flex-col gap-4">
-               <div className="flex justify-between items-center px-4 mb-2 cursor-pointer" onClick={() => updateConfig({ isDebugEnabled: !config.isDebugEnabled })}>
-                  <span className="text-[10px] tracking-widest text-gray-400 uppercase font-serif">调试模式 // Debug Mode</span>
-                  <button className="text-gray-400 pointer-events-none">
-                    {config.isDebugEnabled ? <ToggleRight className="text-green-400" /> : <ToggleLeft />}
-                  </button>
+               <div className="flex flex-col gap-2 mb-2 px-4">
+                  <div className="flex justify-between items-center cursor-pointer" onClick={() => updateConfig({ isDebugEnabled: !config.isDebugEnabled })}>
+                    <span className="text-[10px] tracking-widest text-gray-400 uppercase font-serif">调试模式 // Debug Mode</span>
+                    <button className="text-gray-400 pointer-events-none">
+                      {config.isDebugEnabled ? <ToggleRight className="text-green-400" /> : <ToggleLeft />}
+                    </button>
+                  </div>
+                  
+                  {/* 交流反馈群 */}
+                  <div className="flex justify-between items-center opacity-60 hover:opacity-100 transition-opacity">
+                    <span className="text-[8px] tracking-[0.2em] text-gray-400 uppercase font-serif italic">反馈群 // Feedback Q-Group</span>
+                    <span className="text-[9px] font-mono text-gray-400 tracking-wider">616353694</span>
+                  </div>
                </div>
                <button onClick={() => setIsConfigOpen(false)} className="w-full py-4 bg-white/50 dark:bg-gray-900 border-0.5 border-gray-200 dark:border-gray-800 rounded-full text-[10px] tracking-[0.4em] text-gray-400 dark:text-gray-500 uppercase hover:bg-white transition-all shadow-sm font-sans">同步系统 // SYNC SYSTEM</button>
             </footer>

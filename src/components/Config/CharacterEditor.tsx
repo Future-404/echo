@@ -1,9 +1,10 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Trash2, Check, Globe, Plus, Book, Settings2, Edit2, ChevronDown, ChevronUp, Key } from 'lucide-react'
+import { X, Trash2, Check, Globe, Plus, Book, Settings2, Edit2, ChevronDown, ChevronUp, Key, Camera } from 'lucide-react'
 import { useAppStore } from '../../store/useAppStore'
 import type { WorldBookEntry } from '../../store/useAppStore'
 import StatusParserEditor from './StatusParserEditor'
+import { extractPersonaFromPng } from '../../utils/pngParser'
 
 interface CharacterEditorProps {
   charId: string
@@ -17,11 +18,59 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
   } = useAppStore()
   
   const char = characters.find(c => c.id === charId)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   if (!char) return null
 
   const library = config.worldBookLibrary || []
   const boundBookIds = char.extensions?.worldBookIds || []
   const privateEntries = char.extensions?.worldBook || []
+
+  // 头像上传处理
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    try {
+      // 1. 尝试解析角色卡元数据
+      const personaRaw = await extractPersonaFromPng(file)
+      const persona = personaRaw?.data || personaRaw
+      
+      // 2. 读取图片为 Base64
+      const reader = new FileReader()
+      reader.onload = async (event) => {
+        const base64 = event.target?.result as string
+        if (base64) {
+          const updates: any = { image: base64 }
+          
+          // 如果解析到了元数据，进行自动填充 (增强版映射)
+          if (persona && persona.name) {
+            updates.name = persona.name
+            
+            // 汇总描述性字段
+            const description = [
+              persona.description,
+              persona.personality,
+              persona.scenario,
+              persona.system_prompt,
+              persona.mes_example
+            ].filter(Boolean).join('\n\n')
+            
+            if (description) updates.systemPrompt = description
+            
+            // 汇总开场白
+            const greeting = persona.first_mes || persona.greeting || persona.first_message
+            if (greeting) updates.greeting = greeting
+          }
+          
+          await updateCharacter(charId, updates)
+        }
+      }
+      reader.readAsDataURL(file)
+    } catch (err) {
+      console.error("Failed to process character image:", err)
+    }
+  }
 
   // 1. 公共书库绑定逻辑
   const toggleBookBinding = (bookId: string) => {
@@ -85,9 +134,22 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
         <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-8 md:space-y-10 no-scrollbar text-left pb-32">
           {/* 头像 */}
           <div className="flex flex-col items-center gap-6 text-center">
-            <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-gray-50 dark:bg-white/5 border-0.5 border-gray-100 dark:border-gray-800 flex items-center justify-center overflow-hidden p-4 group relative">
-              <img src={char.image} alt={char.name} className="w-full h-full object-contain grayscale" />
-            </div>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept="image/*" 
+              onChange={handleFileChange} 
+            />
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-gray-50 dark:bg-white/5 border-0.5 border-gray-100 dark:border-gray-800 flex items-center justify-center overflow-hidden p-0 group relative cursor-pointer"
+            >
+              <img src={char.image} alt={char.name} className="w-full h-full object-cover transition-all group-hover:brightness-50" />
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <Camera size={20} className="text-white" />
+              </div>
+            </button>
           </div>
 
           {/* 角色名 */}

@@ -39,6 +39,11 @@ const MainMenu: React.FC = () => {
       label: '系统设定', 
       subLabel: 'CONFIG',
       action: () => setIsConfigOpen(true) 
+    },
+    { 
+      label: '引导手册', 
+      subLabel: 'HELP',
+      action: () => setCurrentView('help') 
     }
   ];
 
@@ -137,9 +142,16 @@ const MainMenu: React.FC = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1 }}
-          className="absolute bottom-12 left-12 md:left-24 text-[10px] tracking-[0.2em] text-white/20"
+          className="absolute bottom-12 left-12 md:left-24 flex flex-col gap-2"
         >
-          &copy; 2026 ECHO PROJECT. ALL RIGHTS RESERVED. v1.0.4-BETA
+          <div className="text-[9px] tracking-[0.3em] text-white/30 uppercase flex items-center gap-4">
+            <span>Feedback Q-Group</span>
+            <span className="w-8 h-[0.5px] bg-white/10" />
+            <span className="text-white/50 font-mono tracking-widest">616353694</span>
+          </div>
+          <div className="text-[8px] tracking-[0.2em] text-white/10 uppercase">
+            &copy; 2026 ECHO PROJECT. ALL RIGHTS RESERVED. v1.0.4-BETA
+          </div>
         </motion.div>
       </div>
 

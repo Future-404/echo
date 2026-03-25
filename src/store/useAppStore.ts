@@ -121,7 +121,7 @@ interface ConfigState {
 }
 
 interface AppState {
-  isLoading: boolean; isConfigOpen: boolean; currentView: 'home' | 'main' | 'selection' | 'save' | 'load'; config: ConfigState;
+  isLoading: boolean; isConfigOpen: boolean; currentView: 'home' | 'main' | 'selection' | 'save' | 'load' | 'help'; config: ConfigState;
   configSubView: 'main' | 'gateway' | 'world' | 'prompt' | 'provider-edit' | 'directive-edit' | 'skills' | 'persona' | 'debug' | 'parsers' | 'appearance';
   lastInteraction: { x: number; y: number } | null; isInteracting: boolean;
   characters: CharacterCard[]; selectedCharacter: CharacterCard; messages: Message[]; isTyping: boolean;
@@ -135,7 +135,7 @@ interface AppState {
   setIsLoading: (loading: boolean) => void;
   setIsConfigOpen: (open: boolean, subView?: AppState['configSubView']) => void;
   setConfigSubView: (view: AppState['configSubView']) => void;
-  setCurrentView: (view: 'home' | 'main' | 'selection' | 'save' | 'load') => void;
+  setCurrentView: (view: 'home' | 'main' | 'selection' | 'save' | 'load' | 'help') => void;
   setIsHistoryExpanded: (expanded: boolean) => void;
   updateConfig: (newConfig: Partial<ConfigState>) => void;
   updateFontFamily: (font: string) => void;
