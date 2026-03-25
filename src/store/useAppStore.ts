@@ -278,38 +278,38 @@ export const useAppStore = create<AppState>()(
       removeProvider: (id) => set((state) => ({ config: { ...state.config, providers: (state.config.providers || []).filter(p => p.id !== id), activeProviderId: state.config.activeProviderId === id ? 'default' : state.config.activeProviderId } })),
       setActiveProvider: (id) => set((state) => ({ config: { ...state.config, activeProviderId: id } })),
       
-      addCustomParser: (parser) => set((state) => ({ config: { ...state.config, customParsers: [...state.config.customParsers, parser] } })),
-      updateCustomParser: (id, updates) => set((state) => ({ config: { ...state.config, customParsers: state.config.customParsers.map(p => p.id === id ? { ...p, ...updates } : p) } })),
-      removeCustomParser: (id) => set((state) => ({ config: { ...state.config, customParsers: state.config.customParsers.filter(p => p.id !== id) } })),
+      addCustomParser: (parser) => set((state) => ({ config: { ...state.config, customParsers: [...(state.config.customParsers || []), parser] } })),
+      updateCustomParser: (id, updates) => set((state) => ({ config: { ...state.config, customParsers: (state.config.customParsers || []).map(p => p.id === id ? { ...p, ...updates } : p) } })),
+      removeCustomParser: (id) => set((state) => ({ config: { ...state.config, customParsers: (state.config.customParsers || []).filter(p => p.id !== id) } })),
 
-      addWorldBook: (book) => set((state) => ({ config: { ...state.config, worldBookLibrary: [...state.config.worldBookLibrary, book] } })),
+      addWorldBook: (book) => set((state) => ({ config: { ...state.config, worldBookLibrary: [...(state.config.worldBookLibrary || []), book] } })),
       updateWorldBook: (id, updates) => set((state) => ({ 
-        config: { ...state.config, worldBookLibrary: state.config.worldBookLibrary.map(b => b.id === id ? { ...b, ...updates } : b) } 
+        config: { ...state.config, worldBookLibrary: (state.config.worldBookLibrary || []).map(b => b.id === id ? { ...b, ...updates } : b) } 
       })),
       removeWorldBook: (id) => set((state) => ({ 
-        config: { ...state.config, worldBookLibrary: state.config.worldBookLibrary.filter(b => b.id !== id) } 
+        config: { ...state.config, worldBookLibrary: (state.config.worldBookLibrary || []).filter(b => b.id !== id) } 
       })),
       addWorldBookEntry: (bookId, entry) => set((state) => ({
         config: {
           ...state.config,
-          worldBookLibrary: state.config.worldBookLibrary.map(b => b.id === bookId ? { ...b, entries: [...b.entries, entry] } : b)
+          worldBookLibrary: (state.config.worldBookLibrary || []).map(b => b.id === bookId ? { ...b, entries: [...(b.entries || []), entry] } : b)
         }
       })),
       updateWorldBookEntry: (bookId, entryId, updates) => set((state) => ({
         config: {
           ...state.config,
-          worldBookLibrary: state.config.worldBookLibrary.map(b => b.id === bookId ? {
+          worldBookLibrary: (state.config.worldBookLibrary || []).map(b => b.id === bookId ? {
             ...b,
-            entries: b.entries.map(e => e.id === entryId ? { ...e, ...updates } : e)
+            entries: (b.entries || []).map(e => e.id === entryId ? { ...e, ...updates } : e)
           } : b)
         }
       })),
       removeWorldBookEntry: (bookId, entryId) => set((state) => ({
         config: {
           ...state.config,
-          worldBookLibrary: state.config.worldBookLibrary.map(b => b.id === bookId ? {
+          worldBookLibrary: (state.config.worldBookLibrary || []).map(b => b.id === bookId ? {
             ...b,
-            entries: b.entries.filter(e => e.id !== entryId)
+            entries: (b.entries || []).filter(e => e.id !== entryId)
           } : b)
         }
       })),
@@ -321,47 +321,47 @@ export const useAppStore = create<AppState>()(
         const updatedChar = { ...char, extensions: { ...char.extensions, worldBook: [...currentEntries, entry] } };
         return {
           selectedCharacter: updatedChar,
-          characters: state.characters.map(c => c.id === char.id ? updatedChar : c)
+          characters: (state.characters || []).map(c => c.id === char.id ? updatedChar : c)
         }
       }),
       updatePrivateWorldBookEntry: (id, updates) => set((state) => {
         const char = state.selectedCharacter;
         const currentEntries = char.extensions?.worldBook || [];
-        const updatedEntries = currentEntries.map(e => e.id === id ? { ...e, ...updates } : e);
+        const updatedEntries = (currentEntries || []).map(e => e.id === id ? { ...e, ...updates } : e);
         const updatedChar = { ...char, extensions: { ...char.extensions, worldBook: updatedEntries } };
         return {
           selectedCharacter: updatedChar,
-          characters: state.characters.map(c => c.id === char.id ? updatedChar : c)
+          characters: (state.characters || []).map(c => c.id === char.id ? updatedChar : c)
         }
       }),
       removePrivateWorldBookEntry: (id) => set((state) => {
         const char = state.selectedCharacter;
         const currentEntries = char.extensions?.worldBook || [];
-        const updatedEntries = currentEntries.filter(e => e.id !== id);
+        const updatedEntries = (currentEntries || []).filter(e => e.id !== id);
         const updatedChar = { ...char, extensions: { ...char.extensions, worldBook: updatedEntries } };
         return {
           selectedCharacter: updatedChar,
-          characters: state.characters.map(c => c.id === char.id ? updatedChar : c)
+          characters: (state.characters || []).map(c => c.id === char.id ? updatedChar : c)
         }
       }),
 
       updateAttributes: (charId, newAttrs) => set((state) => {
-        const char = state.characters.find(c => c.id === charId);
+        const char = (state.characters || []).find(c => c.id === charId);
         if (!char) return {};
         const updatedChar = { ...char, attributes: { ...(char.attributes || {}), ...newAttrs } };
         return {
-          characters: state.characters.map(c => c.id === charId ? updatedChar : c),
+          characters: (state.characters || []).map(c => c.id === charId ? updatedChar : c),
           selectedCharacter: state.selectedCharacter.id === charId ? updatedChar : state.selectedCharacter
         };
       }),
 
       addTagTemplate: (charId, template) => set((state) => {
-        const char = state.characters.find(c => c.id === charId);
+        const char = (state.characters || []).find(c => c.id === charId);
         if (!char) return {};
         const templates = [...(char.extensions?.tagTemplates || []), template];
         const updatedChar = { ...char, extensions: { ...char.extensions, tagTemplates: templates } };
         return {
-          characters: state.characters.map(c => c.id === charId ? updatedChar : c),
+          characters: (state.characters || []).map(c => c.id === charId ? updatedChar : c),
           selectedCharacter: state.selectedCharacter.id === charId ? updatedChar : state.selectedCharacter
         };
       }),
@@ -373,14 +373,14 @@ export const useAppStore = create<AppState>()(
       
       setMissions: (missions) => set({ missions }),
       updateMission: (id, updates) => {
-        set((state) => ({ missions: state.missions.map(m => m.id === id ? { ...m, ...updates } : m) }));
+        set((state) => ({ missions: (state.missions || []).map(m => m.id === id ? { ...m, ...updates } : m) }));
         get().autoSave();
       },
-      addFragment: (text) => set((state) => ({ fragments: [...state.fragments, text] })),
-      toggleSkill: (skillId) => set((state) => ({ config: { ...state.config, enabledSkillIds: state.config.enabledSkillIds.includes(skillId) ? state.config.enabledSkillIds.filter(id => id !== skillId) : [...state.config.enabledSkillIds, skillId] } })),
+      addFragment: (text) => set((state) => ({ fragments: [...(state.fragments || []), text] })),
+      toggleSkill: (skillId) => set((state) => ({ config: { ...state.config, enabledSkillIds: (state.config.enabledSkillIds || []).includes(skillId) ? (state.config.enabledSkillIds || []).filter(id => id !== skillId) : [...(state.config.enabledSkillIds || []), skillId] } })),
 
       addDebugLog: (entry) => set((state) => ({ 
-        debugLogs: [{ ...entry, id: Date.now().toString(), timestamp: Date.now() }, ...state.debugLogs].slice(0, 50) 
+        debugLogs: [{ ...entry, id: Date.now().toString(), timestamp: Date.now() }, ...(state.debugLogs || [])].slice(0, 50) 
       })),
       clearDebugLogs: () => set({ debugLogs: [] }),
 
@@ -393,7 +393,7 @@ export const useAppStore = create<AppState>()(
           autoId = `auto_${Date.now()}`;
           set({ currentAutoSlotId: autoId });
         }
-        const existingAutoSlot = state.saveSlots.find(s => s.id === autoId);
+        const existingAutoSlot = (state.saveSlots || []).find(s => s.id === autoId);
         const autoSlot: SaveSlot = {
           id: autoId,
           name: existingAutoSlot?.name,
@@ -405,8 +405,9 @@ export const useAppStore = create<AppState>()(
           fragments: state.fragments
         };
         set((s) => {
-          const otherAutoSlots = s.saveSlots.filter(slot => slot.id.startsWith('auto_') && slot.id !== autoId);
-          const manualSlots = s.saveSlots.filter(slot => !slot.id.startsWith('auto_'));
+          const slots = s.saveSlots || [];
+          const otherAutoSlots = slots.filter(slot => slot.id.startsWith('auto_') && slot.id !== autoId);
+          const manualSlots = slots.filter(slot => !slot.id.startsWith('auto_'));
           const limitedAutoSlots = [autoSlot, ...otherAutoSlots].sort((a, b) => b.timestamp - a.timestamp).slice(0, 10);
           return { saveSlots: [...limitedAutoSlots, ...manualSlots] };
         });
@@ -415,7 +416,7 @@ export const useAppStore = create<AppState>()(
       saveGame: (slotId, name) => {
         const state = get();
         const lastMsg = state.messages.length > 0 ? state.messages[state.messages.length - 1].content : '新游戏';
-        const existingSlot = state.saveSlots.find(s => s.id === slotId);
+        const existingSlot = (state.saveSlots || []).find(s => s.id === slotId);
         const newSlot: SaveSlot = {
           id: slotId,
           name: name || existingSlot?.name,
@@ -426,16 +427,16 @@ export const useAppStore = create<AppState>()(
           missions: state.missions,
           fragments: state.fragments
         };
-        set((s) => ({ saveSlots: s.saveSlots.some(slot => slot.id === slotId) ? s.saveSlots.map(slot => slot.id === slotId ? newSlot : slot) : [...s.saveSlots, newSlot] }));
+        set((s) => ({ saveSlots: (s.saveSlots || []).some(slot => slot.id === slotId) ? s.saveSlots.map(slot => slot.id === slotId ? newSlot : slot) : [...(s.saveSlots || []), newSlot] }));
       },
 
-      renameSaveSlot: (slotId, newName) => set((state) => ({ saveSlots: state.saveSlots.map(slot => slot.id === slotId ? { ...slot, name: newName } : slot) })),
+      renameSaveSlot: (slotId, newName) => set((state) => ({ saveSlots: (state.saveSlots || []).map(slot => slot.id === slotId ? { ...slot, name: newName } : slot) })),
 
       loadGame: (slotId) => {
         const state = get();
-        const slot = state.saveSlots.find(s => s.id === slotId);
+        const slot = (state.saveSlots || []).find(s => s.id === slotId);
         if (slot) {
-          const char = state.characters.find(c => c.id === slot.characterId) || state.characters[0];
+          const char = (state.characters || []).find(c => c.id === slot.characterId) || state.characters[0];
           set({
             selectedCharacter: char,
             messages: slot.messages,
@@ -447,16 +448,16 @@ export const useAppStore = create<AppState>()(
           });
         }
       },
-      deleteSaveSlot: (slotId) => set((state) => ({ saveSlots: state.saveSlots.filter(s => s.id !== slotId), currentAutoSlotId: state.currentAutoSlotId === slotId ? null : state.currentAutoSlotId })),
+      deleteSaveSlot: (slotId) => set((state) => ({ saveSlots: (state.saveSlots || []).filter(s => s.id !== slotId), currentAutoSlotId: state.currentAutoSlotId === slotId ? null : state.currentAutoSlotId })),
       startNewGame: (charId) => {
         const state = get();
-        const char = state.characters.find(c => c.id === charId) || state.characters[0];
+        const char = (state.characters || []).find(c => c.id === charId) || state.characters[0];
         const charWithoutAttrs = { ...char, attributes: {} };
         const activePersona = state.config.personas.find(p => p.id === state.config.activePersonaId) || state.config.personas[0];
         const userName = activePersona?.name || 'Observer';
         const finalGreeting = charWithoutAttrs.greeting ? replaceMacros(charWithoutAttrs.greeting, userName, charWithoutAttrs.name) : undefined;
         set({ 
-          characters: state.characters.map(c => c.id === charId ? charWithoutAttrs : c),
+          characters: (state.characters || []).map(c => c.id === charId ? charWithoutAttrs : c),
           selectedCharacter: charWithoutAttrs, 
           currentView: 'main', 
           messages: finalGreeting ? [{ role: 'assistant', content: finalGreeting }] : [],
@@ -470,26 +471,26 @@ export const useAppStore = create<AppState>()(
 
       addCharacter: async (char) => {
         if (char.image.startsWith('data:')) await getStorageAdapter().saveImage(char.id, char.image)
-        set((state) => ({ characters: [...state.characters, char] }))
+        set((state) => ({ characters: [...(state.characters || []), char] }))
       },
       updateCharacter: async (id, updates) => {
         if (updates.image?.startsWith('data:')) await getStorageAdapter().saveImage(id, updates.image)
         set((state) => ({
-          characters: state.characters.map(c => c.id === id ? { ...c, ...updates } : c),
+          characters: (state.characters || []).map(c => c.id === id ? { ...c, ...updates } : c),
           selectedCharacter: state.selectedCharacter.id === id ? { ...state.selectedCharacter, ...updates } : state.selectedCharacter
         }))
       },
       removeCharacter: async (id) => {
         await getStorageAdapter().removeImage(id)
         set((state) => ({
-          characters: state.characters.filter(c => c.id !== id),
-          selectedCharacter: state.selectedCharacter.id === id ? DEFAULT_CHARACTERS[0] : state.selectedCharacter
+          characters: (state.characters || []).filter(c => c.id !== id),
+          selectedCharacter: state.selectedCharacter.id === id ? (state.characters[0] || DEFAULT_CHARACTERS[0]) : state.selectedCharacter
         }))
       },
       
       syncImagesFromDb: async () => {
         const state = get()
-        const updatedChars = await Promise.all(state.characters.map(async (c) => {
+        const updatedChars = await Promise.all((state.characters || []).map(async (c) => {
           if (c.id.startsWith('custom-')) {
             const img = await getStorageAdapter().getImage(c.id)
             return img ? { ...c, image: img } : c
@@ -507,7 +508,7 @@ export const useAppStore = create<AppState>()(
       addPersonaWorldBookEntry: (personaId, entry) => set((state) => ({
         config: {
           ...state.config,
-          personas: state.config.personas.map(p => p.id === personaId ? {
+          personas: (state.config.personas || []).map(p => p.id === personaId ? {
             ...p,
             worldBook: [...(p.worldBook || []), entry]
           } : p)
@@ -516,7 +517,7 @@ export const useAppStore = create<AppState>()(
       updatePersonaWorldBookEntry: (personaId, entryId, updates) => set((state) => ({
         config: {
           ...state.config,
-          personas: state.config.personas.map(p => p.id === personaId ? {
+          personas: (state.config.personas || []).map(p => p.id === personaId ? {
             ...p,
             worldBook: (p.worldBook || []).map(e => e.id === entryId ? { ...e, ...updates } : e)
           } : p)
@@ -525,7 +526,7 @@ export const useAppStore = create<AppState>()(
       removePersonaWorldBookEntry: (personaId, entryId) => set((state) => ({
         config: {
           ...state.config,
-          personas: state.config.personas.map(p => p.id === personaId ? {
+          personas: (state.config.personas || []).map(p => p.id === personaId ? {
             ...p,
             worldBook: (p.worldBook || []).filter(e => e.id !== entryId)
           } : p)

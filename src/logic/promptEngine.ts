@@ -43,12 +43,12 @@ export const buildSystemPrompt = (ctx: PromptContext): string => {
     .join(' ')
     .toLowerCase();
 
-  const enabledDirectives = directives
+  const enabledDirectives = (directives || [])
     .filter(d => d.enabled)
     .map(d => `[Protocol: ${d.title}]\n${replaceMacros(d.content, actualUserName, charName)}`)
     .join('\n\n');
 
-  const missionStatus = missions
+  const missionStatus = (missions || [])
     .filter(m => m.status === 'ACTIVE')
     .map(m => `- ${m.title}: ${replaceMacros(m.description || '', actualUserName, charName)} (${m.progress}%)`)
     .join('\n');
@@ -56,9 +56,9 @@ export const buildSystemPrompt = (ctx: PromptContext): string => {
   // 2. 知识源处理
   // A. 公共绑定书库 (保持关键词动态加载)
   const boundBookIds = character.extensions?.worldBookIds || [];
-  const libraryEntries = worldBookLibrary
+  const libraryEntries = (worldBookLibrary || [])
     .filter(book => boundBookIds.includes(book.id))
-    .flatMap(book => book.entries)
+    .flatMap(book => book.entries || [])
     .filter(entry => {
       if (!entry.enabled) return false;
       if (!entry.keys || entry.keys.length === 0) return true; // 无 Key 基础设定始终开启
@@ -105,7 +105,7 @@ export const buildSystemPrompt = (ctx: PromptContext): string => {
   ### USER PERSONA
   You are interacting with: ${actualUserName}
   Background: ${replaceMacros(persona?.background || 'A silent observer.', actualUserName, charName)}
-  ${persona?.worldBook?.filter(e => e.enabled).map(e => `[User Settings: ${e.comment || 'Private'}]\n${replaceMacros(e.content, actualUserName, charName)}`).join('\n\n') || ''}
+  ${(persona?.worldBook || []).filter(e => e.enabled).map(e => `[User Settings: ${e.comment || 'Private'}]\n${replaceMacros(e.content, actualUserName, charName)}`).join('\n\n') || ''}
   Current Alias: ${userName}
 
   ### OPERATIONAL PROTOCOLS
