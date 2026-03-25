@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { Suspense, lazy } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { useAppStore } from './store/useAppStore'
 import { useChat } from './hooks/useChat'
@@ -6,29 +6,38 @@ import { useInteraction } from './hooks/useInteraction'
 import { useTheme } from './hooks/useTheme'
 import { useFont } from './hooks/useFont'
 
-import Stage from './engine/Stage'
-import Atmosphere from './engine/Atmosphere'
-
+// 核心/轻量组件：保持静态导入
 import Loading from './components/Loading'
-import ConfigPanel from './components/ConfigPanel'
-import CharacterSelection from './components/CharacterSelection'
 import FragmentNotification from './components/FragmentNotification'
 import Header from './components/Header'
 import DialogueBox from './components/DialogueBox'
 import ChatInput from './components/ChatInput'
 import CharacterAvatar from './components/CharacterAvatar'
-
-import MainMenu from './components/MainMenu'
-import SaveScreen from './components/SaveScreen'
-import LoadScreen from './components/LoadScreen'
 import { GlobalDialog } from './components/GlobalDialog'
+
+// 重型/次要组件：改为懒加载 (Lazy Loading)
+const Stage = lazy(() => import('./engine/Stage'))
+const Atmosphere = lazy(() => import('./engine/Atmosphere'))
+const ConfigPanel = lazy(() => import('./components/ConfigPanel'))
+const CharacterSelection = lazy(() => import('./components/CharacterSelection'))
+const MainMenu = lazy(() => import('./components/MainMenu'))
+const SaveScreen = lazy(() => import('./components/SaveScreen'))
+const LoadScreen = lazy(() => import('./components/LoadScreen'))
 
 const App: React.FC = () => {
   const { isLoading, setIsLoading, currentView, syncImagesFromDb } = useAppStore()
   
   // 1. 初始化应用生命周期
   React.useEffect(() => {
-    syncImagesFromDb().then(() => setIsLoading(false))
+    syncImagesFromDb().then(() => {
+      setIsLoading(false)
+      // 只有当业务数据加载完成后，才淡出并移除 index.html 的原生 splash-screen
+      const splash = document.getElementById('splash-screen')
+      if (splash) {
+        splash.style.opacity = '0'
+        setTimeout(() => splash.remove(), 800)
+      }
+    })
   }, [setIsLoading, syncImagesFromDb])
 
   // 2. 初始化主题与字体
@@ -60,19 +69,20 @@ const App: React.FC = () => {
     >
       <AnimatePresence>{isLoading && <Loading key="loading" />}</AnimatePresence>
       
-      <ConfigPanel />
-      <CharacterSelection />
-      
-      {/* 新增的 UI 层 */}
-      <AnimatePresence>
-        {currentView === 'home' && <MainMenu key="home" />}
-        {currentView === 'save' && <SaveScreen key="save" />}
-        {currentView === 'load' && <LoadScreen key="load" />}
-      </AnimatePresence>
+      <Suspense fallback={null}>
+        <ConfigPanel />
+        <CharacterSelection />
+        
+        <AnimatePresence mode="wait">
+          {currentView === 'home' && <MainMenu key="home" />}
+          {currentView === 'save' && <SaveScreen key="save" />}
+          {currentView === 'load' && <LoadScreen key="load" />}
+        </AnimatePresence>
 
-      <Stage>
-        {!isLoading && <Atmosphere />}
-      </Stage>
+        <Stage>
+          {!isLoading && <Atmosphere />}
+        </Stage>
+      </Suspense>
 
       {/* 仅在游戏主界面渲染 HUD */}
       <AnimatePresence>
@@ -100,7 +110,7 @@ const App: React.FC = () => {
               </div>
 
               {/* 输入框区域：作为 flex 的底部元素，自然贴合键盘 */}
-              <div className="w-full max-w-2xl mx-auto px-4 pb-4 md:pb-8 pointer-events-auto">
+              <div className="w-full max-w-2xl mx-auto px-4 pb-8 md:pb-12 pointer-events-auto">
                 <ChatInput 
                   onSend={sendMessage} 
                   disabled={isTyping || isWaitingForClick} 

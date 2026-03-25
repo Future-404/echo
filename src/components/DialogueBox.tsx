@@ -32,7 +32,7 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
 
   // 移动端长按回溯逻辑
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
-  const pressTimer = useRef<NodeJS.Timeout | null>(null);
+  const pressTimer = useRef<any>(null);
 
   // 状态显示逻辑映射 (通用翻译)
   const getStatConfig = (key: string) => {
