@@ -1,0 +1,93 @@
+@import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Zhi+Mang+Xing&family=Liu+Jian+Mao+Cao&family=Long+Cang&family=Noto+Sans+SC:wght@100;300;400;500;700;900&family=Noto+Serif+SC:wght@200;300;400;500;600;700;900&family=ZCOOL+KuaiLe&family=ZCOOL+QingKe+HuangYou&family=ZCOOL+XiaoWei&family=Noto+Sans+Mono+SC:wght@100;300;400;500;700;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-echo-white: #FBFBFB;
+  --color-echo-base: #F5F5F7;
+  --color-echo-gray-50: #F9FAFB;
+  --color-echo-gray-100: #F3F4F6;
+  --color-echo-gray-200: #E5E7EB;
+  --color-echo-gray-300: #D1D5DB;
+  --color-echo-gray-400: #9CA3AF;
+  --color-echo-border: rgba(255, 255, 255, 0.2);
+
+  --font-serif: var(--app-font), "Noto Serif SC", "Source Han Serif SC", "STSong", "SimSun", serif;
+  --font-sans: var(--app-font), "Inter", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Source Han Sans SC", system-ui, sans-serif;
+  --font-mono: "Noto Sans Mono SC", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Font classes for AppearanceEditor preview */
+  --font-noto-sans: "Noto Sans SC";
+  --font-noto-serif: "Noto Serif SC";
+  --font-zcool-kuaile: "ZCOOL KuaiLe";
+  --font-zcool-huangyou: "ZCOOL QingKe HuangYou";
+  --font-zcool-xiaowei: "ZCOOL XiaoWei";
+  --font-mashanzheng: "Ma Shan Zheng";
+  --font-zhimangxing: "Zhi Mang Xing";
+  --font-liujianmaocao: "Liu Jian Mao Cao";
+  --font-longcang: "Long Cang";
+  --font-noto-mono: "Noto Sans Mono SC";
+
+  --border-width-0.5: 0.5px;
+  --backdrop-blur-xs: 2px;
+}
+
+:root {
+  --app-font: "Noto Sans SC";
+}
+
+@layer base {
+  /* 基础模式：确保 light 模式下背景是白的 */
+  :root, html, body {
+    background-color: #F5F5F7 !important;
+    @apply text-gray-800 antialiased overflow-hidden transition-colors duration-700;
+    font-family: var(--app-font), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+    height: 100dvh;
+    width: 100vw;
+  }
+
+  /* 深色模式：修正选择器，确保正确覆盖 */
+  :root.dark, :root.dark html, :root.dark body {
+    background-color: #121212 !important;
+    @apply text-gray-200;
+  }
+
+  /* ── Light 模式：提升低对比度颜色的可读性 ── */
+  /* 只作用于 .theme-surface 区域（ConfigPanel、游戏HUD），不影响全屏黑色背景的 MainMenu/SaveScreen */
+  :root:not(.dark) .theme-surface .text-gray-200 { color: #6b7280; }  /* → gray-500 */
+  :root:not(.dark) .theme-surface .text-gray-300 { color: #4b5563; }  /* → gray-600 */
+  :root:not(.dark) .theme-surface .text-gray-400 { color: #374151; }  /* → gray-700 */
+  :root:not(.dark) .theme-surface .border-gray-700 { border-color: #d1d5db; }
+  :root:not(.dark) .theme-surface .border-gray-800 { border-color: #e5e7eb; }
+
+  /* 对话框深色模式适配 */
+  .dark .glass-morphism {
+    background-color: rgba(0, 0, 0, 0.45);
+    border-color: rgba(255, 255, 255, 0.1);
+    backdrop-blur: 40px;
+  }
+
+  body {
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  p, span, div {
+    line-height: 1.8;
+    letter-spacing: 0.02em;
+  }
+
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* 全局按钮点击反馈：scale down + 透明度变化，已有 framer whileTap 的用 no-tap-css 排除 */
+  button:not(:disabled):not(.no-tap-css) {
+    @apply transition-transform duration-75 active:scale-95 active:opacity-70;
+  }
+}
+
+@layer components {
+  .glass-morphism {
+    @apply bg-white/70 dark:bg-black/45 backdrop-blur-2xl border-0.5 border-white/20 dark:border-white/10 shadow-lg transition-all duration-700;
+  }
+}
