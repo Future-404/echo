@@ -184,6 +184,21 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
             />
           </div>
 
+          {/* Provider 绑定 */}
+          <div className="group text-left">
+            <label className="text-[9px] tracking-widest text-gray-300 uppercase mb-3 block italic underline decoration-gray-100 dark:decoration-gray-800 underline-offset-8">Provider Binding // 模型绑定</label>
+            <select
+              value={char.providerId || ''}
+              onChange={(e) => updateCharacter(charId, { providerId: e.target.value || undefined })}
+              className="w-full bg-white/30 dark:bg-white/5 border-0.5 border-gray-100 dark:border-gray-800 rounded-2xl px-4 py-3 text-xs text-gray-500 dark:text-gray-400 focus:outline-none focus:border-gray-300 bg-white dark:bg-[#0d0d0d]"
+            >
+              <option value="">默认（使用全局激活的 Provider）</option>
+              {config.providers.map(p => (
+                <option key={p.id} value={p.id}>{p.name} — {p.model}</option>
+              ))}
+            </select>
+          </div>
+
           {/* 1. 公共书库绑定 */}
           <div className="space-y-6 pt-6 border-t-0.5 border-gray-100 dark:border-gray-800">
             <div className="flex justify-between items-center px-2">

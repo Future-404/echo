@@ -22,11 +22,11 @@ export const getEnabledSkillPrompts = (enabledIds?: string[]) => {
     .join('\n\n');
 };
 
-export const executeSkill = (name: string, args: any): SkillExecuteResult => {
+export const executeSkill = (name: string, args: any, store: any): SkillExecuteResult => {
   const skill = registeredSkills[name];
   if (!skill) return { success: false, message: `Skill not found: ${name}` };
   try {
-    return skill.execute(args);
+    return skill.execute(args, store);
   } catch (e: any) {
     console.error(`Skill ${name} failed:`, e);
     return { success: false, message: `Error: ${e?.message || 'unknown'}` };

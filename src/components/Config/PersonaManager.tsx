@@ -1,8 +1,9 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { User, Plus, Edit3, Trash2, Check, Upload, Globe, ChevronDown, ChevronUp } from 'lucide-react'
+import { User, Plus, Edit3, Trash2, Check, Upload, Globe, Camera } from 'lucide-react'
 import { useAppStore } from '../../store/useAppStore'
-import type { WorldBookEntry, UserPersona } from '../../store/useAppStore'
+import type { WorldBookEntry } from '../../store/useAppStore'
+import { imageDb } from '../../utils/imageDb'
 
 const PersonaManager: React.FC = () => {
   const { 
@@ -18,6 +19,34 @@ const PersonaManager: React.FC = () => {
   const [newPrivateContent, setNewPrivateContent] = useState('')
   
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
+  const [avatarUrls, setAvatarUrls] = useState<Record<string, string>>({})
+
+  // 加载所有 persona 头像
+  useEffect(() => {
+    personas.forEach(p => {
+      if (p.avatarId) {
+        imageDb.get(p.avatarId).then(url => {
+          if (url) setAvatarUrls(prev => ({ ...prev, [p.id]: url }))
+        })
+      }
+    })
+  }, [personas.map(p => p.avatarId).join(',')])
+
+  const handleAvatarUpload = (personaId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = async (ev) => {
+      const base64 = ev.target?.result as string
+      const avatarId = `persona-${personaId}`
+      await imageDb.save(avatarId, base64)
+      updatePersona(personaId, { avatarId })
+      setAvatarUrls(prev => ({ ...prev, [personaId]: base64 }))
+    }
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
 
   const handleAdd = () => {
     const newId = `persona-${Date.now()}`
@@ -113,8 +142,11 @@ const PersonaManager: React.FC = () => {
           >
             <div className="flex items-center gap-4">
               <div onClick={() => setActivePersona(p.id)} className="flex-1 cursor-pointer flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-                  <User size={16} strokeWidth={1} className="text-gray-400" />
+                <div className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-900 flex items-center justify-center overflow-hidden">
+                  {avatarUrls[p.id]
+                    ? <img src={avatarUrls[p.id]} alt={p.name} className="w-full h-full object-cover" />
+                    : <User size={16} strokeWidth={1} className="text-gray-400" />
+                  }
                 </div>
                 <div>
                   <h4 className={`text-sm font-serif tracking-wide flex items-center gap-2 ${config.activePersonaId === p.id ? 'text-gray-600 dark:text-gray-200' : 'text-gray-400 dark:text-gray-600'}`}>
@@ -141,6 +173,34 @@ const PersonaManager: React.FC = () => {
                   <div className="group">
                     <label className="text-[8px] tracking-widest text-gray-300 dark:text-gray-600 uppercase mb-2 block font-medium">名称 / Name</label>
                     <input type="text" value={p.name} onChange={(e) => updatePersona(p.id, { name: e.target.value })} className="w-full bg-transparent border-b-0.5 border-gray-200 dark:border-gray-800 py-1 text-sm text-gray-600 dark:text-gray-300 focus:outline-none" />
+                  </div>
+                  <div className="group">
+                    <label className="text-[8px] tracking-widest text-gray-300 dark:text-gray-600 uppercase mb-2 block font-medium">头像 / Avatar</label>
+                    <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleAvatarUpload(p.id, e)} />
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-50 dark:bg-gray-900 border-0.5 border-gray-200 dark:border-gray-700 flex items-center justify-center">
+                        {avatarUrls[p.id]
+                          ? <img src={avatarUrls[p.id]} alt={p.name} className="w-full h-full object-cover" />
+                          : <User size={18} strokeWidth={1} className="text-gray-300" />
+                        }
+                      </div>
+                      <button
+                        onClick={() => avatarInputRef.current?.click()}
+                        className="flex items-center gap-1.5 text-[9px] tracking-widest uppercase text-gray-400 hover:text-blue-400 transition-colors"
+                      >
+                        <Camera size={12} /> {avatarUrls[p.id] ? '更换头像' : '上传头像'}
+                      </button>
+                      {avatarUrls[p.id] && (
+                        <button
+                          onClick={async () => {
+                            await imageDb.remove(`persona-${p.id}`)
+                            updatePersona(p.id, { avatarId: undefined })
+                            setAvatarUrls(prev => { const n = { ...prev }; delete n[p.id]; return n })
+                          }}
+                          className="text-[9px] tracking-widest uppercase text-red-400 hover:text-red-500 transition-colors"
+                        >移除</button>
+                      )}
+                    </div>
                   </div>
                   <div className="group">
                     <label className="text-[8px] tracking-widest text-gray-300 dark:text-gray-600 uppercase mb-2 block font-medium">标语 / Tagline</label>

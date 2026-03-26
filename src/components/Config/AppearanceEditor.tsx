@@ -209,7 +209,9 @@ const AppearanceEditor: React.FC = () => {
               <code className="font-mono text-blue-400">--dialogue-text-narration</code>、
               <code className="font-mono text-blue-400">--dialogue-text-thought</code>、
               <code className="font-mono text-blue-400">--dialogue-text-action</code>、
-              <code className="font-mono text-blue-400">--stat-color-love/hate/hp/mana/favor</code>
+              <code className="font-mono text-blue-400">--stat-color-love/hate/hp/mana/favor</code>、
+              <code className="font-mono text-blue-400">--char-a-color</code>、
+              <code className="font-mono text-blue-400">--char-b-color</code>
             </p>
           </div>
           <div className="flex gap-2 shrink-0 mt-0.5">

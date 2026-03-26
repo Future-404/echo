@@ -65,6 +65,12 @@
   --dialogue-text-action: #9ca3af;
 }
 
+/* 双角色模式颜色 */
+:root {
+  --char-a-color: #60a5fa;  /* blue-400 */
+  --char-b-color: #c084fc;  /* purple-400 */
+}
+
 @layer base {
   /* 基础模式：确保 light 模式下背景是白的 */
   :root, html, body {

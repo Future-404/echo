@@ -69,7 +69,15 @@ export const createCharacterSlice = (set: any, get: any, DEFAULT_CHARACTERS: Cha
       return c;
     }));
     const updatedSelected = updatedChars.find((c: CharacterCard) => c.id === state.selectedCharacter.id) || state.selectedCharacter;
-    set({ characters: updatedChars, selectedCharacter: updatedSelected });
+
+    // 同步 secondaryCharacter 的头像
+    let updatedSecondary = state.secondaryCharacter;
+    if (updatedSecondary) {
+      const found = updatedChars.find((c: CharacterCard) => c.id === updatedSecondary!.id);
+      if (found) updatedSecondary = found;
+    }
+
+    set({ characters: updatedChars, selectedCharacter: updatedSelected, secondaryCharacter: updatedSecondary });
   },
 
   updateAttributes: (charId, newAttrs) => set((state: any) => {

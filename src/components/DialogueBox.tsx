@@ -22,7 +22,7 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
   const { 
     messages, selectedCharacter, config, isLoading, 
     setCurrentView, missions, rollbackMessages,
-    isHistoryExpanded, setIsHistoryExpanded 
+    isHistoryExpanded, setIsHistoryExpanded, secondaryCharacter
   } = useAppStore()
   const { confirm } = useDialog()
   const { isMobile, isTouchDevice } = useDevice()
@@ -58,6 +58,17 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
   const isQuestSkillEnabled = config?.enabledSkillIds?.includes('manage_quest_state');
   const activePersona = config.personas.find(p => p.id === config.activePersonaId) || config.personas[0];
   const userName = activePersona?.name || 'Observer';
+
+  // 状态栏方案C：跟随最后一条 assistant 消息的发言者
+  const lastAssistantMsg = useMemo(() =>
+    [...messages].reverse().find(m => m.role === 'assistant'),
+    [messages]
+  )
+  const statusCharacter = useMemo(() => {
+    if (!secondaryCharacter || !lastAssistantMsg?.speakerId) return selectedCharacter
+    if (lastAssistantMsg.speakerId === secondaryCharacter.id) return secondaryCharacter
+    return selectedCharacter
+  }, [lastAssistantMsg, selectedCharacter, secondaryCharacter])
 
   // 获取最后一条可见消息（排除 tool 和 system 角色）
   const visibleMessages = useMemo(() => 
@@ -231,6 +242,13 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
   const currentPart = parts[visibleIndex];
   let displayName = '';
   let showNamePlate = true;
+  // 多角色模式下，根据 speakerId 确定当前发言角色
+  const currentSpeakerChar = useMemo(() => {
+    if (!secondaryCharacter || !lastMessage?.speakerId) return selectedCharacter
+    if (lastMessage.speakerId === secondaryCharacter.id) return secondaryCharacter
+    return selectedCharacter
+  }, [lastMessage, selectedCharacter, secondaryCharacter])
+  const isCharB = secondaryCharacter && lastMessage?.speakerId === secondaryCharacter.id
 
   if (!lastMessage) {
     displayName = '系统';
@@ -238,13 +256,13 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
     displayName = config.personas.find(p => p.id === config.activePersonaId)?.name || 'You';
   } else {
     if (currentPart?.type === 'dialogue') {
-      displayName = currentPart.speaker || selectedCharacter.name;
+      displayName = currentPart.speaker || currentSpeakerChar.name;
     } else if (currentPart?.type === 'thought') {
-      displayName = selectedCharacter.name;
+      displayName = currentSpeakerChar.name;
     } else if (currentPart?.type === 'narration' || currentPart?.type === 'action') {
       showNamePlate = false;
     } else {
-      displayName = selectedCharacter.name;
+      displayName = currentSpeakerChar.name;
     }
   }
 
@@ -301,13 +319,29 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
       {/* 顶部状态条 & 任务集成栏 */}
       <div ref={statusPanelRef} className="flex-shrink-0 z-40 flex flex-col border-b border-gray-300/10 dark:border-white/5 bg-echo-base/90 dark:bg-black/90 backdrop-blur-xl safe-area-top" onClick={e => e.stopPropagation()}>
         
-        <StatusPanel character={selectedCharacter} userName={userName} isExpanded={isStatusExpanded} isMobile={isMobile} />
+        <StatusPanel character={statusCharacter} userName={userName} isExpanded={isStatusExpanded} isMobile={isMobile} />
         {/* 任务主栏 */}
         <MissionPanel missions={missions} isQuestSkillEnabled={isQuestSkillEnabled} isMobile={isMobile} />
         <div className={`flex justify-between items-center ${isMobile ? 'px-4 py-2' : 'px-6 md:px-8 py-1.5'} min-h-[44px]`}>
-          <span className={`${isMobile ? 'text-xs' : 'text-xs'} tracking-[0.1em] font-serif font-bold text-black dark:text-white opacity-80`}>
-            {showNamePlate ? displayName : ''}
-          </span>
+          {/* 名字栏：多角色模式加头像和颜色 */}
+          {showNamePlate && displayName ? (
+            <div className="flex items-center gap-2">
+              {isLastAi && secondaryCharacter && (
+                <img
+                  src={currentSpeakerChar.image}
+                  alt={currentSpeakerChar.name}
+                  className="w-5 h-5 rounded-full object-cover opacity-80 border-0.5 border-white/20"
+                />
+              )}
+              <span className={`${isMobile ? 'text-xs' : 'text-xs'} tracking-[0.1em] font-serif font-bold ${
+                isLastAi && secondaryCharacter ? '' : 'text-black dark:text-white opacity-80'
+              }`} style={isLastAi && secondaryCharacter ? { color: isCharB ? 'var(--char-b-color, #c084fc)' : 'var(--char-a-color, #60a5fa)' } : undefined}>
+                {displayName}
+              </span>
+            </div>
+          ) : (
+            <span />
+          )}
           
           <div className={`flex ${isMobile ? 'gap-2' : 'gap-3'}`}>
             {vnMenu.map(btn => (

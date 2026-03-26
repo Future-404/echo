@@ -55,7 +55,7 @@ const NavItem: React.FC<{ id: string; label: string; icon: string; sub: string; 
 )
 
 const ConfigPanel: React.FC = () => {
-  const { isConfigOpen, setIsConfigOpen, setCurrentView, addProvider, addDirective, config, updateConfig, configSubView, setConfigSubView } = useAppStore()
+  const { isConfigOpen, setIsConfigOpen, setCurrentView, addProvider, addDirective, config, updateConfig, configSubView, setConfigSubView, multiCharMode, setMultiCharMode, routerProviderId, setRouterProviderId } = useAppStore()
   const [editingId, setEditingId] = useState<string | null>(null)
 
   const activeView = configSubView as SubView
@@ -118,6 +118,41 @@ const ConfigPanel: React.FC = () => {
                         <NavItem key={item.id} {...item} onClick={() => setActiveView(item.id as SubView)} />
                       ))}
                     </div>
+
+                    {/* 多角色模式 */}
+                    <div
+                      className="flex justify-between items-center cursor-pointer px-5 py-4 rounded-3xl hover:bg-white/50 dark:hover:bg-white/5 transition-all"
+                      onClick={() => setMultiCharMode(!multiCharMode)}
+                    >
+                      <div>
+                        <p className="text-sm font-serif text-gray-600 dark:text-gray-300 tracking-wide">多角色模式</p>
+                        <p className="text-[8px] text-gray-300 dark:text-gray-500 uppercase mt-0.5 tracking-widest">Multi-Character</p>
+                      </div>
+                      <button className="text-gray-400 pointer-events-none">
+                        {multiCharMode ? <ToggleRight className="text-purple-400" size={24} /> : <ToggleLeft size={24} />}
+                      </button>
+                    </div>
+
+                    {multiCharMode && (
+                      <NavItem id="multi-selection" label="选择角色组合" icon="⊕" sub="Choose Char A & B"
+                        onClick={() => { setIsConfigOpen(false); setTimeout(() => setCurrentView('multi-selection'), 300) }} />
+                    )}
+
+                    {multiCharMode && (
+                      <div className="px-5 py-3 space-y-2">
+                        <p className="text-[9px] text-gray-300 dark:text-gray-600 uppercase tracking-widest">Router Provider</p>
+                        <select
+                          value={routerProviderId}
+                          onChange={e => setRouterProviderId(e.target.value)}
+                          className="w-full bg-transparent border-0.5 border-gray-200 dark:border-gray-700 rounded-2xl px-3 py-2 text-xs text-gray-500 dark:text-gray-400 focus:outline-none bg-white dark:bg-[#0a0a0a]"
+                        >
+                          <option value="">同全局 Provider</option>
+                          {config.providers.map(p => (
+                            <option key={p.id} value={p.id}>{p.name} — {p.model}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
 
                     {/* 调试模式开关 */}
                     <div
