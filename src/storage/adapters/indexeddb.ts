@@ -21,6 +21,8 @@ function openDb(): Promise<IDBDatabase> {
 let _db: IDBDatabase | null = null
 async function getDb() {
   if (!_db) _db = await openDb()
+  // 监听其他标签页触发的版本升级，及时关闭连接避免死锁
+  _db.onversionchange = () => { _db?.close(); _db = null }
   return _db
 }
 

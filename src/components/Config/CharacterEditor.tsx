@@ -119,7 +119,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
     >
       <motion.div 
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg bg-echo-white dark:bg-[#121212] rounded-[2.5rem] md:rounded-[3rem] border-0.5 border-echo-border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] md:max-h-[85vh]"
+        className="w-full max-w-lg bg-echo-white dark:bg-[#0d0d0d] rounded-[2.5rem] md:rounded-[3rem] border-0.5 border-echo-border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] md:max-h-[85vh]"
       >
         <header className="p-6 md:p-8 pb-4 flex justify-between items-center border-b-0.5 border-gray-100 dark:border-gray-800">
           <div className="flex flex-col text-left">
@@ -313,7 +313,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
           </div>
         </div>
 
-        <footer className="absolute bottom-0 left-0 right-0 p-6 md:p-8 pt-4 border-t-0.5 border-gray-100 dark:border-gray-800 flex gap-4 bg-echo-white dark:bg-[#121212] z-50">
+        <footer className="absolute bottom-0 left-0 right-0 p-6 md:p-8 pt-4 border-t-0.5 border-gray-100 dark:border-gray-800 flex gap-4 bg-echo-white dark:bg-[#0d0d0d] z-50">
           <button onClick={() => { removeCharacter(charId); onClose(); }} className="flex-1 py-3 md:py-4 flex items-center justify-center gap-2 border-0.5 border-red-100 dark:border-red-900/30 text-red-300 rounded-full text-[10px] tracking-widest uppercase hover:bg-red-50 transition-all"><Trash2 size={14} /> Purge</button>
           <button onClick={onClose} className="flex-[2] py-3 md:py-4 bg-white dark:bg-gray-900 border-0.5 border-gray-200 dark:border-gray-800 rounded-full text-[10px] tracking-widest uppercase text-gray-400 hover:text-gray-600 transition-all flex items-center justify-center gap-2 shadow-sm"><Check size={14} /> Commit Sync</button>
         </footer>

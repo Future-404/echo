@@ -49,7 +49,6 @@ Thumbs.db
 *.temp
 tmp/
 temp/
-echo-storage/
 
 # Global/System files
 .DS_Store

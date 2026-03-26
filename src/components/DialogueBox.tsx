@@ -1,10 +1,12 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, ChevronUp, CircleDot, CheckCircle2, XCircle, Maximize2, Minimize2, MoreHorizontal, Copy, RotateCcw, RotateCw, Heart, Star, Zap, User, Target, BookOpen, Calendar, Settings2 } from 'lucide-react'
+import { Maximize2, Minimize2, MoreHorizontal, Copy, RotateCcw, RotateCw, User } from 'lucide-react'
 import { useAppStore } from '../store/useAppStore'
 import MessageContent from './Dialogue/MessageContent'
 import { parseStreamingNovelText } from '../utils/novelParser'
-
+import { MissionPanel } from './Dialogue/MissionPanel'
+import { StatusPanel } from './Dialogue/StatusPanel'
+import { useDevice } from '../hooks/useMediaQuery'
 import { useDialog } from './GlobalDialog'
 
 interface DialogueBoxProps {
@@ -13,53 +15,49 @@ interface DialogueBoxProps {
   onCanAdvanceChange?: (canAdvance: boolean) => void
   onRetry?: (content: string) => void
   onSkipGreeting?: () => void
+  isKeyboardVisible?: boolean
 }
 
-const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanAdvanceChange, onRetry, onSkipGreeting }) => {
+const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanAdvanceChange, onRetry, onSkipGreeting, isKeyboardVisible = false }) => {
   const { 
     messages, selectedCharacter, config, isLoading, 
     setCurrentView, missions, rollbackMessages,
     isHistoryExpanded, setIsHistoryExpanded 
   } = useAppStore()
   const { confirm } = useDialog()
+  const { isMobile, isTouchDevice } = useDevice()
   
   const scrollRef = useRef<HTMLDivElement>(null)
   const [visibleIndex, setVisibleIndex] = useState(0)
-  const [isMissionsExpanded, setIsMissionsExpanded] = useState(false)
   const [isStatusExpanded, setIsStatusExpanded] = useState(false)
-  const [showDescriptionId, setShowDescriptionId] = useState<string | null>(null)
   const [activeMenuIndex, setActiveMenuIndex] = useState<number | null>(null)
+  const [statusPanelHeight, setStatusPanelHeight] = useState(0)
+  const [stateBeforeKeyboard, setStateBeforeKeyboard] = useState<boolean>(false)
 
-  // 移动端长按回溯逻辑
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
   const pressTimer = useRef<any>(null);
+  const statusPanelRef = useRef<HTMLDivElement>(null)
 
-  // 状态显示逻辑映射 (通用翻译)
-  const getStatConfig = (key: string) => {
-    const k = key.toLowerCase();
-    const mapping: Record<string, { label: string; icon: any; color: string }> = {
-      love: { label: '爱意', icon: <Heart size={10} />, color: '#f43f5e' },
-      hate: { label: '恨意', icon: <Zap size={10} />, color: '#9333ea' },
-      value: { label: '满意', icon: <Star size={10} />, color: '#fbbf24' },
-      hp: { label: '健康', icon: <Heart size={10} />, color: '#ef4444' },
-      mana: { label: '灵感', icon: <Zap size={10} />, color: '#3b82f6' },
-      favor: { label: '好感', icon: <Heart size={10} />, color: '#fb7185' },
-    };
-    return mapping[k] || { label: key, icon: <CircleDot size={10} />, color: '#94a3b8' };
-  };
+  // 键盘弹出时记住状态并强制回到默认
+  useEffect(() => {
+    if (isKeyboardVisible) {
+      // 记住当前状态
+      setStateBeforeKeyboard(isHistoryExpanded)
+      // 强制回到默认状态
+      if (isHistoryExpanded) {
+        setIsHistoryExpanded(false)
+      }
+    } else {
+      // 键盘收起，恢复之前的状态
+      if (stateBeforeKeyboard) {
+        setIsHistoryExpanded(true)
+      }
+    }
+  }, [isKeyboardVisible])
 
-  const attributes = selectedCharacter.attributes || {};
-  // 自动识别数值型属性 (进度条渲染候选)
-  const autoStats = Object.entries(attributes)
-    .filter(([_, v]) => !isNaN(parseFloat(v as string)) && String(v).length < 10)
-    .slice(0, 6); 
-
-  const hasVisibleStats = Object.keys(attributes).length > 0;
-
-  // 任务逻辑
-  const isQuestSkillEnabled = config?.enabledSkillIds?.includes('manage_quest_state')
-  const mainMission = missions?.find(m => m.type === 'MAIN')
-  const sideMissions = missions?.filter(m => m.type === 'SIDE') || []
+  const isQuestSkillEnabled = config?.enabledSkillIds?.includes('manage_quest_state');
+  const activePersona = config.personas.find(p => p.id === config.activePersonaId) || config.personas[0];
+  const userName = activePersona?.name || 'Observer';
 
   // 获取最后一条可见消息（排除 tool 和 system 角色）
   const visibleMessages = useMemo(() => 
@@ -119,7 +117,8 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
   }
   
   useEffect(() => { 
-    scrollToBottom(isHistoryExpanded ? 'auto' : 'smooth') 
+    // 翻页时使用 auto 确保即时性，历史记录模式（及初始加载）使用 smooth
+    scrollToBottom(isHistoryExpanded ? 'smooth' : 'auto') 
   }, [visibleIndex, displayText, isHistoryExpanded, messages.length])
 
   // 判断是否可以点击下一句/上一句 (仅在非全屏模式下有效)
@@ -209,10 +208,11 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
 
   const handlePointerDown = (idx: number) => {
     if (!isHistoryExpanded) return;
+    const delay = isMobile ? 300 : 500; // 移动端更快触发
     pressTimer.current = setTimeout(() => {
       setActiveIdx(idx);
       if (window.navigator.vibrate) window.navigator.vibrate(50);
-    }, 500);
+    }, delay);
   };
 
   const handlePointerUpOrCancel = () => {
@@ -222,7 +222,7 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
   // Quick Menu Buttons
   const vnMenu = [
     { label: isHistoryExpanded ? '缩小' : '展开', icon: isHistoryExpanded ? <Minimize2 size={12}/> : <Maximize2 size={12}/>, action: () => setIsHistoryExpanded(!isHistoryExpanded) },
-    { label: '状态', icon: <User size={12}/>, action: () => { setIsStatusExpanded(!isStatusExpanded); setIsMissionsExpanded(false); } },
+    { label: '状态', icon: <User size={12}/>, action: () => setIsStatusExpanded(!isStatusExpanded) },
     { label: '存档', action: () => setCurrentView('save') },
     { label: '读档', action: () => setCurrentView('load') }
   ];
@@ -257,6 +257,18 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
     return 'bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.6)]';
   };
 
+  // 计算对话框固定高度
+  const dialogueBoxHeight = useMemo(() => {
+    let baseHeight = isMobile ? 280 : 320
+    
+    // 如果键盘弹出且是移动端，进一步缩小对话框高度以留出更多打字空间
+    if (isKeyboardVisible && isMobile) {
+      baseHeight = 180
+    }
+    
+    return baseHeight
+  }, [isMobile, isKeyboardVisible])
+
   const renderMessageContent = (msg: any, isAi: boolean, isLatest: boolean, segmentIndex?: number) => {
     const isError = isAi && msg.content.startsWith('错误');
     if (isError) {
@@ -279,256 +291,30 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
         opacity: isLoading ? 0 : 1,
       }} 
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-      style={{ maxHeight: '80vh' }}
-      className={`relative w-[95%] max-w-4xl glass-morphism rounded-2xl md:rounded-3xl shadow-lg flex flex-col overflow-hidden select-text z-30 mx-auto ${isHistoryExpanded ? 'cursor-auto' : 'cursor-pointer'}`}
+      style={{ 
+        height: isHistoryExpanded ? `${dialogueBoxHeight * 2.5}px` : `${dialogueBoxHeight}px`,
+        touchAction: isHistoryExpanded ? 'pan-y' : 'none'
+      }}
+      className={`relative w-[95%] ${isMobile ? 'max-w-full' : 'max-w-4xl'} glass-morphism ${isMobile ? 'rounded-2xl' : 'rounded-3xl'} shadow-lg flex flex-col overflow-hidden select-text z-30 mx-auto safe-area-padding transition-all duration-300 ${isHistoryExpanded ? 'cursor-auto' : 'cursor-pointer'}`}
       onClick={handleBoxClick}
     >
       {/* 顶部状态条 & 任务集成栏 */}
-      <div className="flex flex-col border-b border-gray-300/10 dark:border-white/5 bg-black/10 dark:bg-black/20" onClick={e => e.stopPropagation()}>
+      <div ref={statusPanelRef} className="flex-shrink-0 z-40 flex flex-col border-b border-gray-300/10 dark:border-white/5 bg-echo-base/90 dark:bg-black/90 backdrop-blur-xl safe-area-top" onClick={e => e.stopPropagation()}>
         
-        {/* 状态集成栏 */}
-        <AnimatePresence>
-          {isStatusExpanded && hasVisibleStats && (
-            <motion.div 
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden border-b border-black/5 dark:border-white/5 bg-black/5 dark:bg-white/5"
-            >
-              <div className="flex flex-col px-6 md:px-8 py-3 gap-3 max-h-[35vh] overflow-y-auto no-scrollbar">
-                <div className="flex justify-between items-center border-b border-black/5 dark:border-white/5 pb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-black text-gray-900 dark:text-gray-100 tracking-[0.1em] uppercase">{attributes.name || selectedCharacter.name}</span>
-                    <span className="text-[9px] text-gray-500 dark:text-gray-400 uppercase tracking-widest italic">{attributes.role || 'Observer'}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {attributes.rank && (
-                      <div className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-700 dark:text-blue-300 text-[9px] font-mono font-bold">
-                        LV.{attributes.rank}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2">
-                  {autoStats.map(([key, value]) => {
-                    const config = getStatConfig(key);
-                    return (
-                      <div key={key} className="scale-90 origin-left">
-                        <StatProgressBar 
-                          label={config.label} 
-                          value={parseFloat(value as string)} 
-                          icon={config.icon} 
-                          color={config.color} 
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* 动态计算并渲染未被特殊处理的文本属性 */}
-                {(() => {
-                  const attrs = attributes; // 统一变量名
-                  const ignoreKeys = ['name', 'role', 'rank', 'value', 'efficiency', 'date', 'days', 'time', 'weather', '星期', '日期', '时间', '天气', ...autoStats.map(s => s[0])];
-                  const thoughtLikeKeys = ['thought', 'inner_thought', '心声', '内心', '想法'];
-                  
-                  const activePersona = config.personas.find(p => p.id === config.activePersonaId) || config.personas[0];
-                  const userName = activePersona?.name || 'Observer';
-                  const charName = selectedCharacter.name;
-                  
-                  const replaceMacros = (text: string) => {
-                    if (typeof text !== 'string') return text;
-                    return text.replace(/\{\{user\}\}/gi, userName).replace(/\{\{char\}\}/gi, charName);
-                  };
-
-                  const thoughtKey = Object.keys(attributes).find(k => thoughtLikeKeys.includes(k));
-                  const thoughtValue = thoughtKey ? attributes[thoughtKey] : null;
-
-                  const customAttrs = Object.entries(attributes).filter(([k, v]) => 
-                    !ignoreKeys.includes(k) && !thoughtLikeKeys.includes(k) && typeof v === 'string' && v.trim() !== ''
-                  );
-
-                  const getDisplayLabel = (k: string, v: string) => {
-                    const isParam = /^param\d+$/i.test(k) || /^slot\d+$/i.test(k);
-                    if (isParam) return null; // 隐藏无意义的正则捕获组名
-
-                    const translatedV = replaceMacros(v);
-                    // 检查值是否自带标签前缀 (例如 "姿态: xxx" 或 "对Observer的看法: xxx")
-                    const hasEmbeddedLabel = /^[\u4e00-\u9fa5a-zA-Z0-9_]{2,15}[:：]/.test(translatedV);
-                    const isGenericSTKey = ['todo', 'diary', 'date', 'days', 'reason', 'status', 'description'].includes(k);
-                    
-                    // 如果是酒馆通用 key 且值自带标签，则隐藏通用 key 避免重复 (如 "目标: 对小小的看法: xxx")
-                    if (isGenericSTKey && hasEmbeddedLabel) return null;
-
-                    const translation: Record<string, string> = {
-                      todo: '目标', diary: '备忘', date: '日期', days: '时间', reason: '状态'
-                    };
-
-                    return translation[k] || k;
-                  };
-
-                  const getIcon = (k: string) => {
-                    if (k === 'todo') return <Target size={12} className="text-emerald-700 dark:text-emerald-400 mt-0.5 flex-shrink-0" />;
-                    if (k === 'diary') return <BookOpen size={12} className="text-blue-700 dark:text-blue-400 mt-0.5 flex-shrink-0" />;
-                    if (['date', 'days'].includes(k)) return <Calendar size={12} className="text-gray-600 dark:text-gray-400 mt-0.5 flex-shrink-0" />;
-                    return <CircleDot size={10} className="text-gray-500 dark:text-gray-400 mt-1 flex-shrink-0" />;
-                  };
-
-                  return (
-                    <>
-                      {thoughtValue && (
-                        <p className="text-[11px] text-gray-700 dark:text-gray-300 italic leading-relaxed pt-3 border-t border-black/10 dark:border-white/10">
-                          “ {replaceMacros(thoughtValue as string)} ”
-                        </p>
-                      )}
-                      
-                      {customAttrs.length > 0 && (
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 pt-3 border-t border-black/10 dark:border-white/10">
-                          {customAttrs.map(([k, v]) => {
-                            const label = getDisplayLabel(k, v as string);
-                            return (
-                              <div key={k} className="flex items-start gap-1.5 overflow-hidden">
-                                {getIcon(k)}
-                                <span className="text-[11px] text-gray-700 dark:text-gray-300 leading-tight font-serif truncate">
-                                  {label && <span className="font-bold opacity-70 mr-1">{replaceMacros(label)}:</span>}
-                                  {replaceMacros(v as string)}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </>
-                  );
-                })()}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
+        <StatusPanel character={selectedCharacter} userName={userName} isExpanded={isStatusExpanded} isMobile={isMobile} />
         {/* 任务主栏 */}
-        {isQuestSkillEnabled && (mainMission || sideMissions.length > 0) && (
-          <div className="flex flex-col px-6 md:px-8 py-2 border-b border-white/5">
-            <div className="flex justify-between items-center w-full group cursor-pointer" onClick={() => mainMission && setShowDescriptionId(showDescriptionId === mainMission.id ? null : mainMission.id)}>
-              <div className="flex items-center gap-2 overflow-hidden flex-1 mr-4">
-                {mainMission ? (
-                  <>
-                    <span className="text-[9px] tracking-widest text-blue-400 font-mono uppercase flex-shrink-0">
-                      Main
-                    </span>
-                    <span className="text-xs font-serif text-gray-700 dark:text-gray-200 truncate font-medium">
-                      {mainMission.title}
-                    </span>
-                  </>
-                ) : (
-                  <span className="text-[10px] font-serif text-gray-500 italic opacity-60">No Active Mission</span>
-                )}
-              </div>
-              
-              <div className="flex items-center gap-3 flex-shrink-0">
-                {mainMission && (
-                  <div className="w-12 md:w-20 h-0.5 bg-white/10 rounded-full overflow-hidden">
-                    <motion.div 
-                      className="h-full bg-blue-500 shadow-[0_0_5px_rgba(59,130,246,0.4)]" 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${mainMission.progress}%` }}
-                      transition={{ duration: 1, ease: 'easeOut' }}
-                    />
-                  </div>
-                )}
-                {sideMissions.length > 0 && (
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); setIsMissionsExpanded(!isMissionsExpanded); }}
-                    className="text-gray-500 hover:text-blue-500 transition-colors flex items-center gap-1"
-                  >
-                    <span className="text-[9px] font-mono opacity-50 uppercase tracking-tighter">Side ({sideMissions.length})</span>
-                    {isMissionsExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <AnimatePresence>
-              {showDescriptionId === mainMission?.id && mainMission?.description && (
-                <motion.div 
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden"
-                >
-                  <p className="text-[10px] font-serif text-gray-500 dark:text-gray-400 mt-1 mb-1 leading-normal border-l border-blue-500/20 pl-2 italic">
-                    {mainMission.description}
-                  </p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <AnimatePresence>
-              {isMissionsExpanded && sideMissions.length > 0 && (
-                <motion.div 
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden"
-                >
-                  <div className="flex flex-col gap-2 pt-3 pb-1">
-                    {sideMissions.map(mission => (
-                      <div key={mission.id} className="flex flex-col gap-1 group/side">
-                        <div 
-                          className="flex items-center justify-between cursor-pointer"
-                          onClick={() => setShowDescriptionId(showDescriptionId === mission.id ? null : mission.id)}
-                        >
-                          <div className="flex items-center gap-2 overflow-hidden flex-1 mr-4">
-                            {mission.status === 'COMPLETED' ? <CheckCircle2 size={10} className="text-green-500 flex-shrink-0" /> :
-                             mission.status === 'FAILED' ? <XCircle size={10} className="text-red-500 flex-shrink-0" /> :
-                             <CircleDot size={10} className="text-gray-600 flex-shrink-0" />}
-                            <span className={`text-xs font-serif truncate transition-colors ${
-                              mission.status === 'COMPLETED' ? 'text-green-600 font-medium' :
-                              mission.status === 'FAILED' ? 'text-red-600 line-through' :
-                              'text-gray-700 dark:text-gray-400 group-hover/side:text-black dark:group-hover/side:text-gray-200'
-                            }`}>
-                              {mission.title}
-                            </span>
-                          </div>
-                          {mission.status === 'ACTIVE' && (
-                            <span className="text-[10px] font-mono text-gray-700 dark:text-gray-500 flex-shrink-0 font-bold">{mission.progress}%</span>
-                          )}
-                        </div>
-                        <AnimatePresence>
-                          {showDescriptionId === mission.id && mission.description && (
-                            <motion.div 
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: 'auto', opacity: 1 }}
-                              exit={{ height: 0, opacity: 0 }}
-                              className="overflow-hidden"
-                            >
-                              <p className="text-[10px] font-serif text-gray-500/80 dark:text-gray-500 mt-1 mb-2 leading-relaxed border-l border-gray-300 dark:border-gray-700 pl-3 italic">
-                                {mission.description}
-                              </p>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        )}
-
-        {/* 名字栏 & 快捷菜单 */}
-        <div className="flex justify-between items-center px-6 md:px-8 py-1.5 min-h-[36px]">
-          <span className="text-xs tracking-[0.1em] font-serif font-bold text-black dark:text-white opacity-80">
+        <MissionPanel missions={missions} isQuestSkillEnabled={isQuestSkillEnabled} isMobile={isMobile} />
+        <div className={`flex justify-between items-center ${isMobile ? 'px-4 py-2' : 'px-6 md:px-8 py-1.5'} min-h-[44px]`}>
+          <span className={`${isMobile ? 'text-xs' : 'text-xs'} tracking-[0.1em] font-serif font-bold text-black dark:text-white opacity-80`}>
             {showNamePlate ? displayName : ''}
           </span>
           
-          <div className="flex gap-3">
+          <div className={`flex ${isMobile ? 'gap-2' : 'gap-3'}`}>
             {vnMenu.map(btn => (
               <button 
                 key={btn.label}
                 onClick={(e) => { e.stopPropagation(); btn.action(); }}
-                className="flex items-center gap-1 text-[9px] md:text-[10px] font-serif tracking-widest text-gray-500 dark:text-gray-400 hover:text-blue-500 transition-colors font-medium uppercase"
+                className={`flex items-center gap-1 ${isMobile ? 'text-[10px] min-w-[44px] min-h-[44px] -my-2 px-2' : 'text-[9px] md:text-[10px]'} font-serif tracking-widest text-gray-500 dark:text-gray-400 hover:text-blue-500 active:scale-95 transition-all font-medium uppercase touch-manipulation`}
               >
                 {btn.icon}{btn.label}
               </button>
@@ -537,27 +323,28 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
         </div>
       </div>
       
-      {/* 对话内容区 */}
+      {/* 对话内容区 - 固定高度，内部滚动 */}
       <div 
         ref={scrollRef} 
-        className={`overflow-y-auto no-scrollbar p-6 md:px-10 md:py-8 relative transition-all duration-500 ease-in-out ${isHistoryExpanded ? 'flex-1 min-h-[40vh]' : 'h-32 md:h-40'}`}
+        className="flex-1 overflow-y-auto no-scrollbar p-4 md:p-6 relative"
         onClick={e => isHistoryExpanded && e.stopPropagation()}
+        style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {!isHistoryExpanded ? (
-          <AnimatePresence mode="wait">
+          <AnimatePresence>
             <motion.div
-              key={visibleIndex}
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -5 }}
-              transition={{ duration: 0.2 }}
+              key={`${messages.length}-${visibleIndex}`}
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
             >
               {messages.length === 0 ? (
-                <div className="text-gray-400 dark:text-gray-500 font-serif leading-relaxed italic text-base md:text-lg">
+                <div className="text-gray-400 dark:text-gray-500 font-serif leading-relaxed italic" style={{ fontSize: 'var(--app-font-size, 1.125rem)' }}>
                   “ 我是 {selectedCharacter.name}，很高兴见到你。 ”
                 </div>
               ) : isTyping && isLastAi ? (
-                <div className="font-serif leading-relaxed text-base md:text-lg text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                <div className="font-serif leading-relaxed text-gray-700 dark:text-gray-300 whitespace-pre-wrap" style={{ fontSize: 'var(--app-font-size, 1.125rem)' }}>
                   {displayText}
                   <motion.span
                     animate={{ opacity: [1, 0] }}
@@ -566,8 +353,8 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
                   />
                 </div>
               ) : (
-                <div className="font-serif leading-relaxed text-base md:text-lg text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                  {messages[visibleIndex]?.content}
+                <div className={`font-serif leading-relaxed text-gray-700 dark:text-gray-300 whitespace-pre-wrap`} style={{ fontSize: 'var(--app-font-size, 1.125rem)' }}>
+                  {parts[visibleIndex]?.content || lastMessage?.content}
                 </div>
               )}
             </motion.div>
@@ -601,9 +388,9 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
                         e.stopPropagation(); 
                         setActiveMenuIndex(showMenu ? null : idx); 
                       }}
-                      className="p-2 -m-1 text-gray-400 md:opacity-0 md:group-hover:opacity-100 hover:text-black dark:hover:text-white transition-all z-10"
+                      className={`${isMobile ? 'p-3 min-w-[44px] min-h-[44px]' : 'p-2'} -m-1 text-gray-400 ${isTouchDevice ? 'opacity-100' : 'md:opacity-0 md:group-hover:opacity-100'} hover:text-black dark:hover:text-white transition-all z-10 touch-manipulation`}
                     >
-                      <MoreHorizontal size={16} />
+                      <MoreHorizontal size={isMobile ? 18 : 16} />
                     </button>
 
                     {/* Expandable Action Menu */}
@@ -613,32 +400,32 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
                           initial={{ opacity: 0, scale: 0.9, x: !isAi ? 10 : -10 }}
                           animate={{ opacity: 1, scale: 1, x: 0 }}
                           exit={{ opacity: 0, scale: 0.9, x: !isAi ? 10 : -10 }}
-                          className={`absolute top-0 ${!isAi ? 'right-full mr-2' : 'left-full ml-2'} flex items-center gap-1 bg-white/80 dark:bg-black/80 backdrop-blur-md border border-gray-200 dark:border-white/10 rounded-full px-2 py-1 shadow-lg z-20`}
+                          className={`absolute ${isMobile ? 'top-full mt-2' : 'top-0'} ${!isAi ? (isMobile ? 'right-0' : 'right-full mr-2') : (isMobile ? 'left-0' : 'left-full ml-2')} flex items-center gap-1 bg-white/90 dark:bg-black/90 backdrop-blur-md border border-gray-200 dark:border-white/10 rounded-full ${isMobile ? 'px-3 py-2' : 'px-2 py-1'} shadow-lg z-20`}
                         >
                           <button 
                             onClick={(e) => { e.stopPropagation(); handleCopy(msg.content); }}
-                            className="p-1.5 text-gray-500 hover:text-blue-500 transition-colors"
+                            className={`${isMobile ? 'p-2.5 min-w-[44px] min-h-[44px]' : 'p-1.5'} text-gray-500 hover:text-blue-500 active:scale-90 transition-all touch-manipulation`}
                             title="复制"
                           >
-                            <Copy size={12} />
+                            <Copy size={isMobile ? 16 : 12} />
                           </button>
                           
                           {!isLatest && (
                             <button 
                               onClick={(e) => { e.stopPropagation(); handleRollback(idx); }}
-                              className="p-1.5 text-gray-500 hover:text-orange-500 transition-colors"
+                              className={`${isMobile ? 'p-2.5 min-w-[44px] min-h-[44px]' : 'p-1.5'} text-gray-500 hover:text-orange-500 active:scale-90 transition-all touch-manipulation`}
                               title="回溯到此"
                             >
-                              <RotateCcw size={12} />
+                              <RotateCcw size={isMobile ? 16 : 12} />
                             </button>
                           )}
 
                           <button 
                             onClick={(e) => { e.stopPropagation(); handleRetry(idx, msg); }}
-                            className="p-1.5 text-gray-500 hover:text-red-500 transition-colors"
+                            className={`${isMobile ? 'p-2.5 min-w-[44px] min-h-[44px]' : 'p-1.5'} text-gray-500 hover:text-red-500 active:scale-90 transition-all touch-manipulation`}
                             title="重试此分支"
                           >
-                            <RotateCw size={12} />
+                            <RotateCw size={isMobile ? 16 : 12} />
                           </button>
                         </motion.div>
                       )}
@@ -657,11 +444,11 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
       </div>
 
       {/* 状态指示灯 & 点击提示 */}
-      <div className="absolute bottom-4 right-6 flex items-center gap-3 pointer-events-none">
-        {canAdvance && (
+      <div className={`absolute ${isMobile ? 'bottom-3 right-4' : 'bottom-4 right-6'} flex items-center gap-3 pointer-events-none safe-area-bottom`}>
+        {canAdvance && !isMobile && (
           <motion.div animate={{ y: [0, 5, 0] }} transition={{ repeat: Infinity, duration: 1.5 }} className="text-gray-400 dark:text-gray-500 text-xs">▼</motion.div>
         )}
-        <div className={`w-1.5 h-1.5 rounded-full transition-all duration-500 ${getStatusLight()}`} />
+        <div className={`${isMobile ? 'w-2 h-2' : 'w-1.5 h-1.5'} rounded-full transition-all duration-500 ${getStatusLight()}`} />
       </div>
     </motion.div>
   )

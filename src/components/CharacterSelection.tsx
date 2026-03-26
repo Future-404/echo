@@ -69,10 +69,7 @@ const CharacterSelection: React.FC = () => {
           embeddedData.description,
           embeddedData.personality,
           embeddedData.scenario,
-          embeddedData.system_prompt,
-          embeddedData.post_history_instructions,
           embeddedData.mes_example,
-          embeddedData.creator_notes || embeddedData.creator_comment
         ].filter(Boolean).join('\n\n') || `你名为 ${charName}。`
 
         const extensions: any = {};
@@ -88,7 +85,9 @@ const CharacterSelection: React.FC = () => {
               content: e.content || '',
               enabled: e.enabled !== false,
               comment: e.comment || '',
-              insertionOrder: e.insertion_order
+              insertionOrder: e.insertion_order ?? 0,
+              constant: e.constant ?? false,
+              extensions: e.extensions ?? {},
             }));
           }
           
@@ -110,8 +109,10 @@ const CharacterSelection: React.FC = () => {
           name: charName,
           image: base64Image,
           description: embeddedData.description || embeddedData.personality || 'Neural Data 打捞成功',
-          systemPrompt: personality,
-          greeting: embeddedData.greeting || embeddedData.first_mes || embeddedData.first_message || `你好，我是 ${charName}。`,
+          systemPrompt: embeddedData.system_prompt || personality,
+          postHistoryInstructions: embeddedData.post_history_instructions || undefined,
+          alternateGreetings: embeddedData.alternate_greetings?.length ? embeddedData.alternate_greetings : undefined,
+          greeting: embeddedData.first_mes || embeddedData.first_message || embeddedData.greeting || `你好，我是 ${charName}。`,
           extensions
         })
       }
@@ -134,15 +135,12 @@ const CharacterSelection: React.FC = () => {
             const data = item.data || item;
             if (data.name) {
               const charName = data.name;
-              const greeting = data.greeting || data.first_mes || data.first_message || ''
+              const greeting = data.first_mes || data.first_message || data.greeting || ''
               const personality = [
                 data.description,
                 data.personality,
                 data.scenario,
-                data.system_prompt,
-                data.post_history_instructions,
                 data.mes_example,
-                data.creator_notes || data.creator_comment
               ].filter(Boolean).join('\n\n') || '你是一个神秘的 AI。'
 
               const extensions: any = {};
@@ -154,7 +152,9 @@ const CharacterSelection: React.FC = () => {
                   content: e.content || '',
                   enabled: e.enabled !== false,
                   comment: e.comment || '',
-                  insertionOrder: e.insertion_order
+                  insertionOrder: e.insertion_order ?? 0,
+                  constant: e.constant ?? false,
+                  extensions: e.extensions ?? {},
                 }));
               }
 
@@ -170,11 +170,13 @@ const CharacterSelection: React.FC = () => {
 
               addCharacter({
                 id: item.id || `custom-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-                name: item.name,
-                image: item.image || '/src/assets/react.svg',
-                description: item.description || item.personality || 'Echo 档案室新成员',
-                systemPrompt: personality,
-                greeting: greeting,
+                name: data.name,
+                image: item.image || data.image || '/src/assets/react.svg',
+                description: data.description || data.personality || 'Echo 档案室新成员',
+                systemPrompt: data.system_prompt || personality,
+                postHistoryInstructions: data.post_history_instructions || undefined,
+                alternateGreetings: data.alternate_greetings?.length ? data.alternate_greetings : undefined,
+                greeting,
                 extensions
               })
               importedCount++;

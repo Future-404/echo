@@ -9,7 +9,7 @@ const Header: React.FC = () => {
   const attrs = selectedCharacter.attributes || {}
 
   return (
-    <header className="h-16 flex items-center justify-between px-6 md:px-10 pointer-events-auto">
+    <header className="sticky top-0 z-50 h-16 flex items-center justify-between px-6 md:px-10 pointer-events-auto bg-echo-base/60 dark:bg-black/60 backdrop-blur-md border-b border-black/5 dark:border-white/5">
       <div className="flex items-center gap-6">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: isLoading ? 0 : 1 }} className="flex items-center gap-4">
           {/* 隐藏式返回主菜单按钮 */}

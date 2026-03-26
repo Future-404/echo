@@ -2,10 +2,19 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { useAppStore } from '../store/useAppStore'
 import type { Message } from '../store/useAppStore'
 import { getEnabledSkills, executeSkill } from '../skills'
-import { buildSystemPrompt } from '../logic/promptEngine'
+import { buildSystemPrompt, replaceMacros } from '../logic/promptEngine'
 import { processChatStream } from '../utils/streamProcessor'
 import { CORE_FORMATTING_RULES } from '../store/constants'
 import { extractAndSyncTags, applyCharacterRegexScripts } from '../utils/tagParser'
+
+const cleanJson = (str: string) => {
+  let cleaned = str.trim();
+  if (cleaned.endsWith(']') && !cleaned.startsWith('[')) cleaned = cleaned.slice(0, -1) + '}';
+  const openBraces = (cleaned.match(/\{/g) || []).length;
+  const closeBraces = (cleaned.match(/\}/g) || []).length;
+  if (openBraces > closeBraces) cleaned += '}'.repeat(openBraces - closeBraces);
+  return cleaned;
+};
 
 export const useChat = () => {
   const { 
@@ -86,14 +95,14 @@ export const useChat = () => {
     const format = activeProvider.apiFormat || 'openai'
     const isStreaming = activeProvider.stream !== false
     const contextWindow = activeProvider.contextWindow ?? 10
+    const enabledTools = getEnabledSkills(config.enabledSkillIds);
 
     try {
       const systemContext = buildSystemPrompt({
         character: selectedCharacter,
         persona: activePersona,
         directives: config.directives || [],
-        worldBook: selectedCharacter.extensions?.worldBook || [],
-        globalWorldBook: config.globalWorldBook || [],
+        worldBookLibrary: config.worldBookLibrary || [],
         missions,
         userName: config.userName || 'Observer',
         enabledSkillIds: config.enabledSkillIds,
@@ -111,17 +120,17 @@ export const useChat = () => {
           fetchHeaders['Authorization'] = `Bearer ${activeProvider.apiKey}`
         }
 
-        const enabledTools = getEnabledSkills(config.enabledSkillIds);
+        const postHistory = selectedCharacter.postHistoryInstructions
+          ? [{ role: 'system', content: replaceMacros(selectedCharacter.postHistoryInstructions, activePersona?.name || 'User', selectedCharacter.name) }]
+          : []
 
         fetchBody = {
           model: activeProvider.model,
           messages: [
             { role: 'system', content: systemContext }, 
             ...messages.slice(-contextWindow),
-            { 
-              role: 'user', 
-              content: userMsg.content
-            }
+            ...postHistory,
+            { role: 'user', content: userMsg.content }
           ],
           ...(enabledTools.length > 0 && { tools: enabledTools }),
           stream: isStreaming,
@@ -134,16 +143,25 @@ export const useChat = () => {
         fetchHeaders['anthropic-version'] = '2023-06-01'
         fetchHeaders['anthropic-dangerous-direct-browser-access'] = 'true'
         
-        // Anthropic 不支持在 messages 中放 system，需提取到顶层
+        const postHistory = selectedCharacter.postHistoryInstructions
+          ? [{ role: 'user', content: replaceMacros(selectedCharacter.postHistoryInstructions, activePersona?.name || 'User', selectedCharacter.name) }, { role: 'assistant', content: 'Understood.' }]
+          : []
+
         fetchBody = {
           model: activeProvider.model,
           system: systemContext,
           messages: [
             ...messages.slice(-contextWindow).filter(m => m.role !== 'system'),
+            ...postHistory,
             { role: 'user', content: userMsg.content }
           ],
           max_tokens: 4096,
-          ...(enabledTools.length > 0 && { tools: enabledTools }),
+          // Anthropic tools 格式与 OpenAI 不同，需要转换
+          ...(enabledTools.length > 0 && { tools: enabledTools.map((t: any) => ({
+            name: t.function.name,
+            description: t.function.description,
+            input_schema: t.function.parameters,
+          })) }),
           stream: isStreaming,
           temperature: activeProvider.temperature ?? 0.7
         }
@@ -177,7 +195,7 @@ export const useChat = () => {
         throw new Error(errorDetail);
       }
 
-      const handleResponseFinish = (fullText: string, toolCalls?: any[]) => {
+      const handleResponseFinish = async (fullText: string, toolCalls?: any[]) => {
         // 调试日志：记录接收完成
         if (config.isDebugEnabled) {
           addDebugLog({
@@ -201,20 +219,55 @@ export const useChat = () => {
           };
           addMessage(assistantMessage);
 
+          const toolResults: Message[] = [];
           for (const tc of toolCalls) {
             try {
-              const cleanJson = (str: string) => {
-                let cleaned = str.trim();
-                if (cleaned.endsWith(']') && !cleaned.startsWith('[')) cleaned = cleaned.slice(0, -1) + '}';
-                const openBraces = (cleaned.match(/\{/g) || []).length;
-                const closeBraces = (cleaned.match(/\}/g) || []).length;
-                if (openBraces > closeBraces) cleaned += '}'.repeat(openBraces - closeBraces);
-                return cleaned;
-              };
               const args = JSON.parse(cleanJson(tc.function.arguments));
               const result = executeSkill(tc.function.name, args);
-              addMessage({ role: 'tool', tool_call_id: tc.id, name: tc.function.name, content: result });
+              const toolMsg: Message = { role: 'tool', tool_call_id: tc.id, name: tc.function.name, content: result.message };
+              addMessage(toolMsg);
+              toolResults.push(toolMsg);
             } catch (e) { console.error('Failed to execute skill:', e); }
+          }
+
+          // 将 tool results 回传 AI，获取最终叙事回复
+          if (toolResults.length > 0) {
+            try {
+              const currentMessages = useAppStore.getState().messages;
+              let followUpBody: any;
+              if (format === 'anthropic') {
+                followUpBody = {
+                  ...fetchBody,
+                  messages: [
+                    ...fetchBody.messages,
+                    { role: 'assistant', content: toolCalls.map((tc: any) => ({ type: 'tool_use', id: tc.id, name: tc.function.name, input: JSON.parse(cleanJson(tc.function.arguments)) })) },
+                    { role: 'user', content: toolResults.map(r => ({ type: 'tool_result', tool_use_id: r.tool_call_id, content: r.content })) }
+                  ]
+                };
+              } else {
+                followUpBody = {
+                  ...fetchBody,
+                  messages: [
+                    ...fetchBody.messages,
+                    assistantMessage,
+                    ...toolResults
+                  ],
+                  stream: false,
+                };
+              }
+              const followUpRes = await fetch(fetchUrl, { method: 'POST', headers: fetchHeaders, body: JSON.stringify(followUpBody) });
+              if (followUpRes.ok) {
+                const followUpData = await followUpRes.json();
+                const followUpText = format === 'anthropic'
+                  ? followUpData.content?.[0]?.text
+                  : followUpData.choices?.[0]?.message?.content;
+                if (followUpText) {
+                  extractAndSyncTags(followUpText, selectedCharacter, updateAttributes, selectedCharacter.extensions?.customParsers);
+                  const finalText = applyCharacterRegexScripts(followUpText, selectedCharacter, selectedCharacter.extensions?.customParsers);
+                  addMessage({ role: 'assistant', content: finalText });
+                }
+              }
+            } catch (e) { console.error('Failed to get tool follow-up:', e); }
           }
         } else {
           addMessage({ role: 'assistant', content: transformedText });

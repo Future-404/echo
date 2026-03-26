@@ -80,7 +80,7 @@ export const GlobalDialog: React.FC = () => {
             transition={{ type: 'spring', damping: 28, stiffness: 300 }}
             className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none px-6"
           >
-            <div className="pointer-events-auto w-full max-w-sm bg-white/90 dark:bg-[#1a1a1a]/95 backdrop-blur-2xl border border-gray-200/60 dark:border-white/10 rounded-3xl shadow-2xl overflow-hidden">
+            <div className="pointer-events-auto w-full max-w-sm bg-white/90 dark:bg-[#0d0d0d]/98 backdrop-blur-2xl border border-gray-200/60 dark:border-white/10 rounded-3xl shadow-2xl overflow-hidden">
               
               {/* 顶部装饰线 */}
               <div className={`h-[2px] w-full ${state.danger ? 'bg-gradient-to-r from-transparent via-red-400/60 to-transparent' : 'bg-gradient-to-r from-transparent via-blue-400/40 to-transparent'}`} />

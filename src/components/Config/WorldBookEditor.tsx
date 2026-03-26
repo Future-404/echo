@@ -199,7 +199,21 @@ const WorldBookEditor: React.FC = () => {
           className="bg-transparent border-none text-xl font-serif font-bold text-gray-800 dark:text-white focus:outline-none w-full"
           placeholder="Book Name"
         />
-        <p className="text-[9px] text-gray-400 uppercase tracking-widest mt-1 italic">Knowledge Archive Protocol // 按 Key 触发</p>
+        <div className="flex items-center gap-3 mt-2">
+          <p className="text-[9px] text-gray-400 uppercase tracking-widest italic">按 Key 触发</p>
+          <label className="flex items-center gap-1.5 ml-auto">
+            <span className="text-[8px] uppercase tracking-widest text-gray-400">扫描深度</span>
+            <input
+              type="number"
+              min={1}
+              max={50}
+              value={selectedBook?.scanDepth ?? 3}
+              onChange={(e) => updateWorldBook(selectedBookId, { scanDepth: Math.max(1, parseInt(e.target.value) || 3) })}
+              className="w-12 text-center bg-white dark:bg-black/30 border border-gray-100 dark:border-white/10 rounded-lg px-1 py-0.5 text-[10px] font-mono focus:outline-none focus:border-blue-400/50"
+            />
+            <span className="text-[8px] text-gray-400">条</span>
+          </label>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto space-y-3 pr-2 no-scrollbar pb-10">
@@ -210,7 +224,7 @@ const WorldBookEditor: React.FC = () => {
               onClick={() => setExpandedEntryId(expandedEntryId === entry.id ? null : entry.id)}
             >
               <div className="flex items-center gap-3 overflow-hidden flex-1">
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.4)]" />
+                <div className={`w-1.5 h-1.5 rounded-full ${entry.constant ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]' : entry.enabled ? 'bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.4)]' : 'bg-gray-300 dark:bg-gray-600'}`} />
                 <div className="flex flex-col overflow-hidden">
                   <span className="text-[10px] font-serif font-bold text-gray-700 dark:text-gray-200 truncate">{entry.comment || 'Untitled Entry'}</span>
                   <div className="flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
@@ -267,7 +281,26 @@ const WorldBookEditor: React.FC = () => {
                       placeholder="Entry Label"
                       className="bg-transparent border-none text-[10px] p-0 focus:outline-none text-gray-500 italic flex-1 mr-4"
                     />
-                    <div className="text-[8px] uppercase tracking-widest text-gray-400 opacity-50">Global Codex Entry</div>
+                    <div className="flex items-center gap-3">
+                      <label className="flex items-center gap-1.5 cursor-pointer" title="Constant: always injected regardless of keywords">
+                        <span className="text-[8px] uppercase tracking-widest text-gray-400">Constant</span>
+                        <div
+                          onClick={() => updateWorldBookEntry(selectedBookId, entry.id, { constant: !entry.constant })}
+                          className={`w-7 h-3.5 rounded-full transition-colors relative cursor-pointer ${entry.constant ? 'bg-amber-400' : 'bg-gray-200 dark:bg-white/10'}`}
+                        >
+                          <div className={`absolute top-0.5 w-2.5 h-2.5 bg-white rounded-full shadow transition-transform ${entry.constant ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                        </div>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <span className="text-[8px] uppercase tracking-widest text-gray-400">Enabled</span>
+                        <div
+                          onClick={() => updateWorldBookEntry(selectedBookId, entry.id, { enabled: !entry.enabled })}
+                          className={`w-7 h-3.5 rounded-full transition-colors relative cursor-pointer ${entry.enabled ? 'bg-blue-500' : 'bg-gray-200 dark:bg-white/10'}`}
+                        >
+                          <div className={`absolute top-0.5 w-2.5 h-2.5 bg-white rounded-full shadow transition-transform ${entry.enabled ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                        </div>
+                      </label>
+                    </div>
                   </div>
                 </motion.div>
               )}

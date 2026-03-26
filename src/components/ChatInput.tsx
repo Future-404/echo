@@ -29,9 +29,6 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    // Shift + Enter 换行，仅 Enter 发送 (用户要求：回车换行，发送按钮发送)
-    // 但通常习惯是 Enter 发送，Shift+Enter 换行。
-    // 如果用户明确要求 "回车改成换行"，则我们不做 Enter 发送逻辑。
     if (e.key === 'Enter' && e.shiftKey && !disabled) {
       e.preventDefault()
       handleSend()

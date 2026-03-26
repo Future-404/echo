@@ -8,8 +8,8 @@ export const questSchema = {
       properties: {
         action: {
           type: "string",
-          enum: ["CREATE", "UPDATE", "RESOLVE"],
-          description: "CREATE: 确立新目标; UPDATE: 更新现有目标的进度; RESOLVE: 目标达成或终止"
+          enum: ["CREATE", "UPDATE", "RESOLVE", "FAIL"],
+          description: "CREATE: 确立新目标; UPDATE: 更新现有目标的进度; RESOLVE: 目标达成; FAIL: 目标失败终止"
         },
         quest_id: {
           type: "string",
@@ -30,11 +30,11 @@ export const questSchema = {
         },
         reasoning: {
           type: "string",
-          description: "内部逻辑推演：调用此工具的叙事依据是什么？对方的哪句表述或行为促使了该目标的建立或推进？(强制必填，用于确保逻辑自洽)"
+          description: "内部逻辑推演：调用此工具的叙事依据是什么？(强制必填，用于确保逻辑自洽)"
         },
         progress_delta: {
           type: "integer",
-          description: "进度变化幅度（-20 到 +30 之间）。正数表示取得实质性进展或信任增加，负数表示遭遇挫折或防备加深。",
+          description: "进度变化幅度（-20 到 +30 之间）。正数表示进展，负数表示挫折。",
           minimum: -20,
           maximum: 30
         },

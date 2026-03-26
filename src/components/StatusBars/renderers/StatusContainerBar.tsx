@@ -49,7 +49,12 @@ export const StatusContainerBar: React.FC<StatusBarProps> = ({ metadata }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 px-2">
           {numericStats.map(stat => {
             const Icon = ICON_MAP[stat.key.toLowerCase()] || Activity;
-            const colorMap: Record<string, string> = { love: '#f43f5e', hate: '#9333ea', hp: '#ef4444', mana: '#3b82f6' };
+            const colorMap: Record<string, string> = { 
+              love: 'var(--stat-color-love, #f43f5e)', 
+              hate: 'var(--stat-color-hate, #9333ea)', 
+              hp: 'var(--stat-color-hp, #ef4444)', 
+              mana: 'var(--stat-color-mana, #3b82f6)' 
+            };
             return (
               <StatProgressBar 
                 key={stat.key}

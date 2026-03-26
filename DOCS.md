@@ -10,13 +10,10 @@
 2. [技术栈](#2-技术栈)
 3. [项目结构](#3-项目结构)
 4. [核心功能](#4-核心功能)
-5. [存储架构](#5-存储架构)
-6. [前端部署（Cloudflare Pages）](#6-前端部署cloudflare-pages)
-7. [存储服务部署](#7-存储服务部署)
-   - [方案 A：Cloudflare Worker + KV + D1](#方案-a-cloudflare-worker--kv--d1)
-   - [方案 B：Node.js 自托管](#方案-b-nodejs-自托管)
-8. [配置说明](#8-配置说明)
-9. [开发指南](#9-开发指南)
+5. [存储、存档与后端部署](#5-存储存档与后端部署)
+6. [配置说明](#6-配置说明)
+7. [状态栏系统](#7-状态栏系统)
+8. [开发指南](#8-开发指南)
 
 ---
 
@@ -177,255 +174,424 @@ echo/
 
 ---
 
-## 5. 存储架构
+## 5. 存储、存档与后端部署
 
-### 5.1 适配器接口
+### 5.1 存储架构
 
-所有存储后端实现统一的 `StorageAdapter` 接口：
+所有持久化数据通过统一的 `StorageAdapter` 接口读写（`src/storage/types.ts`）：
 
 ```typescript
 interface StorageAdapter {
-  // 结构化数据（KV）
   getItem(key: string): Promise<string | null>
   setItem(key: string, value: string): Promise<void>
   removeItem(key: string): Promise<void>
-  // 图片/文件（Blob）
   saveImage(id: string, base64: string): Promise<void>
   getImage(id: string): Promise<string | null>
   removeImage(id: string): Promise<void>
 }
 ```
 
-### 5.2 三种后端
+Zustand persist 中间件通过该接口读写所有状态（store key: `echo-storage-v16`）。图片（角色头像）单独走 `saveImage` / `getImage`，不占用 KV 配额。
+
+"用哪个后端"这一 bootstrap 配置本身存储在 `localStorage`（key: `echo-storage-config`），体积极小，不受 5MB 限制影响。
 
 | 后端 | 适用场景 | KV 存储 | 图片存储 |
 |---|---|---|---|
-| `local`（默认） | 单设备使用 | IndexedDB | IndexedDB |
-| `remote`（自托管） | 家庭服务器、NAS | SQLite | SQLite |
-| `remote`（Cloudflare） | 云端多设备 | Cloudflare KV | Cloudflare D1 |
+| `local`（默认） | 单设备 | IndexedDB (`EchoAppDB`) | IndexedDB |
+| `remote` | 多设备 / 云端 | 远程服务 `/api/storage` | 远程服务 `/api/images` |
 
-### 5.3 Bootstrap 配置
+切换后端：配置面板 → 「存储后端」→ 保存后**刷新页面**生效。切换不会自动迁移数据。
 
-"用哪个后端"这一配置本身存储在 `localStorage`（key: `echo-storage-config`），体积极小（< 200 字节），不受 5MB 限制影响。其余所有数据均存储在所选后端中。
+### 5.2 存档机制
 
-### 5.4 切换存储后端
+存档数据结构（`SaveSlot`，存储在 Zustand state 内，随 persist 一起落盘）：
 
-在配置面板 → 「存储后端」中设置，保存后**刷新页面**生效。
+```typescript
+interface SaveSlot {
+  id: string          // 'auto_<timestamp>' 或 'manual_<timestamp>'
+  name?: string       // 用户命名（可选）
+  timestamp: number
+  characterId: string
+  messages: Message[]
+  summary: string     // 最后一条消息前 50 字
+  missions: Mission[]
+  fragments: string[]
+}
+```
 
-> ⚠️ 切换后端不会自动迁移数据。如需迁移，请先导出存档（功能待实现），再切换后端。
+**自动存档**：每次 AI 回复后，以 `auto_<timestamp>` 为 id 调用 `saveGame`，并将 id 写入 `currentAutoSlotId`。存档界面只展示当前会话的自动档（`currentAutoSlotId` 对应的那一条）。
 
----
+**手动存档**：用户在存档界面点击「建立新存档」，生成 `manual_<timestamp>` id；点击已有手动档可覆盖写入。
 
-## 6. 前端部署（Cloudflare Pages）
+**读档**：`loadGame(slotId)` 从 `saveSlots` 中找到对应 slot，恢复 `messages`、`missions`、`fragments`、`selectedCharacter`，并跳转到 `main` 视图。
 
-### 6.1 方式 A：Git 自动部署（推荐）
+### 5.3 远程存储 API 规范
 
-1. 将项目推送到 GitHub 或 GitLab
-2. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/) → Pages → Create a project → Connect to Git
-3. 选择仓库，填写构建配置：
+两种开源后端（Cloudflare Worker 和 Node.js）均实现以下接口：
 
-   | 配置项 | 值 |
-   |---|---|
-   | Framework preset | Vite |
-   | Build command | `npm run build` |
-   | Build output directory | `dist` |
-   | Node.js version | 20 |
+```
+Authorization: Bearer <AUTH_TOKEN>
 
-4. 点击 Save and Deploy，首次构建约 1-2 分钟
-5. 后续每次 `git push` 自动触发重新部署
+GET    /api/storage/:key     → { "value": "..." | null }
+PUT    /api/storage/:key     ← { "value": "..." }
+DELETE /api/storage/:key
 
-### 6.2 方式 B：手动上传
+GET    /api/images/:id       → { "base64": "..." | null }
+PUT    /api/images/:id       ← { "base64": "..." }
+DELETE /api/images/:id
+```
+
+客户端写入有串行队列保护（`remote.ts` 中的 `writeQueues`），同一 key 的并发写入自动排队，失败后最多重试 2 次（间隔 300ms）。
+
+### 5.4 前端部署（Cloudflare Pages）
+
+**方式 A：Git 自动部署（推荐）**
+
+1. 将项目推送到 GitHub / GitLab
+2. Cloudflare Dashboard → Pages → Create a project → Connect to Git
+3. 构建配置：Framework preset = Vite，Build command = `npm run build`，Output = `dist`，Node.js = 20
+4. 后续每次 `git push` 自动触发重新部署
+
+**方式 B：手动上传**
 
 ```bash
-# 构建
 npm run build
-
-# 部署（需要先登录 wrangler）
 npx wrangler login
 npx wrangler pages deploy dist --project-name echo
 ```
 
-### 6.3 自定义域名
+`public/_redirects` 已配置 SPA 路由规则，PWA Service Worker 在 HTTPS 下自动注册。
 
-在 Cloudflare Pages 项目设置 → Custom domains 中绑定自己的域名，Cloudflare 自动配置 SSL。
+### 5.5 后端部署：Cloudflare Worker（方案 A）
 
-### 6.4 注意事项
-
-- `public/_redirects` 已配置 SPA 路由规则，直接访问任意路径不会 404
-- PWA Service Worker 在 HTTPS 下自动注册（Cloudflare Pages 默认 HTTPS）
-- 免费版限制：单文件 ≤ 25MB，项目内所有文件均符合要求
-
----
-
-## 7. 存储服务部署
-
-### 方案 A：Cloudflare Worker + KV + D1
-
-适合已使用 Cloudflare Pages 部署前端的用户，延迟最低，免费额度充足。
-
-#### 7.1 前置准备
+源码位于 `echo-storage/cloudflare/`。KV 存储用 Cloudflare KV，图片存储用 D1（SQLite）。
 
 ```bash
-npm install -g wrangler
-wrangler login
-```
+cd echo-storage/cloudflare
 
-#### 7.2 创建 KV 命名空间
-
-```bash
-cd server/cf
+# 1. 创建 KV 命名空间，将返回的 id 填入 wrangler.toml
 wrangler kv:namespace create ECHO_KV
-```
 
-将返回的 `id` 填入 `wrangler.toml`：
-
-```toml
-[[kv_namespaces]]
-binding = "ECHO_KV"
-id = "你的KV命名空间ID"
-```
-
-#### 7.3 创建 D1 数据库
-
-```bash
+# 2. 创建 D1 数据库，将返回的 database_id 填入 wrangler.toml
 wrangler d1 create echo-images
-```
 
-将返回的 `database_id` 填入 `wrangler.toml`：
-
-```toml
-[[d1_databases]]
-binding = "ECHO_DB"
-database_name = "echo-images"
-database_id = "你的D1数据库ID"
-```
-
-#### 7.4 初始化表结构
-
-```bash
+# 3. 初始化表结构
 wrangler d1 execute echo-images --file=schema.sql
-```
 
-#### 7.5 设置访问 Token
-
-```bash
-# Token 通过 secret 设置，不会明文出现在代码或配置文件中
+# 4. 设置 Token（不会明文出现在代码中）
 wrangler secret put AUTH_TOKEN
-# 输入一个足够随机的字符串，例如：openssl rand -hex 32
-```
 
-#### 7.6 部署 Worker
-
-```bash
+# 5. 部署
 wrangler deploy
 ```
 
-部署成功后会输出 Worker URL，格式为：`https://echo-storage.<你的子域>.workers.dev`
+部署后输出 Worker URL：`https://echo-storage.<子域>.workers.dev`
 
-#### 7.7 配置 CORS（可选）
+如需限制来源，将 `worker.ts` 中 `Access-Control-Allow-Origin: *` 改为具体域名。
 
-如果前端域名固定，建议在 `worker.ts` 中将 `Access-Control-Allow-Origin: *` 改为具体域名以提高安全性。
+### 5.6 后端部署：Node.js 自托管（方案 B）
 
----
-
-### 方案 B：Node.js 自托管
-
-适合有自己服务器或 NAS 的用户。
-
-#### 7.8 安装依赖
+源码位于 `echo-storage/node/`，使用 `better-sqlite3`，单文件 SQLite 存储 KV 和图片。
 
 ```bash
-cd server/node
+cd echo-storage/node
 npm install
+
+# 启动（PORT 默认 3456，DB_PATH 默认 ./echo.db）
+AUTH_TOKEN="你的Token" node server.js
 ```
 
-#### 7.9 启动服务
-
-```bash
-# 设置环境变量
-export AUTH_TOKEN="你的访问Token"
-export PORT=3456           # 可选，默认 3456
-export DB_PATH="./echo.db" # 可选，SQLite 文件路径
-
-npm start
-```
-
-#### 7.10 使用 PM2 保持后台运行
+**PM2 后台运行：**
 
 ```bash
 npm install -g pm2
 AUTH_TOKEN="你的Token" pm2 start server.js --name echo-storage
-pm2 save
-pm2 startup
+pm2 save && pm2 startup
 ```
 
-#### 7.11 Nginx 反向代理（推荐）
+**Nginx 反向代理：**
 
 ```nginx
-server {
-    listen 443 ssl;
-    server_name storage.yourdomain.com;
-
-    location / {
-        proxy_pass http://127.0.0.1:3456;
-        proxy_set_header Host $host;
-    }
+location / {
+    proxy_pass http://127.0.0.1:3456;
+    proxy_set_header Host $host;
 }
 ```
 
 ---
 
-## 8. 配置说明
+## 6. 配置说明
 
-### 8.1 API Provider 配置
+### 6.1 API Provider 配置
 
-在配置面板 → 「API 参数」中管理，每个 Provider 包含：
+在配置面板 → 「API 参数」中管理：
 
 | 字段 | 说明 |
 |---|---|
-| 名称 | 显示名称 |
-| API Key | 访问密钥 |
 | Endpoint | API 地址（如 `https://api.openai.com/v1`） |
 | 模型 | 模型名称（如 `gpt-4o`） |
-| API 格式 | `openai` / `anthropic` |
-| 温度 | 0.0 - 2.0，控制随机性 |
+| API 格式 | `openai` / `anthropic` / `gemini` |
+| 温度 | 0.0 - 2.0 |
 | 上下文窗口 | 携带的历史消息条数 |
-| 流式输出 | 开启后实时显示生成内容 |
+| 流式输出 | 开启后实时显示生成内容（SSE） |
 
-### 8.2 存储后端配置
+### 6.2 存储后端配置
 
 在配置面板 → 「存储后端」中设置：
 
 | 字段 | 说明 |
 |---|---|
 | 后端类型 | `本地 IndexedDB` 或 `远程服务` |
-| 服务地址 | 远程模式下的 Worker/服务 URL |
+| 服务地址 | 远程模式下的 Worker / Node 服务 URL |
 | 访问 Token | 与服务端 `AUTH_TOKEN` 一致 |
 
-### 8.3 存储 API 规范
+---
 
-远程存储服务需实现以下接口（方案 A/B 均已实现）：
+## 7. 状态栏系统
+
+状态栏是 Echo 的核心特性之一，允许 AI 在对话中输出结构化的角色状态信息，并以可视化组件的形式渲染在对话框内。
+
+### 9.1 工作原理
+
+整个流程分为两个阶段：
+
+**阶段一：提取（tagParser.ts）**
+
+AI 每次回复后，`extractAndSyncTags` 函数扫描原始文本，按以下优先级提取状态数据：
+
+1. **自定义解析器**（最高优先级）：用户在「数据提取规则」面板中定义的正则表达式
+2. **容器标签内表格**：`<status>`, `<details>`, `<html>`, `<card>` 内的 Markdown 表格或键值对
+3. **`<status-container>` 嵌套标签**：逐一提取内部所有子标签
+4. **启发式解析器**：对已识别容器内容运行 `parseUniversalStatus`，兜底提取
+5. **角色卡正则模板**（兼容旧格式）：角色卡内置的 `tagTemplates`
+
+提取到的键值对通过 `updateAttributes` 写入角色的 `attributes` 字段（Zustand store）。
+
+**阶段二：渲染（StatusBars/）**
+
+`novelParser.ts` 在解析 AI 输出时，识别特殊标签并将其转换为 `<StatusBar type="..." />` 组件。`StatusBar` 根据 `type` 查询注册表（`registry.tsx`），分发到对应渲染器：
+
+| type 值 | 渲染器 | 适用场景 |
+|---|---|---|
+| `status` | `DataLinkBar` | 结构化数据矩阵，支持 `<-标题->` 分节和 `\|表格行\|` |
+| `status-container` | `StatusContainerBar` | 嵌套 XML 标签，自动分类为元数据/进度条/叙事块 |
+| `状态栏` / `characterCard` | `LegacyCSVBar` | 兼容旧格式，逗号分隔的 CSV 值列表 |
+| `details` / `html` / `card` | `IframeBar` | 完整 HTML 界面，沙箱 iframe 隔离渲染 |
+
+未匹配到注册表的 type 会使用内联回退渲染器显示原始内容。
+
+### 9.2 渲染器详解
+
+#### DataLinkBar（`type="status"`）
+
+解析规则：
+- `<-标题->` → 创建新分节（section）
+- `|A|B|C|` → 表格行，每个单元格渲染为独立标签
+- 普通文本行 → 归入当前分节
 
 ```
-# 鉴权
-Authorization: Bearer <token>
+<status>
+<-基础信息->
+|姓名|艾拉|
+|职业|魔法师|
+<-战斗属性->
+|HP|85/100|
+|MP|60/80|
+</status>
+```
 
-# KV 接口
-GET    /api/storage/:key     → { "value": "..." | null }
-PUT    /api/storage/:key     ← { "value": "..." }
-DELETE /api/storage/:key
+#### StatusContainerBar（`type="status-container"`）
 
-# 图片接口
-GET    /api/images/:id       → { "base64": "..." | null }
-PUT    /api/images/:id       ← { "base64": "..." }
-DELETE /api/images/:id
+解析规则：提取所有 `<key>value</key>` 子标签，按以下规则自动分类：
+- **元数据栏**（顶部）：值长度 < 15 且非纯数字 → 显示为图标+文字
+- **进度条网格**：值为纯数字或 `数字/数字` 格式 → 渲染为动画进度条
+- **叙事块**：值长度 ≥ 15 → 渲染为文本卡片（`comment` 标签红色，`thought` 标签蓝色斜体）
+
+内置图标映射：`time`→时钟、`location`→地图针、`weather`→云、`love`→心、`hate`→火焰、`thought`→闪电
+
+内置颜色映射：`love`→玫瑰红、`hate`→紫色、`hp`→红色、`mana`→蓝色
+
+#### IframeBar（`type="html"` / `"details"` / `"card"`）
+
+将 AI 输出的 HTML 内容写入沙箱 iframe，自动调整高度。若内容不含 `<html>` 标签，自动包裹基础结构并注入透明背景样式。
+
+沙箱权限：`allow-scripts allow-popups allow-forms allow-modals`（不允许 same-origin，防止访问父页面）
+
+#### LegacyCSVBar（`type="状态栏"` / `"characterCard"`）
+
+兼容旧版角色卡格式，`metadata` 为字符串数组，以 `|` 分隔显示。
+
+### 9.3 进度条组件（StatProgressBar）
+
+`StatusContainerBar` 内部使用，支持三种值格式：
+
+| 格式 | 示例 | 说明 |
+|---|---|---|
+| 纯数字 | `75` | 以 100 为满值，显示 75% |
+| 百分比 | `75%` | 同上 |
+| 分数 | `75/100` | 以分母为满值 |
+
+### 9.4 自定义解析器
+
+在配置面板 → 「数据提取规则」中为当前角色添加正则解析器：
+
+| 字段 | 说明 |
+|---|---|
+| 规则名称 | 仅用于显示 |
+| 匹配正则 | 标准 JS 正则，捕获组对应字段值 |
+| 从对话中隐藏 | 开启后匹配内容不显示在对话框 |
+| 字段映射 | 捕获组索引（1-based）→ 属性名 |
+
+示例：提取 `[好感度: 85]` 格式
+
+```
+正则：\[好感度[:：]\s*(\d+)\]
+字段：$1 → 好感度
+```
+
+### 9.5 推荐状态栏格式
+
+以下是经过验证、渲染效果最佳的格式，可直接写入角色卡的系统提示词中指导 AI 输出。
+
+---
+
+#### 格式一：status-container（推荐，功能最完整）
+
+适合需要同时展示元数据、数值属性和内心独白的场景。
+
+**System Prompt 指令示例：**
+```
+每次回复结尾，输出以下状态块（不要省略标签）：
+<status-container>
+<time>当前时间</time>
+<location>当前地点</location>
+<weather>天气</weather>
+<love>好感度数值(0-100)</love>
+<hp>生命值(格式: 当前/最大)</hp>
+<thought>角色此刻的内心独白，一句话</thought>
+<comment>对玩家行为的简短评价</comment>
+</status-container>
+```
+
+**AI 输出示例：**
+```xml
+<status-container>
+<time>傍晚 18:30</time>
+<location>魔法学院图书馆</location>
+<weather>晴</weather>
+<love>72</love>
+<hp>85/100</hp>
+<thought>他今天主动来找我……难道是为了昨天的事？</thought>
+<comment>玩家表现出了真诚的关心，好感度小幅提升。</comment>
+</status-container>
+```
+
+渲染效果：顶部显示时间/地点/天气元数据，中部显示好感度和HP进度条，底部显示内心独白和评价文本块。
+
+---
+
+#### 格式二：status（数据矩阵风格）
+
+适合信息密度高、需要分类展示多个属性的场景。
+
+**System Prompt 指令示例：**
+```
+每次回复后附加状态矩阵：
+<status>
+<-角色状态->
+|姓名|[角色名]|
+|心情|[当前心情]|
+|好感|[0-100的数值]|
+<-环境信息->
+|时间|[时间]|
+|地点|[地点]|
+</status>
+```
+
+**AI 输出示例：**
+```
+<status>
+<-角色状态->
+|姓名|艾拉·斯塔尔|
+|心情|有些紧张|
+|好感|72|
+<-环境信息->
+|时间|傍晚 18:30|
+|地点|魔法学院图书馆|
+</status>
 ```
 
 ---
 
-## 9. 开发指南
+#### 格式三：html（完全自定义界面）
 
-### 9.1 本地开发
+适合有 HTML/CSS 能力的高级用户，或希望 AI 生成完全自定义 UI 的场景。
+
+**System Prompt 指令示例：**
+```
+每次回复后，输出一个美观的状态卡片：
+<html>
+<!-- 在此输出完整的 HTML+CSS 状态卡片 -->
+</html>
+```
+
+**AI 输出示例：**
+```html
+<html>
+<div style="font-family:sans-serif;padding:12px;background:linear-gradient(135deg,#1a1a2e,#16213e);color:#eee;border-radius:12px">
+  <div style="font-size:10px;opacity:0.5;margin-bottom:8px">STATUS</div>
+  <div style="display:flex;gap:16px;align-items:center">
+    <div>
+      <div style="font-size:18px;font-weight:bold">艾拉</div>
+      <div style="font-size:11px;opacity:0.7">魔法学院 · 图书馆</div>
+    </div>
+    <div style="margin-left:auto;text-align:right">
+      <div style="font-size:11px;color:#f43f5e">好感度 ❤️ 72</div>
+      <div style="font-size:11px;color:#3b82f6">HP 85/100</div>
+    </div>
+  </div>
+</div>
+</html>
+```
+
+---
+
+#### 格式四：纯键值对（最简单，兼容性最强）
+
+适合对格式要求不高、只需提取数据到属性槽的场景。配合自定义解析器使用。
+
+**System Prompt 指令示例：**
+```
+每次回复结尾用以下格式输出状态（用[]包裹，不要换行）：
+[好感度: 数值, 心情: 描述, 地点: 描述]
+```
+
+**AI 输出示例：**
+```
+[好感度: 72, 心情: 有些紧张, 地点: 图书馆]
+```
+
+配合自定义解析器正则 `\[([^\]]+)\]` 提取，或直接依赖启发式解析器自动识别。
+
+---
+
+### 9.6 格式选择建议
+
+| 需求 | 推荐格式 |
+|---|---|
+| 需要进度条 + 内心独白 | `status-container` |
+| 信息分类展示 | `status`（DataLinkBar） |
+| 完全自定义 UI | `html`（IframeBar） |
+| 只需数据提取，不需渲染 | 键值对 + 自定义解析器 |
+| 兼容旧版角色卡 | `状态栏` / `characterCard` |
+
+> 💡 **提示**：`status-container` 格式的进度条颜色可通过标签名自动映射（`love`→红、`hate`→紫、`hp`→红、`mana`→蓝），其他标签默认为灰色。如需自定义颜色，请使用 `html` 格式。
+
+---
+
+## 8. 开发指南
+
+### 8.1 本地开发
 
 ```bash
 npm install
@@ -433,14 +599,14 @@ npm run dev
 # 默认运行在 http://localhost:8888
 ```
 
-### 9.2 构建
+### 8.2 构建
 
 ```bash
 npm run build
 # 产物在 dist/
 ```
 
-### 9.3 添加新技能
+### 8.3 添加新技能
 
 在 `src/skills/` 下创建新模块，实现 `SkillModule` 接口，然后在 `src/skills/index.ts` 中注册：
 
@@ -453,10 +619,10 @@ export const registeredSkills = {
 }
 ```
 
-### 9.4 存储版本升级
+### 8.4 存储版本升级
 
 修改 `useAppStore.ts` 中的 `name` 字段（如 `echo-storage-v17`）可触发存储迁移，旧数据将被清空。升级前请确保做好数据迁移逻辑或提示用户导出数据。
 
-### 9.5 环境变量
+### 8.5 环境变量
 
 Vite 支持 `.env` 文件，目前项目未使用环境变量，所有配置均在运行时通过 UI 设置。

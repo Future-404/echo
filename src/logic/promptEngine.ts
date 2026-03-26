@@ -6,11 +6,11 @@ export interface PromptContext {
   character: CharacterCard;
   persona?: UserPersona;
   directives: Directive[];
-  worldBookLibrary: WorldBook[]; // 全局世界书库
+  worldBookLibrary: WorldBook[];
   missions: Mission[];
   userName: string;
   enabledSkillIds?: string[];
-  recentMessages?: any[]; // 用于关键词匹配
+  recentMessages?: any[];
 }
 
 /**
@@ -37,8 +37,13 @@ export const buildSystemPrompt = (ctx: PromptContext): string => {
   const charName = character.name;
 
   // 1. 提取最近对话作为匹配上下文
+  // scan_depth: 取所有绑定书中最大值，默认 3（V2 规范字段）
+  const boundBookIds = character.extensions?.worldBookIds || [];
+  const boundBooks = (worldBookLibrary || []).filter(book => boundBookIds.includes(book.id));
+  const scanDepth = boundBooks.reduce((max, b) => Math.max(max, b.scanDepth ?? 3), 3);
+
   const contextText = recentMessages
-    .slice(-3)
+    .slice(-scanDepth)
     .map(m => m.content)
     .join(' ')
     .toLowerCase();
@@ -54,22 +59,20 @@ export const buildSystemPrompt = (ctx: PromptContext): string => {
     .join('\n');
 
   // 2. 知识源处理
-  // A. 公共绑定书库 (保持关键词动态加载)
-  const boundBookIds = character.extensions?.worldBookIds || [];
-  const libraryEntries = (worldBookLibrary || [])
-    .filter(book => boundBookIds.includes(book.id))
+  const libraryEntries = boundBooks
     .flatMap(book => book.entries || [])
     .filter(entry => {
       if (!entry.enabled) return false;
-      if (!entry.keys || entry.keys.length === 0) return true; // 无 Key 基础设定始终开启
+      if (entry.constant) return true;
+      if (!entry.keys || entry.keys.length === 0) return true;
       return entry.keys.some(k => contextText.includes(k.toLowerCase().trim()));
-    });
+    })
+    .sort((a, b) => (a.insertionOrder ?? 0) - (b.insertionOrder ?? 0));
 
-  // B. 角色私有条目 (全量注入，不进行关键词匹配)
   const privateEntries = (character.extensions?.worldBook || [])
-    .filter(entry => entry.enabled);
+    .filter(entry => entry.enabled)
+    .sort((a, b) => (a.insertionOrder ?? 0) - (b.insertionOrder ?? 0));
 
-  // 合并并渲染
   const allActiveEntries = [...libraryEntries, ...privateEntries];
 
   const activeWorldContext = allActiveEntries
@@ -79,8 +82,6 @@ export const buildSystemPrompt = (ctx: PromptContext): string => {
     })
     .join('\n\n') || 'A digital echo chamber where memories fragment and reform.';
 
-
-  // 动态替换技能提示词中的变量
   const rawSkillPrompts = getEnabledSkillPrompts(enabledSkillIds);
   const dynamicSkillPrompts = rawSkillPrompts 
     ? replaceMacros(rawSkillPrompts, actualUserName, charName).replace(/\[角色名\]/g, charName)
@@ -88,7 +89,6 @@ export const buildSystemPrompt = (ctx: PromptContext): string => {
 
   const skillSection = dynamicSkillPrompts ? `\n\n  ### SKILL MODULES & DIRECTIVES\n  ${dynamicSkillPrompts}` : '';
 
-  // 注入动态属性状态 (反馈回路)
   const currentAttributes = character.attributes || {};
   const attributeContext = Object.keys(currentAttributes).length > 0
     ? `\n### ACTIVE STATE SLOTS (STATEFUL TRACKING)\nCurrently tracked attributes for this session:\n${Object.entries(currentAttributes)
@@ -96,7 +96,15 @@ export const buildSystemPrompt = (ctx: PromptContext): string => {
         .join('\n')}`
     : '';
 
-  const systemPrompt = replaceMacros(character.systemPrompt, actualUserName, charName);
+  // 3. system_prompt：支持 {{original}} 占位符（V2 规范）
+  const globalSystemPrompt = `${enabledDirectives}\n\n${CORE_FORMATTING_RULES}`.trim();
+  const rawSystemPrompt = character.systemPrompt || '';
+  const systemPrompt = replaceMacros(
+    rawSystemPrompt.includes('{{original}}')
+      ? rawSystemPrompt.replace(/\{\{original\}\}/gi, globalSystemPrompt)
+      : rawSystemPrompt,
+    actualUserName, charName
+  );
 
   return `
   ### CORE IDENTITY
