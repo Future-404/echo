@@ -83,7 +83,9 @@ export const useChat = () => {
   ) => {
     const char = charId === selectedCharacter.id ? selectedCharacter : secondaryCharacter!
     const provider = config.providers.find(p => p.id === char.providerId) || config.providers.find(p => p.id === config.activeProviderId) || config.providers[0]
-    if (!provider?.apiKey) return
+    if (!provider?.apiKey) {
+      throw new Error(`[${char.name}] 未配置 API Key`)
+    }
 
     const format = provider.apiFormat || 'openai'
     const isStreaming = provider.stream !== false
@@ -171,7 +173,7 @@ export const useChat = () => {
         for (const tc of toolCalls) {
           try {
             const args = JSON.parse(cleanJson(tc.function.arguments))
-            const result = executeSkill(tc.function.name, args, useAppStore)
+            const result = executeSkill(tc.function.name, args)
             const toolMsg: Message = { role: 'tool', tool_call_id: tc.id, name: tc.function.name, content: result.message }
             addMessage(toolMsg)
             toolResults.push(toolMsg)
@@ -317,124 +319,8 @@ export const useChat = () => {
         return
       }
 
-      // ── 单角色模式（原有逻辑） ───────────────────────────────────────────────
-      const format = activeProvider.apiFormat || 'openai'
-      const isStreaming = activeProvider.stream !== false
-      const contextWindow = activeProvider.contextWindow ?? 10
-      const enabledTools = getEnabledSkills(config.enabledSkillIds)
-
-      const systemContext = buildSystemPrompt({
-        character: selectedCharacter,
-        persona: activePersona,
-        directives: config.directives || [],
-        worldBookLibrary: config.worldBookLibrary || [],
-        missions,
-        userName: config.userName || 'Observer',
-        enabledSkillIds: config.enabledSkillIds,
-        recentMessages: messages.slice(-10)
-      })
-
-      let fetchUrl = `${activeProvider.endpoint}/chat/completions`
-      let fetchHeaders: any = { 'Content-Type': 'application/json' }
-      let fetchBody: any = {}
-
-      if (format === 'openai') {
-        if (activeProvider.apiKey) fetchHeaders['Authorization'] = `Bearer ${activeProvider.apiKey}`
-        const postHistory = selectedCharacter.postHistoryInstructions
-          ? [{ role: 'system', content: replaceMacros(selectedCharacter.postHistoryInstructions, activePersona?.name || 'User', selectedCharacter.name) }]
-          : []
-        fetchBody = {
-          model: activeProvider.model,
-          messages: [{ role: 'system', content: systemContext }, ...messages.slice(-contextWindow), ...postHistory, { role: 'user', content: userMsg.content }],
-          ...(enabledTools.length > 0 && { tools: enabledTools }),
-          stream: isStreaming,
-          temperature: activeProvider.temperature ?? 0.7,
-          top_p: activeProvider.topP ?? 1,
-        }
-      } else if (format === 'anthropic') {
-        fetchUrl = `${activeProvider.endpoint.replace(/\/chat\/completions$/, '')}/messages`
-        fetchHeaders = { 'Content-Type': 'application/json', 'x-api-key': activeProvider.apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }
-        const postHistory = selectedCharacter.postHistoryInstructions
-          ? [{ role: 'user', content: replaceMacros(selectedCharacter.postHistoryInstructions, activePersona?.name || 'User', selectedCharacter.name) }, { role: 'assistant', content: 'Understood.' }]
-          : []
-        fetchBody = {
-          model: activeProvider.model,
-          system: systemContext,
-          messages: [...messages.slice(-contextWindow).filter(m => m.role !== 'system'), ...postHistory, { role: 'user', content: userMsg.content }],
-          max_tokens: 4096,
-          ...(enabledTools.length > 0 && { tools: enabledTools.map((t: any) => ({ name: t.function.name, description: t.function.description, input_schema: t.function.parameters })) }),
-          stream: isStreaming,
-          temperature: activeProvider.temperature ?? 0.7,
-        }
-      } else {
-        addMessage({ role: 'assistant', content: '错误：Gemini 格式暂不支持。' })
-        setIsTyping(false)
-        return
-      }
-
-      if (config.isDebugEnabled) addDebugLog({ direction: 'OUT', label: `API Request (${format})`, data: { url: fetchUrl, body: fetchBody } })
-
-      const response = await fetch(fetchUrl, { method: 'POST', headers: fetchHeaders, body: JSON.stringify(fetchBody) })
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}))
-        throw new Error(`HTTP ${response.status}${errData?.error?.message ? ': ' + errData.error.message : ''}`)
-      }
-
-      const handleResponseFinish = async (fullText: string, toolCalls?: any[]) => {
-        if (config.isDebugEnabled) addDebugLog({ direction: 'IN', label: 'API Response Finished', data: { text: fullText, tool_calls: toolCalls } })
-        extractAndSyncTags(fullText, selectedCharacter, updateAttributes, selectedCharacter.extensions?.customParsers)
-        const transformedText = applyCharacterRegexScripts(fullText, selectedCharacter, selectedCharacter.extensions?.customParsers)
-
-        if (toolCalls?.length) {
-          const assistantMessage: Message = { role: 'assistant', content: transformedText || '*…*', tool_calls: toolCalls }
-          addMessage(assistantMessage)
-          const toolResults: Message[] = []
-          for (const tc of toolCalls) {
-            try {
-              const args = JSON.parse(cleanJson(tc.function.arguments))
-              const result = executeSkill(tc.function.name, args, useAppStore)
-              const toolMsg: Message = { role: 'tool', tool_call_id: tc.id, name: tc.function.name, content: result.message }
-              addMessage(toolMsg)
-              toolResults.push(toolMsg)
-            } catch (e) { console.error('Skill error:', e) }
-          }
-          if (toolResults.length > 0) {
-            try {
-              let followUpBody: any
-              if (format === 'anthropic') {
-                followUpBody = { ...fetchBody, messages: [...fetchBody.messages, { role: 'assistant', content: toolCalls.map((tc: any) => ({ type: 'tool_use', id: tc.id, name: tc.function.name, input: JSON.parse(cleanJson(tc.function.arguments)) })) }, { role: 'user', content: toolResults.map(r => ({ type: 'tool_result', tool_use_id: r.tool_call_id, content: r.content })) }] }
-              } else {
-                followUpBody = { ...fetchBody, messages: [...fetchBody.messages, assistantMessage, ...toolResults], stream: false }
-              }
-              const followUpRes = await fetch(fetchUrl, { method: 'POST', headers: fetchHeaders, body: JSON.stringify(followUpBody) })
-              if (followUpRes.ok) {
-                const followUpData = await followUpRes.json()
-                const followUpText = format === 'anthropic' ? followUpData.content?.[0]?.text : followUpData.choices?.[0]?.message?.content
-                if (followUpText) {
-                  extractAndSyncTags(followUpText, selectedCharacter, updateAttributes, selectedCharacter.extensions?.customParsers)
-                  addMessage({ role: 'assistant', content: applyCharacterRegexScripts(followUpText, selectedCharacter, selectedCharacter.extensions?.customParsers) })
-                }
-              }
-            } catch (e) { console.error('Tool follow-up error:', e) }
-          }
-        } else {
-          addMessage({ role: 'assistant', content: transformedText })
-        }
-        setIsTyping(false)
-      }
-
-      if (isStreaming) {
-        await processChatStream(response, {
-          onChunk: (chunk) => setDisplayText(prev => prev + chunk),
-          onFinish: handleResponseFinish,
-          onError: (err) => { addMessage({ role: 'assistant', content: '错误：流式响应中断，请重试。' }); setIsTyping(false) }
-        }, format)
-      } else {
-        const data = await response.json()
-        const content = format === 'anthropic' ? data.content?.[0]?.text : data.choices?.[0]?.message?.content
-        const tcs = format === 'openai' ? data.choices?.[0]?.message?.tool_calls : undefined
-        await handleResponseFinish(content || '', tcs)
-      }
+      // ── 单角色模式：复用 requestChar ───────────────────────────────────────
+      await requestChar(selectedCharacter.id, currentMessages, content)
 
     } catch (err: any) {
       console.error('Chat Error:', err)

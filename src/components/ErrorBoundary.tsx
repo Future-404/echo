@@ -1,4 +1,4 @@
-import React, { ErrorInfo, ReactNode } from 'react'
+import { Component, ReactNode } from 'react'
 
 interface Props {
   children: ReactNode
@@ -6,64 +6,41 @@ interface Props {
 
 interface State {
   hasError: boolean
-  error: Error | null
+  error?: Error
 }
 
-class ErrorBoundary extends React.Component<Props, State> {
-  public state: State = {
-    hasError: false,
-    error: null
+export class ErrorBoundary extends Component<Props, State> {
+  constructor(props: Props) {
+    super(props)
+    this.state = { hasError: false }
   }
 
-  public static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error }
   }
 
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Uncaught error:', error, errorInfo)
+  componentDidCatch(error: Error, errorInfo: any) {
+    console.error('ErrorBoundary caught:', error, errorInfo)
   }
 
-  private handleReset = () => {
-    localStorage.clear() // 清除可能导致问题的脏数据
-    window.location.reload()
-  }
-
-  public render() {
+  render() {
     if (this.state.hasError) {
       return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#0d0d0d] text-white p-8 font-serif">
-          <div className="max-w-md w-full space-y-6 text-center">
-            <div className="text-4xl opacity-50">⚠️</div>
-            <h1 className="text-xl tracking-widest text-red-400">系统回声中断</h1>
-            <p className="text-sm text-gray-400 leading-relaxed">
-              底层渲染引擎发生不可恢复的错误。这可能是由于配置冲突或内存溢出导致的。
-            </p>
-            <div className="p-4 bg-white/5 rounded-xl text-left overflow-auto max-h-40">
-              <code className="text-[10px] text-gray-500 font-sans">
-                {this.state.error?.stack}
-              </code>
-            </div>
-            <div className="flex gap-4">
-              <button
-                onClick={() => window.location.reload()}
-                className="flex-1 py-3 border border-white/10 rounded-2xl text-[11px] tracking-widest uppercase hover:bg-white/5 transition-all"
-              >
-                重试
-              </button>
-              <button
-                onClick={this.handleReset}
-                className="flex-1 py-3 bg-red-500/10 text-red-400 border border-red-400/20 rounded-2xl text-[11px] tracking-widest uppercase hover:bg-red-500/20 transition-all"
-              >
-                重置应用
-              </button>
-            </div>
-          </div>
+        <div style={{ padding: '2rem', textAlign: 'center', fontFamily: 'system-ui' }}>
+          <h1>應用遇到錯誤</h1>
+          <p style={{ color: '#666', marginBottom: '1rem' }}>
+            {this.state.error?.message || '未知錯誤'}
+          </p>
+          <button 
+            onClick={() => window.location.reload()} 
+            style={{ padding: '0.5rem 1rem', cursor: 'pointer' }}
+          >
+            重新載入
+          </button>
         </div>
       )
     }
 
-    return this.children
+    return this.props.children
   }
 }
-
-export default ErrorBoundary

@@ -52,7 +52,11 @@ export const processChatStream = async (
         // --- OpenAI 格式解析 ---
         if (format === 'openai' && cleanedLine.startsWith('data: ')) {
           const dataStr = cleanedLine.slice(6);
-          if (dataStr === '[DONE]') break;
+          if (dataStr === '[DONE]') {
+            reader.releaseLock();
+            callbacks.onFinish(fullText, Object.values(toolCallsMap).length > 0 ? Object.values(toolCallsMap) : undefined);
+            return;
+          }
           try {
             const json = JSON.parse(dataStr);
             const delta = json.choices?.[0]?.delta;

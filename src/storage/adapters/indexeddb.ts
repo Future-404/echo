@@ -5,17 +5,7 @@ const DB_VERSION = 2
 const KV_STORE = 'kv'
 const IMAGE_STORE = 'images'
 
-const DB_TIMEOUT = 5000 // 5秒超时
-
-function withTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`[Storage] IndexedDB Timeout: ${label}`)), DB_TIMEOUT))
-  ])
-}
-
 function openDb(): Promise<IDBDatabase> {
-  console.log('[Storage] Opening IndexedDB...');
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION)
     req.onupgradeneeded = () => {
@@ -23,36 +13,35 @@ function openDb(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(KV_STORE)) db.createObjectStore(KV_STORE)
       if (!db.objectStoreNames.contains(IMAGE_STORE)) db.createObjectStore(IMAGE_STORE)
     }
-    req.onblocked = () => {
-      console.warn('[Storage] IndexedDB open blocked! Please close other tabs.');
-    }
-    req.onsuccess = () => {
-      console.log('[Storage] IndexedDB opened successfully');
-      resolve(req.result);
-    }
+    req.onsuccess = () => resolve(req.result)
     req.onerror = () => reject(req.error)
   })
 }
 
 let _db: IDBDatabase | null = null
 async function getDb() {
-  if (!_db) _db = await withTimeout(openDb(), 'openDb');
-  _db.onversionchange = () => { 
-    console.warn('[Storage] DB version change detected, closing...');
-    _db?.close(); 
-    _db = null; 
-  }
+  if (!_db) _db = await openDb()
+  // 监听其他标签页触发的版本升级，及时关闭连接避免死锁
+  _db.onversionchange = () => { _db?.close(); _db = null }
   return _db
 }
 
-function kvOp<T>(store: string, mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> {
-  const promise = getDb().then(db => new Promise<T>((resolve, reject) => {
-    const tx = db.transaction(store, mode)
-    const req = fn(tx.objectStore(store))
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error)
+function kvOp<T>(store: string, mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<T>, retries = 2): Promise<T> {
+  return getDb().then(db => new Promise((resolve, reject) => {
+    try {
+      const tx = db.transaction(store, mode)
+      const req = fn(tx.objectStore(store))
+      req.onsuccess = () => resolve(req.result)
+      req.onerror = () => reject(req.error)
+    } catch (err: any) {
+      if ((err.name === 'InvalidStateError' || err.name === 'TransactionInactiveError') && retries > 0) {
+        _db = null
+        setTimeout(() => kvOp<T>(store, mode, fn, retries - 1).then(resolve, reject), 100)
+      } else {
+        reject(err)
+      }
+    }
   }))
-  return withTimeout(promise, `kvOp:${store}:${mode}`);
 }
 
 export const indexedDbAdapter: StorageAdapter = {

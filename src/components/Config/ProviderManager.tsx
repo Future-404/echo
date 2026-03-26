@@ -1,17 +1,20 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import { Plus, Edit3, Trash2, Check } from 'lucide-react'
+import { Plus, Edit3, Trash2, Check, Lock } from 'lucide-react'
 import { useAppStore } from '../../store/useAppStore'
 import type { Provider } from '../../store/useAppStore'
 
 interface ProviderManagerProps {
   onEdit: (id: string) => void
   onAdd: () => void
+  onEnableEncryption: () => void
 }
 
-const ProviderManager: React.FC<ProviderManagerProps> = ({ onEdit, onAdd }) => {
+const ProviderManager: React.FC<ProviderManagerProps> = ({ onEdit, onAdd, onEnableEncryption }) => {
   const { config, updateConfig, setActiveProvider, removeProvider } = useAppStore()
   const providers = config?.providers || []
+  const hasPassword = config?.masterPasswordHash && config.masterPasswordHash !== 'skipped'
+  const isSkipped = config?.masterPasswordHash === 'skipped'
 
   return (
     <motion.div 
@@ -24,10 +27,27 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ onEdit, onAdd }) => {
             <label className="text-xs font-serif tracking-widest text-gray-500 dark:text-gray-400 font-medium">LLM API 参数</label>
             <span className="text-[7px] text-gray-300 dark:text-gray-600 uppercase tracking-[0.2em] mt-0.5">API Gateway</span>
         </div>
-        <button onClick={onAdd} className="text-gray-400 hover:text-gray-600 transition-colors">
-          <Plus size={16} strokeWidth={1} />
-        </button>
+        <div className="flex gap-2">
+          {isSkipped && (
+            <button 
+              onClick={onEnableEncryption}
+              className="text-yellow-500 hover:text-yellow-600 transition-colors flex items-center gap-1 text-xs"
+              title="啟用加密"
+            >
+              <Lock size={14} strokeWidth={1.5} />
+            </button>
+          )}
+          <button onClick={onAdd} className="text-gray-400 hover:text-gray-600 transition-colors">
+            <Plus size={16} strokeWidth={1} />
+          </button>
+        </div>
       </div>
+
+      {isSkipped && (
+        <div className="mx-4 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-xs text-yellow-700 dark:text-yellow-300">
+          ⚠️ API Keys 未加密。點擊 <Lock className="inline" size={12} /> 啟用加密保護。
+        </div>
+      )}
       
       <div className="space-y-3">
         {providers.map(p => (

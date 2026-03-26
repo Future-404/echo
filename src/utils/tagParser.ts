@@ -155,12 +155,14 @@ export const extractAndSyncTags = (
     }
   });
 
-  // 1. 自动解析 <status>, <details>, <html> 等容器标签内部的 Markdown 表格
-  // 注意：此处对原始 text 运行，避免转换逻辑干扰容器标签的解析
+  // 先对文本应用转换，以支持从转换后的 HTML 界面中提取数据
+  const processedText = applyCharacterRegexScripts(text, char, customParsers);
+
+  // --- 1. 自动解析 <status>, <details>, <html> 等容器标签内部的 Markdown 表格 ---
   const containerTags = ['status', 'details', 'html', 'card'];
   containerTags.forEach(tag => {
     const regex = new RegExp(`<${tag}[\\s>][\\s\\S]*?>([\\s\\S]*?)<\\/${tag}>`, 'i');
-    const match = text.match(regex);
+    const match = processedText.match(regex);
     if (match) {
       const tableData = parseTableBlock(match[1]);
       Object.assign(newAttrs, tableData);
@@ -168,7 +170,7 @@ export const extractAndSyncTags = (
   });
 
   // --- 1.5 自动解析 <status-container> 嵌套标签 (通用模式) ---
-  const containerMatch = text.match(/<status-container>([\s\S]*?)<\/status-container>/i);
+  const containerMatch = processedText.match(/<status-container>([\s\S]*?)<\/status-container>/i);
   if (containerMatch) {
     const innerText = containerMatch[1];
     const tagRegex = /<([\w-]+)>([\s\S]*?)<\/\1>/g;
@@ -180,43 +182,58 @@ export const extractAndSyncTags = (
     }
   }
 
-  // 对文本应用转换，用于后续的显示和启发式解析
-  const processedText = applyCharacterRegexScripts(text, char, customParsers);
-
-  // --- 1.8 启发式解析器：仅作用于明确的状态容器内容，避免污染对话文本
+  // --- 1.8 启发式解析器：仅作用于明确的状态容器内容，避免污染对话文本 ---
+  // 只对已识别的容器标签内容运行，不对全文运行
   const statusContainerRegex = /<(status|details|card|状态栏|characterCard)[^>]*>([\s\S]*?)<\/\1>/gi;
   let containerMatch2;
   while ((containerMatch2 = statusContainerRegex.exec(processedText)) !== null) {
     const heuristicData = parseUniversalStatus(containerMatch2[2]);
+    // 模糊数据优先级最低，被后续精准匹配覆盖
     Object.assign(newAttrs, heuristicData);
   }
 
   // --- 2. 传统正则表达式解析 (兼容已有卡片) ---
-  // 重要：此处应在原始 text 上运行，或者逻辑上确保正则表达式能匹配转换后的内容
-  // 这里选择在 processedText 上运行，但为了兼容性，我们也对原始 text 运行一次提取
   const templates = char.extensions?.tagTemplates || [];
   templates.forEach(tpl => {
     if (!tpl.enabled || !tpl.originalRegex) return;
     
     try {
       const regexStr = String(tpl.originalRegex).replace(/\\\\/g, '\\');
+      
+      // 1. 优先使用显式定义的字段名 (V3 标准)
       let fieldNames = tpl.fields || [];
-      if (fieldNames.length === 0) fieldNames = inferFieldNamesFromRegex(regexStr);
+      
+      // 2. 如果没有显式定义，则尝试从正则文本中自动推断 (通用解决方案)
+      if (fieldNames.length === 0) {
+        fieldNames = inferFieldNamesFromRegex(regexStr);
+      }
+      
       const regex = new RegExp(regexStr, 'g');
       
-      // 在原始文本和处理后的文本上都试一下，以最大程度保证提取率
-      [text, processedText].forEach(targetText => {
-        let match;
-        // 重置 regex 索引以确保 g 模式正常
-        regex.lastIndex = 0;
-        while ((match = regex.exec(targetText)) !== null) {
-          const captures = match.slice(1);
-          captures.forEach((val, i) => {
-            let key = fieldNames[i] || (tpl.name === '状态栏' ? ['name', 'efficiency', 'role', 'days'][i] : `属性_${i + 1}`);
-            if (key && val !== undefined) newAttrs[key] = val.trim();
-          });
-        }
-      });
+      let match;
+      while ((match = regex.exec(processedText)) !== null) {
+        const captures = match.slice(1);
+        
+        captures.forEach((val, i) => {
+          let key = '';
+          
+          if (fieldNames[i]) {
+            key = fieldNames[i];
+          } 
+          else if (tpl.name === '状态栏' || tpl.name.toLowerCase().includes('charactercard')) {
+            const stFields = ['name', 'efficiency', 'role', 'days', 'rank', 'inner_thought', 'reason', 'value', 'diary', 'date', 'todo'];
+            key = stFields[i];
+          }
+          
+          if (!key) {
+            key = `属性_${i + 1}`;
+          }
+
+          if (key && val !== undefined) {
+            newAttrs[key] = val.trim();
+          }
+        });
+      }
     } catch (e) {
       console.warn(`[TagParser] Failed to process template: ${tpl.name}`, e);
     }

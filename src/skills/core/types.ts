@@ -9,6 +9,6 @@ export interface SkillModule {
   displayName: string;
   description: string;
   schema: object;
-  execute: (args: any, store: any) => SkillExecuteResult;
+  execute: (args: any) => SkillExecuteResult;
   systemPrompt?: string;
 }
