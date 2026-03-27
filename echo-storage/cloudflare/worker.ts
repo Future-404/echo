@@ -54,6 +54,7 @@ export default {
       // ── /api/auth（無需鑒權，驗證密碼後返回 token）────────────────────────
       if (resource === 'auth') {
         if (req.method !== 'POST') return json({ error: 'Method Not Allowed' }, 405, origin)
+        if (!env.AUTH_TOKEN) return json({ error: 'Server misconfigured: AUTH_TOKEN not set' }, 500, origin)
         const body = await parseBody<{ password: string }>(req)
         if (!body || body.password !== env.AUTH_TOKEN) return json({ error: 'Invalid password' }, 401, origin)
         return json({ token: env.AUTH_TOKEN }, 200, origin)
