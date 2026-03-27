@@ -104,11 +104,6 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
     return 'bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.6)]'
   }
 
-  const dialogueBoxHeight = useMemo(() => {
-    if (isKeyboardVisible && isMobile) return 240
-    return isMobile ? 420 : 480
-  }, [isMobile, isKeyboardVisible])
-
   const getCharForMsg = (msg: any) => {
     if (!secondaryCharacter || !msg.speakerId) return selectedCharacter
     return msg.speakerId === secondaryCharacter.id ? secondaryCharacter : selectedCharacter
@@ -119,8 +114,7 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
       initial={false}
       animate={{ y: isLoading ? 50 : 0, opacity: isLoading ? 0 : 1 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-      style={{ height: `${dialogueBoxHeight}px` }}
-      className={`relative w-[95%] ${isMobile ? 'max-w-full' : 'max-w-4xl'} glass-morphism ${isMobile ? 'rounded-2xl' : 'rounded-3xl'} shadow-lg flex flex-col overflow-hidden select-text z-30 mx-auto safe-area-padding`}
+      className={`relative w-[95%] h-full ${isMobile ? 'max-w-full' : 'max-w-4xl'} glass-morphism ${isMobile ? 'rounded-2xl' : 'rounded-3xl'} shadow-lg flex flex-col overflow-hidden select-text z-30 mx-auto safe-area-padding`}
       onClick={() => setActiveMenuIndex(null)}
     >
       {/* 顶部状态条 */}

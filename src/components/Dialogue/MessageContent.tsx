@@ -4,6 +4,22 @@ import { StatusBar } from '../StatusBars'
 import { useAppStore } from '../../store/useAppStore'
 import { applyCharacterRegexScripts } from '../../utils/tagParser'
 
+// 移动端自适应 HTML 渲染容器
+const HtmlBlock: React.FC<{ html: string; id: string | number }> = ({ html, id }) => (
+  <div
+    key={id}
+    className="w-full overflow-x-auto"
+    style={{ WebkitOverflowScrolling: 'touch' }}
+    dangerouslySetInnerHTML={{
+      __html: `<style>
+        .echo-html-block * { max-width: 100% !important; box-sizing: border-box !important; word-break: break-word; }
+        .echo-html-block img { height: auto !important; }
+        .echo-html-block table { width: 100% !important; }
+      </style><div class="echo-html-block">${html}</div>`
+    }}
+  />
+)
+
 interface MessageContentProps {
   content: string;
   isAi: boolean;
@@ -123,16 +139,12 @@ const MessageContent: React.FC<MessageContentProps> = ({ content, isAi, segmentI
           <MessageContent content={innerContent} isAi={isAi} segmentIndex={segmentIndex} isGreeting={false} isLatest={isLatest} />
           {extractedHtmlBlocks.length > 0 && (
             <div className="mt-2 space-y-2">
-              {extractedHtmlBlocks.map((html, i) => (
-                <div key={i} dangerouslySetInnerHTML={{ __html: html }} />
-              ))}
+              {extractedHtmlBlocks.map((html, i) => <HtmlBlock key={i} html={html} id={i} />)}
             </div>
           )}
           {htmlCodeBlocks.length > 0 && (
             <div className="mt-2 space-y-2">
-              {htmlCodeBlocks.map((html, i) => (
-                <div key={`code-${i}`} dangerouslySetInnerHTML={{ __html: html }} />
-              ))}
+              {htmlCodeBlocks.map((html, i) => <HtmlBlock key={`code-${i}`} html={html} id={`code-${i}`} />)}
             </div>
           )}
         </>
@@ -185,16 +197,12 @@ const MessageContent: React.FC<MessageContentProps> = ({ content, isAi, segmentI
       </div>
       {extractedHtmlBlocks.length > 0 && (
         <div className="mt-2 space-y-2">
-          {extractedHtmlBlocks.map((html, i) => (
-            <div key={i} dangerouslySetInnerHTML={{ __html: html }} />
-          ))}
+          {extractedHtmlBlocks.map((html, i) => <HtmlBlock key={i} html={html} id={i} />)}
         </div>
       )}
       {htmlCodeBlocks.length > 0 && (
         <div className="mt-2 space-y-2">
-          {htmlCodeBlocks.map((html, i) => (
-            <div key={`code-${i}`} dangerouslySetInnerHTML={{ __html: html }} />
-          ))}
+          {htmlCodeBlocks.map((html, i) => <HtmlBlock key={`code-${i}`} html={html} id={`code-${i}`} />)}
         </div>
       )}
     </>

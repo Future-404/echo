@@ -220,11 +220,11 @@ const App: React.FC = () => {
             <FragmentNotification key="fragments" />
             
             {/* 对话框区域 */}
-            <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col items-center justify-start pointer-events-auto px-4 pt-4">
-              <div className="mb-4">
+            <div className="flex-1 min-h-0 flex flex-col items-center pointer-events-auto px-4 pt-4">
+              <div className="mb-4 flex-shrink-0">
                 {multiCharMode ? <MultiCharAvatar activeSpeakerId={activeSpeakerId} /> : <CharacterAvatar />}
               </div>
-              <div className="w-full mb-4">
+              <div className="w-full flex-1 min-h-0 mb-4">
                 <DialogueBox 
                   displayText={displayText} 
                   isTyping={isTyping} 
