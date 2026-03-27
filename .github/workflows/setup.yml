@@ -96,8 +96,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add echo-storage/cloudflare/wrangler.toml
-          git commit -m "chore: set KV and D1 IDs from setup workflow"
-          git push
+          git diff --staged --quiet || git commit -m "chore: set KV and D1 IDs from setup workflow"
+          git push || true
 
       - name: Build frontend
         run: npm ci && npm run build
