@@ -17,7 +17,7 @@ const MainMenu: React.FC = () => {
     { 
       label: '新游戏', 
       subLabel: 'NEW GAME',
-      action: () => startNewGame(selectedCharacter.id) 
+      action: () => setCurrentView('selection')
     },
     { 
       label: '继续记忆', 

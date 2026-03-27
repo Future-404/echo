@@ -41,15 +41,19 @@ export const createCharacterSlice = (set: any, get: any, DEFAULT_CHARACTERS: Cha
     const userName = activePersona?.name || 'Observer';
     const rawGreeting = overrideGreeting ?? char.greeting;
     const finalGreeting = rawGreeting ? replaceMacros(rawGreeting, userName, char.name) : undefined;
-    
-    set({ 
-      selectedCharacter: char, 
+    // 切換角色等同新遊戲：重置 attributes、missions、fragments、autoSlot
+    const charReset = { ...char, attributes: {} };
+    set((s: any) => ({ 
+      selectedCharacter: charReset,
+      characters: (s.characters || []).map((c: any) => c.id === char.id ? charReset : c),
       currentView: 'main', 
       messages: finalGreeting ? [{ role: 'assistant', content: finalGreeting }] : [],
       isGreetingSession: true,
       isTyping: false,
       missions: char.extensions?.missions || [],
-    });
+      fragments: [],
+      currentAutoSlotId: null,
+    }));
   },
 
   addCharacter: async (char) => {
