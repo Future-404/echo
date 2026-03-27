@@ -48,7 +48,7 @@ export const createCharacterSlice = (set: any, get: any, DEFAULT_CHARACTERS: Cha
       messages: finalGreeting ? [{ role: 'assistant', content: finalGreeting }] : [],
       isGreetingSession: true,
       isTyping: false,
-      missions: char.extensions?.missions || state.missions,
+      missions: char.extensions?.missions || [],
     });
   },
 
