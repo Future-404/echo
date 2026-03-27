@@ -10,7 +10,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'icons.svg', 'icon-192.png', 'icon-512.png', 'mp3/*.mp3', 'char/*.png'],
+      includeAssets: ['favicon.svg', 'icons.svg', 'icon-192.png', 'icon-512.png', 'mp3/*.mp3'],
       manifest: {
         name: 'Echo VN Engine',
         short_name: 'Echo',
