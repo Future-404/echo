@@ -1,16 +1,6 @@
 import type { SaveSlot } from './useAppStore'
 import { replaceMacros } from '../logic/promptEngine'
-import { getStorageAdapter } from '../storage'
-
-const STORE_KEY = 'echo-storage-v16'
-
-async function flushSaveSlots(get: () => any) {
-  const state = get()
-  const stored = await getStorageAdapter().getItem(STORE_KEY)
-  const parsed = stored ? JSON.parse(stored) : { state: {}, version: 0 }
-  parsed.state = { ...parsed.state, saveSlots: state.saveSlots || [] }
-  await getStorageAdapter().setItem(STORE_KEY, JSON.stringify(parsed))
-}
+import { forcePersist } from './persist'
 
 export interface SaveSlice {
   saveSlots: SaveSlot[];
@@ -44,14 +34,14 @@ export const createSaveSlice = (set: any, get: any): SaveSlice => ({
         ? s.saveSlots.map((slot: SaveSlot) => slot.id === slotId ? newSlot : slot) 
         : [...(s.saveSlots || []), newSlot] 
     }));
-    flushSaveSlots(get)
+    forcePersist(get)
   },
 
   renameSaveSlot: (slotId, newName) => {
     set((state: any) => ({ 
       saveSlots: (state.saveSlots || []).map((slot: SaveSlot) => slot.id === slotId ? { ...slot, name: newName } : slot) 
     }))
-    flushSaveSlots(get)
+    forcePersist(get)
   },
 
   loadGame: (slotId) => {
@@ -76,7 +66,7 @@ export const createSaveSlice = (set: any, get: any): SaveSlice => ({
       saveSlots: (state.saveSlots || []).filter((s: SaveSlot) => s.id !== slotId), 
       currentAutoSlotId: state.currentAutoSlotId === slotId ? null : state.currentAutoSlotId 
     }))
-    flushSaveSlots(get)
+    forcePersist(get)
   },
 
   startNewGame: (charId) => {

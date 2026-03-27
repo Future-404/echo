@@ -1,15 +1,5 @@
 import type { CharacterCard, Message, Mission, SaveSlot } from './useAppStore'
-import { getStorageAdapter } from '../storage'
-
-const STORE_KEY = 'echo-storage-v16'
-
-async function flushSaveSlots(get: () => any) {
-  const state = get()
-  const stored = await getStorageAdapter().getItem(STORE_KEY)
-  const parsed = stored ? JSON.parse(stored) : { state: {}, version: 0 }
-  parsed.state = { ...parsed.state, saveSlots: state.saveSlots || [] }
-  await getStorageAdapter().setItem(STORE_KEY, JSON.stringify(parsed))
-}
+import { forcePersist } from './persist'
 
 export interface ChatSlice {
   messages: Message[];
@@ -99,6 +89,6 @@ export const createChatSlice = (set: any, get: any): ChatSlice => ({
       const limitedAutoSlots = [autoSlot, ...otherAutoSlots].sort((a, b) => b.timestamp - a.timestamp).slice(0, 10);
       return { saveSlots: [...limitedAutoSlots, ...manualSlots] };
     });
-    flushSaveSlots(get)
+    forcePersist(get)
   },
 });
