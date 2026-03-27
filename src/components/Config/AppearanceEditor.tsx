@@ -169,6 +169,43 @@ const AppearanceEditor: React.FC = () => {
         </p>
       </div>
 
+      {/* Dialogue Parser Config */}
+      <div className="px-4 space-y-3">
+        <label className="text-[10px] tracking-widest text-gray-400 uppercase">Dialogue Parser // 对话解析规则</label>
+        <div className="space-y-2">
+          <div>
+            <label className="text-[9px] text-gray-500 dark:text-gray-400">对话引号</label>
+            <input
+              type="text"
+              value={config.dialogueQuotes || '""""'}
+              onChange={(e) => useAppStore.getState().updateConfig({ dialogueQuotes: e.target.value })}
+              placeholder='""""'
+              className="w-full mt-1 px-3 py-2 bg-gray-50 dark:bg-black/30 border-0.5 border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:border-blue-400"
+            />
+          </div>
+          <div>
+            <label className="text-[9px] text-gray-500 dark:text-gray-400">动作标记</label>
+            <input
+              type="text"
+              value={config.actionMarkers || '**'}
+              onChange={(e) => useAppStore.getState().updateConfig({ actionMarkers: e.target.value })}
+              placeholder="**"
+              className="w-full mt-1 px-3 py-2 bg-gray-50 dark:bg-black/30 border-0.5 border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:border-blue-400"
+            />
+          </div>
+          <div>
+            <label className="text-[9px] text-gray-500 dark:text-gray-400">心理标记</label>
+            <input
+              type="text"
+              value={config.thoughtMarkers || '()（）'}
+              onChange={(e) => useAppStore.getState().updateConfig({ thoughtMarkers: e.target.value })}
+              placeholder="()（）"
+              className="w-full mt-1 px-3 py-2 bg-gray-50 dark:bg-black/30 border-0.5 border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:border-blue-400"
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Custom Background */}
       <div className="px-4 space-y-3">
         <div>

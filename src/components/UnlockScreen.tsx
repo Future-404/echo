@@ -18,6 +18,7 @@ export const UnlockScreen = () => {
 
     try {
       await unlockProviders(password)
+      setIsLoading(false)
     } catch (err: any) {
       setError(err.message || '解密失敗')
       setIsLoading(false)

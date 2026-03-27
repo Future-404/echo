@@ -32,22 +32,20 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
     if (!file) return
 
     try {
-      // 1. 尝试解析角色卡元数据
       const personaRaw = await extractPersonaFromPng(file)
-      const persona = personaRaw?.data || personaRaw
+      const isV2 = personaRaw?.spec === 'chara_card_v2'
+      const isV3 = personaRaw?.spec === 'chara_card_v3'
+      const persona = isV2 || isV3 ? personaRaw?.data : personaRaw
       
-      // 2. 读取图片为 Base64
       const reader = new FileReader()
       reader.onload = async (event) => {
         const base64 = event.target?.result as string
         if (base64) {
           const updates: any = { image: base64 }
           
-          // 如果解析到了元数据，进行自动填充 (增强版映射)
           if (persona && persona.name) {
             updates.name = persona.name
             
-            // 汇总描述性字段
             const description = [
               persona.description,
               persona.personality,
@@ -58,9 +56,39 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
             
             if (description) updates.systemPrompt = description
             
-            // 汇总开场白
             const greeting = persona.first_mes || persona.greeting || persona.first_message
             if (greeting) updates.greeting = greeting
+            
+            if (isV2 || isV3) {
+              if (persona.alternate_greetings?.length) {
+                updates.alternateGreetings = persona.alternate_greetings
+              }
+              if (persona.post_history_instructions) {
+                updates.postHistoryInstructions = persona.post_history_instructions
+              }
+              if (persona.character_book) {
+                updates.extensions = {
+                  ...char.extensions,
+                  worldBook: persona.character_book.entries || []
+                }
+              }
+            }
+
+            // V3 assets 處理
+            if (isV3 && persona.assets) {
+              const mainIcon = persona.assets.find((a: any) => a.type === 'icon' && a.name === 'main')
+              if (mainIcon?.uri === 'ccdefault:') {
+                updates.image = base64
+              } else if (mainIcon?.uri) {
+                updates.image = mainIcon.uri
+              }
+
+              updates.extensions = {
+                ...updates.extensions,
+                ...char.extensions,
+                assets: persona.assets
+              }
+            }
           }
           
           await updateCharacter(charId, updates)
@@ -71,6 +99,12 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
       console.error("Failed to process character image:", err)
     }
   }
+
+  const assets = char.extensions?.assets || []
+  const emotions = assets.filter(a => a.type === 'emotion')
+  const backgrounds = assets.filter(a => a.type === 'background')
+  const activeEmotion = char.extensions?.activeEmotion
+  const activeBackground = char.extensions?.activeBackground
 
   // 1. 公共书库绑定逻辑
   const toggleBookBinding = (bookId: string) => {
@@ -326,6 +360,42 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
               )}
             </AnimatePresence>
           </div>
+
+          {/* 表情系統 */}
+          {emotions.length > 0 && (
+            <div className="space-y-4 pt-6 border-t-0.5 border-gray-100 dark:border-gray-800">
+              <label className="text-[10px] tracking-widest text-gray-400 uppercase italic px-2">Emotions // 表情</label>
+              <div className="grid grid-cols-4 gap-2">
+                {emotions.map(emotion => (
+                  <button
+                    key={emotion.name}
+                    onClick={() => updateCharacter(charId, { extensions: { ...char.extensions, activeEmotion: emotion.name } })}
+                    className={`aspect-square rounded-2xl overflow-hidden border-2 transition-all ${activeEmotion === emotion.name ? 'border-blue-400 scale-95' : 'border-gray-200 dark:border-gray-800'}`}
+                  >
+                    <img src={emotion.uri} alt={emotion.name} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 背景系統 */}
+          {backgrounds.length > 0 && (
+            <div className="space-y-4 pt-6 border-t-0.5 border-gray-100 dark:border-gray-800">
+              <label className="text-[10px] tracking-widest text-gray-400 uppercase italic px-2">Backgrounds // 背景</label>
+              <div className="grid grid-cols-3 gap-2">
+                {backgrounds.map(bg => (
+                  <button
+                    key={bg.name}
+                    onClick={() => updateCharacter(charId, { extensions: { ...char.extensions, activeBackground: bg.name } })}
+                    className={`aspect-video rounded-xl overflow-hidden border-2 transition-all ${activeBackground === bg.name ? 'border-blue-400 scale-95' : 'border-gray-200 dark:border-gray-800'}`}
+                  >
+                    <img src={bg.uri} alt={bg.name} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <footer className="absolute bottom-0 left-0 right-0 p-6 md:p-8 pt-4 border-t-0.5 border-gray-100 dark:border-gray-800 flex gap-4 bg-echo-white dark:bg-[#0d0d0d] z-50">

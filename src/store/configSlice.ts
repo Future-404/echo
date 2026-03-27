@@ -20,6 +20,9 @@ export interface ConfigSlice {
     customBg: boolean;
     masterPasswordHash?: string;
     encryptedProviders?: string;
+    dialogueQuotes?: string; // 對話引號字符，默認 """" 
+    actionMarkers?: string;  // 動作標記，默認 **
+    thoughtMarkers?: string; // 心理標記，默認 ()（）
   };
   
   updateConfig: (newConfig: Partial<ConfigSlice['config']>) => void;
@@ -123,6 +126,7 @@ export const createConfigSlice = (set: any, get: any, INITIAL_CONFIG: ConfigSlic
     const encrypted = await SecureStorage.encrypt(JSON.stringify(providers), password)
     sessionStorage.setItem('_mpwd', password)
     set((state: any) => ({ config: { ...state.config, masterPasswordHash: hash, encryptedProviders: encrypted } }))
+    // 設置完成後自動解鎖，不需要再次輸入密碼
   },
 
   unlockProviders: async (password: string) => {
@@ -136,7 +140,7 @@ export const createConfigSlice = (set: any, get: any, INITIAL_CONFIG: ConfigSlic
     const decrypted = await SecureStorage.decrypt(encrypted, password)
     const providers = JSON.parse(decrypted)
     sessionStorage.setItem('_mpwd', password)
-    set((state: any) => ({ config: { ...state.config, providers } }))
+    set((state: any) => ({ config: { ...state.config, providers }, _unlockTimestamp: Date.now() }))
   },
 
   isLocked: () => {

@@ -29,6 +29,7 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
   
   const scrollRef = useRef<HTMLDivElement>(null)
   const [visibleIndex, setVisibleIndex] = useState(0)
+  const [direction, setDirection] = useState(1) // 1: 下一頁, -1: 上一頁
   const [isStatusExpanded, setIsStatusExpanded] = useState(false)
   const [activeMenuIndex, setActiveMenuIndex] = useState<number | null>(null)
   const [statusPanelHeight, setStatusPanelHeight] = useState(0)
@@ -144,12 +145,14 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
 
   const handleAdvance = () => {
     if (canAdvance) {
+      setDirection(1);
       setVisibleIndex(prev => prev + 1);
     }
   };
 
   const handleGoBack = () => {
     if (canGoBack) {
+      setDirection(-1);
       setVisibleIndex(prev => prev - 1);
     }
   };
@@ -287,7 +290,7 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
     return baseHeight
   }, [isMobile, isKeyboardVisible])
 
-  const renderMessageContent = (msg: any, isAi: boolean, isLatest: boolean, segmentIndex?: number) => {
+  const renderMessageContent = (msg: any, isAi: boolean, isLatest: boolean, segmentIndex?: number, msgIndex?: number) => {
     const isError = isAi && msg.content.startsWith('错误');
     if (isError) {
       return (
@@ -298,7 +301,8 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
         </div>
       );
     }
-    return <MessageContent content={msg.content} isAi={isAi} segmentIndex={segmentIndex} />;
+    const isGreeting = msgIndex === 0 && isAi;
+    return <MessageContent content={msg.content} isAi={isAi} segmentIndex={segmentIndex} isGreeting={isGreeting} />;
   };
 
   return (
@@ -365,13 +369,13 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {!isHistoryExpanded ? (
-          <AnimatePresence>
+          <AnimatePresence mode="wait">
             <motion.div
               key={`${messages.length}-${visibleIndex}`}
-              initial={{ opacity: 0, x: 10 }}
+              initial={{ opacity: 0, x: direction * -20 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              transition={{ duration: 0.15, ease: 'easeOut' }}
+              exit={{ opacity: 0, x: direction * 20 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
             >
               {messages.length === 0 ? (
                 <div className="text-gray-400 dark:text-gray-500 font-serif leading-relaxed italic" style={{ fontSize: 'var(--app-font-size, 1.125rem)' }}>
@@ -387,9 +391,12 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
                   />
                 </div>
               ) : (
-                <div className={`font-serif leading-relaxed text-gray-700 dark:text-gray-300 whitespace-pre-wrap`} style={{ fontSize: 'var(--app-font-size, 1.125rem)' }}>
-                  {parts[visibleIndex]?.content || lastMessage?.content}
-                </div>
+                <MessageContent 
+                  content={parts[visibleIndex]?.content || lastMessage?.content || ''} 
+                  isAi={isLastAi} 
+                  segmentIndex={visibleIndex}
+                  isGreeting={messages.length === 1 && isLastAi}
+                />
               )}
             </motion.div>
           </AnimatePresence>
@@ -468,7 +475,9 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
                   {renderMessageContent(
                     { content: (isAi && isLatest && isTyping) ? displayText : msg.content },
                     isAi,
-                    isLatest
+                    isLatest,
+                    undefined,
+                    idx
                   )}
                   </div>
               );

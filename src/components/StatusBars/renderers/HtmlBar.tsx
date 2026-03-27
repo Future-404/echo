@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import DOMPurify from 'dompurify';
 import type { StatusBarProps } from '../types';
 
 /**
@@ -8,14 +9,14 @@ import type { StatusBarProps } from '../types';
 export const HtmlBar: React.FC<StatusBarProps> = ({ metadata }) => {
   const rawHtml = metadata?.fullMatch || metadata?.rawBody || "";
 
-  // 这里的 rawHtml 包含了标签内部的内容
-  // 如果 AI 输出的是 <details>内容</details>，rawHtml 就是 "内容"
-  // 但 AI 往往会输出包含内部 HTML 的结构
-  
-  // 注入样式和内容的容器
-  // 使用 useMemo 避免重复渲染时的性能开销
   const renderedContent = useMemo(() => {
-    return { __html: rawHtml };
+    const sanitized = DOMPurify.sanitize(rawHtml, {
+      ALLOWED_TAGS: ['div', 'span', 'p', 'details', 'summary', 'style', 'strong', 'em', 'ul', 'ol', 'li', 'br', 'hr'],
+      ALLOWED_ATTR: ['class', 'style'],
+      FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input'],
+      FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur']
+    });
+    return { __html: sanitized };
   }, [rawHtml]);
 
   if (!rawHtml) return null;

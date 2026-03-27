@@ -4,6 +4,12 @@ import App from './App.tsx'
 import './styles/globals.css'
 import { registerSW } from 'virtual:pwa-register'
 
+// HTTPS 强制跳转（生产环境）
+// 临时禁用以便公网 IP 测试
+// if (location.protocol === 'http:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+//   location.replace(`https://${location.host}${location.pathname}${location.search}${location.hash}`)
+// }
+
 // 注册 PWA Service Worker
 registerSW({ immediate: true })
 

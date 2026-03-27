@@ -4,55 +4,57 @@ import type { TextSegment } from '../types/parser';
  * 极致模块化：网文解析引擎 V2
  * 专为 VN 模式设计，支持按行/按对话分段，并处理 AI 产生的杂乱换行
  */
-export const parseStreamingNovelText = (rawText: string): TextSegment[] => {
+export const parseStreamingNovelText = (
+  rawText: string,
+  options?: {
+    dialogueQuotes?: string;
+    actionMarkers?: string;
+    thoughtMarkers?: string;
+  }
+): TextSegment[] => {
   if (!rawText) return [];
 
   const segments: TextSegment[] = [];
   let segmentCount = 0;
 
-  // 1. 预处理：提取卡片，保留位置占位符
-  // Fix: 使用 'i' flag 支持大小写不敏感的标签匹配，用占位符保留原始位置
-  const TAG_NAMES = 'details|status|status-container|html|card|UpdateVariable|Analysis|状态栏|characterCard';
-  const cardRegex = new RegExp(
-    `\\{\\{([^}]+)\\}\\}|\\{([^}]+)\\}|\\[([^\\]]+)\\]|<(${TAG_NAMES})(\\s[^>]*?)?>([\\s\\S]*?)<\\/\\4>`,
-    'gi'
-  );
+  // 從配置獲取標記符號（默認值）
+  const quotes = options?.dialogueQuotes || '""""';
+  const actionChars = options?.actionMarkers || '**';
+  const thoughtChars = options?.thoughtMarkers || '()（）';
+
+  // 1. 预处理：只提取 Markdown 风格的状态栏（不处理 HTML/XML 标签）
+  const cardRegex = /\{\{([^}]+)\}\}|\{([^}]+)\}|\[([^\]]+)\]/g;
 
   // 用有序数组保留卡片及其在文本中的位置
   const cardSlots: { placeholder: string; segment: TextSegment }[] = [];
   let cardIdx = 0;
 
-  const textWithPlaceholders = rawText.replace(cardRegex, (match, p1, p2, p3, p4, _attrs, p6) => {
+  const textWithPlaceholders = rawText.replace(cardRegex, (match, p1, p2, p3) => {
     const placeholder = `\x00CARD${cardIdx}\x00`;
-    let seg: TextSegment;
-
-    if (p4 && p6 !== undefined) {
-      // XML 风格标签
-      seg = {
-        id: `seg_card_${cardIdx}`,
-        type: 'card',
-        content: p4.toLowerCase(),
-        metadata: { isTag: true, rawBody: p6.trim(), fullMatch: match }
-      };
-    } else {
-      const content = p1 || p2 || p3;
-      if (!content?.includes('|')) return match; // 不含 | 的括号不是卡片
-      const metaParts = content.split('|');
-      seg = {
-        id: `seg_card_${cardIdx}`,
-        type: 'card',
-        content: metaParts[0],
-        metadata: metaParts.slice(1)
-      };
-    }
+    const content = p1 || p2 || p3;
+    
+    // 只處理包含 | 的 Markdown 狀態欄
+    if (!content?.includes('|')) return match;
+    
+    const metaParts = content.split('|');
+    const seg: TextSegment = {
+      id: `seg_card_${cardIdx}`,
+      type: 'card',
+      content: metaParts[0],
+      metadata: metaParts.slice(1)
+    };
 
     cardSlots.push({ placeholder, segment: seg });
     cardIdx++;
     return placeholder;
   });
 
-  // 2. 识别对话锚点并进行初步切分
-  const dialogPattern = /([^：:\n。？！…""" ]{1,10})?[:：]\s*([""][^""]*[""]?)|([""][^""]*[""]?)/g;
+  // 2. 识别对话锚点并进行初步切分（使用配置的引號）
+  const quotePattern = `[${quotes.split('').map(c => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('')}]`;
+  const dialogPattern = new RegExp(
+    `([^：:\\n。？！…${quotes} ]{1,10})?[:：]\\s*(${quotePattern}[^${quotes}]*${quotePattern}?)|(${quotePattern}[^${quotes}]*${quotePattern}?)`,
+    'g'
+  );
   let lastIdx = 0;
   let match;
   const rawParts: { type: 'narration' | 'dialogue'; content: string; speaker?: string }[] = [];
@@ -64,7 +66,12 @@ export const parseStreamingNovelText = (rawText: string): TextSegment[] => {
     }
     const speaker = match[1];
     const contentWithQuotes = match[2] || match[3];
-    const content = contentWithQuotes.replace(/^[""'']|[""'']$/g, '').trim();
+    const quoteChars = quotes.split('');
+    let content = contentWithQuotes;
+    quoteChars.forEach(q => {
+      content = content.replace(new RegExp(`^${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}|${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'g'), '');
+    });
+    content = content.trim();
     if (content) rawParts.push({ type: 'dialogue', content, speaker: speaker?.trim() });
     lastIdx = dialogPattern.lastIndex;
   }
@@ -98,7 +105,11 @@ export const parseStreamingNovelText = (rawText: string): TextSegment[] => {
   }
 
   function processInlineSubTags(text: string, baseType: string, target: typeof refinedParts, speaker?: string) {
-    const subRegex = /(\([^)]*\)?)|(\*[^*]*\*?)/g;
+    // 動態構建動作和心理標記的正則
+    const actionPattern = actionChars.split('').map(c => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+    const thoughtPattern = thoughtChars.split('').map(c => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+    const subRegex = new RegExp(`([${thoughtPattern}][^${thoughtPattern}]*[${thoughtPattern}]?)|([${actionPattern}][^${actionPattern}]*[${actionPattern}]?)`, 'g');
+    
     let lastSubIdx = 0;
     let subMatch;
     while ((subMatch = subRegex.exec(text)) !== null) {
@@ -107,10 +118,14 @@ export const parseStreamingNovelText = (rawText: string): TextSegment[] => {
         if (preText) target.push({ type: baseType, content: preText, speaker });
       }
       const fullMatch = subMatch[0];
-      if (fullMatch.startsWith('(')) {
-        target.push({ type: 'thought', content: fullMatch.replace(/[()（）]/g, ''), speaker });
+      const firstChar = fullMatch[0];
+      
+      if (thoughtChars.includes(firstChar)) {
+        const cleaned = fullMatch.replace(new RegExp(`[${thoughtPattern}]`, 'g'), '');
+        target.push({ type: 'thought', content: cleaned, speaker });
       } else {
-        target.push({ type: 'action', content: fullMatch.replace(/\*/g, ''), speaker });
+        const cleaned = fullMatch.replace(new RegExp(`[${actionPattern}]`, 'g'), '');
+        target.push({ type: 'action', content: cleaned, speaker });
       }
       lastSubIdx = subRegex.lastIndex;
     }

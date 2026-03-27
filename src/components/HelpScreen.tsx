@@ -600,9 +600,123 @@ const HELP_SECTIONS = [
     )
   },
   {
+    id: 'security',
+    title: '安全与部署',
+    icon: <Info size={18} />,
+    content: (
+      <div className="space-y-6 text-xs md:text-sm">
+        <p>ECHO 采用客户端加密存储架构，所有敏感数据（API Key）在本地加密后存储，密钥永不离开你的设备。</p>
+
+        {/* API Key 安全 */}
+        <div className="space-y-2">
+          <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">API Key 保护</p>
+          <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/10 space-y-3 text-[11px] leading-relaxed">
+            <p className="font-bold text-amber-400">⚠️ 重要：请务必设置主密码</p>
+            <p className="opacity-80">添加第一个 API Provider 时会自动提示设置主密码：</p>
+            <ul className="list-disc pl-5 space-y-1 opacity-70">
+              <li>所有 API Key 使用 <strong>AES-GCM 256 位加密</strong>存储</li>
+              <li>密钥通过 <strong>PBKDF2</strong> 从主密码派生（100,000 次迭代）</li>
+              <li>每次打开应用需输入主密码解锁</li>
+              <li>30 分钟无操作自动锁定</li>
+              <li>忘记密码将无法恢复数据，请妥善保管</li>
+            </ul>
+          </div>
+        </div>
+
+        {/* 后端部署安全 */}
+        <div className="space-y-2">
+          <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">后端部署安全</p>
+          <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+            <div className="divide-y divide-white/5 text-[10px]">
+              {[
+                ['强随机 Token', '使用 openssl rand -hex 32 生成至少 32 字符的认证令牌'],
+                ['限制 CORS', '生产环境将 ALLOWED_ORIGIN 设为前端域名，不使用 *'],
+                ['HTTPS 部署', 'Cloudflare Workers 自动提供 HTTPS；Node.js 需配置 Nginx/Caddy 反向代理'],
+                ['定期备份', 'Node.js 版本定期备份 echo.db；Cloudflare 自动备份'],
+              ].map(([title, desc]) => (
+                <div key={title} className="flex gap-3 px-4 py-2.5">
+                  <span className="font-bold text-gray-600 dark:text-gray-300 shrink-0 w-24">{title}</span>
+                  <span className="opacity-60">{desc}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* 生产部署检查清单 */}
+        <div className="space-y-2">
+          <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">生产部署检查清单</p>
+          <div className="space-y-2">
+            {[
+              { title: '前端应用', items: [
+                '✅ 已设置主密码加密',
+                '✅ 已配置远程存储后端（可选）',
+                '✅ 使用 HTTPS 访问（必需，HTTP 下加密功能不可用）',
+                '✅ 已测试 API Key 连接',
+              ]},
+              { title: '后端存储（如果使用）', items: [
+                '✅ AUTH_TOKEN 已设置为强随机字符串',
+                '✅ ALLOWED_ORIGIN 已设为前端域名',
+                '✅ 数据库已初始化（D1 或 SQLite）',
+                '✅ 已测试 /api/ping 端点',
+              ]},
+            ].map(({ title, items }) => (
+              <div key={title} className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+                <div className="px-4 py-2 bg-blue-500/5 text-[10px] font-bold uppercase tracking-widest text-blue-400">
+                  {title}
+                </div>
+                <div className="divide-y divide-white/5">
+                  {items.map((item, i) => (
+                    <div key={i} className="px-4 py-2 text-[10px] opacity-70 font-mono">
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 安全最佳实践 */}
+        <div className="p-3 rounded-2xl bg-green-500/5 border border-green-500/10 text-[10px] space-y-2">
+          <p className="font-bold text-green-400 uppercase tracking-widest">💡 安全最佳实践</p>
+          <ul className="list-disc pl-5 space-y-1 opacity-70 leading-relaxed">
+            <li>使用 OpenAI/Anthropic 的 <strong>API Key 限额功能</strong>，设置每月最大消费</li>
+            <li>定期检查 API 使用量，避免意外超支</li>
+            <li>不要在公共设备上使用，或使用后清除浏览器数据</li>
+            <li>定期导出存档备份，防止数据丢失</li>
+            <li>后端 Token 泄露时立即重新生成并更新</li>
+          </ul>
+        </div>
+
+        {/* 技术架构 */}
+        <div className="space-y-2">
+          <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">技术架构</p>
+          <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+            <div className="divide-y divide-white/5 text-[10px]">
+              {[
+                ['前端框架', 'React 18 + TypeScript + Vite'],
+                ['渲染引擎', 'PixiJS 7 (WebGL)'],
+                ['状态管理', 'Zustand + Persist'],
+                ['加密算法', 'AES-GCM 256 + PBKDF2'],
+                ['本地存储', 'IndexedDB'],
+                ['后端选项', 'Cloudflare Workers / Node.js'],
+              ].map(([key, value]) => (
+                <div key={key} className="grid grid-cols-[6rem_1fr] gap-x-4 px-4 py-2.5">
+                  <span className="font-bold text-gray-600 dark:text-gray-300">{key}</span>
+                  <span className="opacity-60 font-mono">{value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  },
+  {
     id: 'api',
     title: 'API 规范',
-    icon: <Info size={18} />,
+    icon: <Cpu size={18} />,
     content: (
       <div className="space-y-4 text-xs md:text-sm">
         <p>本系统遵循标准 AI 接口协议，支持多种 Provider 切换。</p>

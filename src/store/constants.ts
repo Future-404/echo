@@ -30,5 +30,5 @@ export const INITIAL_DIRECTIVES: Directive[] = []
 export const INITIAL_MISSIONS: Mission[] = []
 
 export const INITIAL_PROVIDERS: Provider[] = [
-  { id: 'default', name: 'OpenAI', apiKey: '', endpoint: 'https://api.openai.com/v1', model: 'gpt-4o', temperature: 0.7, topP: 1.0, contextWindow: 10, stream: true }
+  { id: 'default', name: 'OpenAI', apiKey: '', endpoint: 'https://api.openai.com/v1', model: '', temperature: 0.7, topP: 1.0, contextWindow: 10, stream: true }
 ]

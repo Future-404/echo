@@ -29,6 +29,7 @@ export const SetPasswordScreen = () => {
 
     try {
       await setMasterPassword(password)
+      setIsLoading(false)
     } catch (err: any) {
       setError(err.message || '設置失敗')
       setIsLoading(false)

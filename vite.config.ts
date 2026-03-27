@@ -45,7 +45,7 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 8888,
     strictPort: true,
-    allowedHosts: ['rka.qzz.io'],
+    allowedHosts: ['rka.qzz.io', 'echo.rka.qzz.io'],
     watch: {
       usePolling: true,
     }
@@ -54,6 +54,13 @@ export default defineConfig({
     include: ['pixi.js', '@pixi/react']
   },
   build: {
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true
+      }
+    },
     rollupOptions: {
       output: {
         manualChunks(id) {

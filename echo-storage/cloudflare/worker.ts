@@ -1,9 +1,16 @@
 import type { Env } from './env'
 
 const MAX_BODY_BYTES = 20 * 1024 * 1024 // 20MB
+const MAX_VALUE_BYTES = 5 * 1024 * 1024 // 单条记录 5MB
 
 function auth(req: Request, env: Env): boolean {
   return req.headers.get('Authorization') === `Bearer ${env.AUTH_TOKEN}`
+}
+
+function validateKey(key: string): void {
+  if (!key || key.length === 0 || key.length > 256) {
+    throw new Error('Invalid key: must be 1-256 characters')
+  }
 }
 
 function json(data: unknown, status = 200, allowedOrigin = '*') {
@@ -44,6 +51,8 @@ export default {
 
       if (!rawId) return json({ error: 'Missing resource id' }, 400, origin)
       const id = decodeURIComponent(rawId)
+      validateKey(id)
+      
       if (resource === 'storage') {
         if (req.method === 'GET') {
           const value = await env.ECHO_KV.get(id)
@@ -52,6 +61,7 @@ export default {
         if (req.method === 'PUT') {
           const body = await parseBody<{ value: string }>(req)
           if (!body || typeof body.value !== 'string') return json({ error: 'Invalid body' }, 400, origin)
+          if (body.value.length > MAX_VALUE_BYTES) return json({ error: 'Value too large (max 5MB)' }, 413, origin)
           await env.ECHO_KV.put(id, body.value)
           return json({ ok: true }, 200, origin)
         }
@@ -71,6 +81,7 @@ export default {
         if (req.method === 'PUT') {
           const body = await parseBody<{ base64: string }>(req)
           if (!body || typeof body.base64 !== 'string') return json({ error: 'Invalid body' }, 400, origin)
+          if (body.base64.length > MAX_VALUE_BYTES) return json({ error: 'Image too large (max 5MB)' }, 413, origin)
           await env.ECHO_DB.prepare(
             'INSERT INTO images (id, base64) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET base64 = excluded.base64'
           ).bind(id, body.base64).run()

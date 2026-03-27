@@ -34,6 +34,13 @@ export interface TagTemplate {
   enabled: boolean;
 }
 
+export type CharacterAsset = {
+  type: 'icon' | 'background' | 'emotion' | string;
+  uri: string;
+  name: string;
+  ext: string;
+}
+
 export type CharacterCard = { 
   id: string; 
   name: string; 
@@ -44,7 +51,7 @@ export type CharacterCard = {
   alternateGreetings?: string[];
   greeting?: string;
   attributes?: Record<string, any>;
-  providerId?: string; // 绑定的 Provider id，未设置时使用全局激活的 Provider
+  providerId?: string;
   extensions?: {
     missions?: Mission[];
     directives?: Directive[];
@@ -53,6 +60,9 @@ export type CharacterCard = {
     tagTemplates?: TagTemplate[];
     luminescence?: any;
     customParsers?: CustomParser[];
+    assets?: CharacterAsset[];
+    activeEmotion?: string;
+    activeBackground?: string;
   }
 }
 
@@ -258,24 +268,29 @@ export const useAppStore = create<AppState>()(
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true)
       },
-      partialize: (state) => ({ 
-        config: {
-          ...state.config,
-          providers: [],  // 不持久化明文 providers
-        },
-        currentView: state.currentView,
-        characters: state.characters.map(c => c.id.startsWith('custom-') ? { ...c, image: '' } : c),
-        selectedCharacter: state.selectedCharacter.id.startsWith('custom-') ? { ...state.selectedCharacter, image: '' } : state.selectedCharacter, 
-        secondaryCharacter: state.secondaryCharacter ? (state.secondaryCharacter.id.startsWith('custom-') ? { ...state.secondaryCharacter, image: '' } : state.secondaryCharacter) : null,
-        routerProviderId: state.routerProviderId,
-        multiCharMode: state.multiCharMode,
-        multiSaveSlots: state.multiSaveSlots,
-        messages: state.messages,
-        isGreetingSession: state.isGreetingSession,
-        missions: state.missions, 
-        fragments: state.fragments,
-        saveSlots: state.saveSlots,
-      }),
+      partialize: (state) => {
+        const hasPassword = state.config.masterPasswordHash && state.config.masterPasswordHash !== 'skipped';
+        return {
+          config: {
+            ...state.config,
+            // 有主密碼：清空明文 providers，保留 encryptedProviders
+            // 無主密碼：保留明文 providers
+            providers: hasPassword ? [] : state.config.providers,
+          },
+          currentView: state.currentView,
+          characters: state.characters.map(c => c.id.startsWith('custom-') ? { ...c, image: '' } : c),
+          selectedCharacter: state.selectedCharacter.id.startsWith('custom-') ? { ...state.selectedCharacter, image: '' } : state.selectedCharacter, 
+          secondaryCharacter: state.secondaryCharacter ? (state.secondaryCharacter.id.startsWith('custom-') ? { ...state.secondaryCharacter, image: '' } : state.secondaryCharacter) : null,
+          routerProviderId: state.routerProviderId,
+          multiCharMode: state.multiCharMode,
+          multiSaveSlots: state.multiSaveSlots,
+          messages: state.messages,
+          isGreetingSession: state.isGreetingSession,
+          missions: state.missions, 
+          fragments: state.fragments,
+          saveSlots: state.saveSlots,
+        };
+      },
     }
   )
 )

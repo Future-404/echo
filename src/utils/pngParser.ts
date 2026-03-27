@@ -27,59 +27,78 @@ export const extractPersonaFromPng = async (file: File): Promise<any | null> => 
           if (type === 'tEXt') {
             text = new TextDecoder('utf-8').decode(data)
           } else if (type === 'zTXt') {
-            // zTXt: Keyword (null), Compression (1), Compressed Text
             let i = 0
             while (i < data.length && data[i] !== 0) i++
-            i += 2 // skip null and compression method
-            const compressedData = data.slice(i)
-            // Note: browser-based decompression is async and complex here, 
-            // but for simplicity, we'll try to find 'chara' at the beginning
+            i += 2
             text = new TextDecoder('utf-8').decode(data)
           } else {
-            // iTXt: Keyword (null), Compression (1), Method (1), Lang (null), TransKey (null), Text
             let i = 0
-            while (i < data.length && data[i] !== 0) i++ // skip keyword
-            i++ // skip null
+            while (i < data.length && data[i] !== 0) i++
+            i++
             const compressed = data[i++]
             const method = data[i++]
-            while (i < data.length && data[i] !== 0) i++ // skip lang
-            i++ // skip null
-            while (i < data.length && data[i] !== 0) i++ // skip trans-keyword
-            i++ // skip null
+            while (i < data.length && data[i] !== 0) i++
+            i++
+            while (i < data.length && data[i] !== 0) i++
+            i++
             
             const textData = data.slice(i)
             if (compressed === 0) {
               text = new TextDecoder('utf-8').decode(textData)
             } else {
-              // Compressed iTXt
               text = new TextDecoder('utf-8').decode(data)
             }
             
-            // If it's not a chara card, we might have skipped the wrong thing
             const fullText = new TextDecoder('utf-8').decode(data)
             if (fullText.startsWith('chara')) {
               text = fullText
             }
           }
           
-          if (text.startsWith('chara')) {
+          // 嘗試解析 chara 格式（base64 編碼）
+          if (text.startsWith('chara') || text.startsWith('ccv3')) {
             try {
-              // 寻找分隔符 \0
               const nullIndex = text.indexOf('\0')
-              const base64Content = nullIndex !== -1 ? text.substring(nullIndex + 1) : text.substring(5)
+              let base64Content = ''
               
-              // 关键：处理 UTF-8 Base64 解码
+              if (text.startsWith('chara')) {
+                base64Content = nullIndex !== -1 ? text.substring(nullIndex + 1) : text.substring(5)
+              } else if (text.startsWith('ccv3')) {
+                // V3 格式：ccv3 後直接是 base64
+                base64Content = nullIndex !== -1 ? text.substring(nullIndex + 1) : text.substring(4)
+              }
+              
               const binString = atob(base64Content.trim())
               const bytes = new Uint8Array(binString.length)
               for (let i = 0; i < binString.length; i++) {
                 bytes[i] = binString.charCodeAt(i)
               }
               const decodedText = new TextDecoder('utf-8').decode(bytes)
+              const parsed = JSON.parse(decodedText)
               
-              resolve(JSON.parse(decodedText))
+              // V2/V3 規範檢測與標準化
+              if (parsed.spec === 'chara_card_v2' || parsed.spec === 'chara_card_v3') {
+                resolve({ ...parsed, _version: parsed.spec })
+              } else {
+                resolve({ ...parsed, _version: 'v1' })
+              }
               return
             } catch (err) {
-              console.error("Failed to decode chara data", err)
+              console.error("Failed to decode character card data", err)
+            }
+          }
+          
+          // 嘗試直接解析 JSON（非標準格式）
+          if (text.includes('{') && text.includes('"name"')) {
+            try {
+              // 提取 JSON 部分（跳過可能的鍵名）
+              const jsonStart = text.indexOf('{')
+              const jsonText = text.substring(jsonStart)
+              const parsed = JSON.parse(jsonText)
+              resolve({ ...parsed, _version: 'unknown' })
+              return
+            } catch (err) {
+              console.error("Failed to parse direct JSON", err)
             }
           }
         }

@@ -11,6 +11,12 @@ const CharacterAvatar: React.FC = () => {
     ? '等待连接'
     : '在线'
 
+  // 獲取當前表情或默認頭像
+  const assets = selectedCharacter.extensions?.assets || []
+  const activeEmotion = selectedCharacter.extensions?.activeEmotion
+  const emotionAsset = assets.find(a => a.type === 'emotion' && a.name === activeEmotion)
+  const displayImage = emotionAsset?.uri || selectedCharacter.image
+
   return (
     <div className="relative flex flex-col items-center justify-center py-6 pointer-events-none">
       {/* 呼吸感声波波纹装饰 */}
@@ -50,8 +56,8 @@ const CharacterAvatar: React.FC = () => {
         className="relative z-10 w-32 h-32 md:w-44 md:h-44 rounded-full p-1 bg-white/30 dark:bg-white/5 backdrop-blur-2xl border-0.5 border-white/40 dark:border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.1)] dark:shadow-[0_0_50px_rgba(0,0,0,0.3)] overflow-hidden"
       >
         <motion.img
-          key={selectedCharacter.id}
-          src={selectedCharacter.image}
+          key={`${selectedCharacter.id}-${activeEmotion || 'default'}`}
+          src={displayImage}
           alt={selectedCharacter.name}
           className="w-full h-full object-cover rounded-full select-none"
           initial={{ scale: 1.1 }}
