@@ -11,8 +11,16 @@ const CharacterSelection: React.FC = () => {
   const characterList = Array.isArray(characters) ? characters : []
   const fileInputRef = useRef<HTMLInputElement>(null)
   
+  const [importStatus, setImportStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [importMsg, setImportMsg] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [greetingPicker, setGreetingPicker] = useState<CharacterCard | null>(null)
+
+  const showToast = (status: 'success' | 'error', msg: string) => {
+    setImportStatus(status)
+    setImportMsg(msg)
+    setTimeout(() => setImportStatus('idle'), 3000)
+  }
 
   const isHtmlGreeting = (char: CharacterCard) => {
     const g = char.greeting || ''
@@ -55,20 +63,24 @@ const CharacterSelection: React.FC = () => {
     const file = e.target.files?.[0]
     if (!file) return
 
+    setImportStatus('loading')
+    setImportMsg('')
+
     // 1. 如果是图片，先尝试提取隐写的 JSON 数据
     if (file.type.startsWith('image/')) {
       const embeddedRaw = await extractPersonaFromPng(file)
       const embeddedData = embeddedRaw?.data || embeddedRaw
 
       if (!embeddedData || !embeddedData.name) {
-        alert("导入失败：图片中未找到有效的角色卡数据 (缺少 name 字段)，或者该图片不是兼容的角色卡。")
+        showToast('error', '导入失败：图片中未找到有效的角色卡数据')
         e.target.value = ''
         return
       }
 
       const reader = new FileReader()
-      reader.onload = (event) => {
-        const base64Image = event.target?.result as string
+      reader.onload = async (event) => {
+        try {
+          const base64Image = event.target?.result as string
         const charName = embeddedData.name
 
         const personality = [
@@ -127,6 +139,10 @@ const CharacterSelection: React.FC = () => {
             : undefined,
           extensions
         })
+        showToast('success', `「${charName}」导入成功`)
+        } catch {
+          showToast('error', '导入失败：处理角色数据时出错')
+        }
       }
       reader.readAsDataURL(file)
       e.target.value = ''
@@ -202,9 +218,11 @@ const CharacterSelection: React.FC = () => {
           });
           
           if (importedCount === 0) {
-            alert("导入失败：JSON 文件中未找到包含 name 字段的有效角色数据。")
+            showToast('error', '导入失败：JSON 中未找到有效角色数据')
+          } else {
+            showToast('success', `成功导入 ${importedCount} 个角色`)
           }
-        } catch (err) { alert("JSON 解析失败，格式可能不正确。") }
+        } catch { showToast('error', 'JSON 解析失败，格式可能不正确') }
       }
       reader.readAsText(file)
       e.target.value = ''
@@ -281,14 +299,19 @@ const CharacterSelection: React.FC = () => {
 
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-                whileHover={{ scale: 1.02, backgroundColor: 'rgba(255,255,255,0.1)' }}
-                onClick={() => fileInputRef.current?.click()}
+                whileHover={{ scale: importStatus === 'loading' ? 1 : 1.02, backgroundColor: 'rgba(255,255,255,0.1)' }}
+                onClick={() => importStatus !== 'loading' && fileInputRef.current?.click()}
                 className="snap-center flex-shrink-0 w-64 md:w-72 h-[420px] md:h-[480px] border border-dashed border-gray-300 dark:border-gray-700 rounded-[3rem] flex flex-col items-center justify-center cursor-pointer group transition-all"
               >
                 <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-white/5 flex items-center justify-center mb-6 group-hover:bg-white dark:group-hover:bg-gray-800 transition-colors shadow-inner">
-                    <FileUp strokeWidth={1} className="text-gray-400 dark:text-gray-500 group-hover:text-gray-800 dark:group-hover:text-gray-200" />
+                  {importStatus === 'loading'
+                    ? <svg className="animate-spin w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                    : <FileUp strokeWidth={1} className="text-gray-400 dark:text-gray-500 group-hover:text-gray-800 dark:group-hover:text-gray-200" />
+                  }
                 </div>
-                <span className="text-[10px] tracking-[0.4em] text-gray-400 dark:text-gray-500 uppercase group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors">Import Data</span>
+                <span className="text-[10px] tracking-[0.4em] text-gray-400 dark:text-gray-500 uppercase group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors">
+                  {importStatus === 'loading' ? 'Uploading...' : 'Import Data'}
+                </span>
                 <span className="text-[8px] mt-2 text-gray-400/60 dark:text-gray-600">JSON / PNG</span>
                 <input type="file" ref={fileInputRef} onChange={handleFileImport} className="hidden" accept=".json,image/*" />
               </motion.div>
@@ -298,6 +321,20 @@ const CharacterSelection: React.FC = () => {
                 <button onClick={handleBack} className="text-[9px] tracking-[0.6em] text-gray-400 dark:text-gray-600 uppercase hover:text-gray-800 dark:hover:text-gray-300 transition-all">Discard // Return</button>
             </footer>
           </div>
+
+          {/* Toast 提示 */}
+          <AnimatePresence>
+            {importStatus !== 'idle' && importStatus !== 'loading' && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
+                className={`fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full text-xs tracking-widest uppercase z-[200] ${
+                  importStatus === 'success' ? 'bg-green-500/20 text-green-300 border border-green-500/30' : 'bg-red-500/20 text-red-300 border border-red-500/30'
+                }`}
+              >
+                {importMsg}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <AnimatePresence>
             {editingId && <CharacterEditor charId={editingId} onClose={() => setEditingId(null)} />}
