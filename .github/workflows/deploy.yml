@@ -25,7 +25,3 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           workingDirectory: echo-storage/cloudflare
-          secrets: |
-            AUTH_TOKEN
-        env:
-          AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
