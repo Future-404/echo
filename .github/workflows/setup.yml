@@ -117,13 +117,6 @@ jobs:
             -H "Content-Type: application/json" \
             -d "{\"name\":\"AUTH_TOKEN\",\"text\":\"${{ steps.token.outputs.value }}\",\"type\":\"secret_text\"}"
 
-      - name: Save AUTH_TOKEN as GitHub Secret
-        run: |
-          gh secret set AUTH_TOKEN --body "${{ steps.token.outputs.value }}"
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-        continue-on-error: true  # 需要填写 GH_PAT secret 才能自动保存，否则请手动将 Summary 中的 AUTH_TOKEN 填入 GitHub Secrets
-
       - name: 🎉 Summary
         run: |
           echo "## ✅ Echo 部署完成" >> $GITHUB_STEP_SUMMARY
