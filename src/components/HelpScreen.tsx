@@ -28,7 +28,7 @@ const HELP_SECTIONS = [
               </div>
               <div className="rounded-xl border border-white/10 overflow-hidden">
                 {[
-                  ['CLOUDFLARE_API_TOKEN', 'Cloudflare → My Profile → API Tokens → 创建（需要 Workers、KV、D1 权限）'],
+                  ['CLOUDFLARE_API_TOKEN', 'Cloudflare → My Profile → API Tokens → 创建（模板选 Edit Cloudflare Workers，使用 cfut_ 开头的 token）'],
                   ['CLOUDFLARE_ACCOUNT_ID', 'Cloudflare Dashboard 右侧边栏 → Account ID'],
                 ].map(([k, v]) => (
                   <div key={k} className="grid grid-cols-[auto_1fr] gap-x-3 px-3 py-2 border-b border-white/5 last:border-0">
