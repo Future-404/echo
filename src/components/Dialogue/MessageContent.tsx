@@ -15,7 +15,6 @@ interface MessageContentProps {
 const MessageContent: React.FC<MessageContentProps> = ({ content, isAi, segmentIndex, isGreeting = false, isLatest = false }) => {
   const config = useAppStore(s => s.config);
   const selectedCharacter = useAppStore(s => s.selectedCharacter);
-  const setLastExtractedHtml = useAppStore(s => s.setLastExtractedHtml);
   const [expandedThinking, setExpandedThinking] = useState(false);
 
   // 渲染层正则（placement 包含 2）
@@ -36,29 +35,71 @@ const MessageContent: React.FC<MessageContentProps> = ({ content, isAi, segmentI
     return '';
   }).trim();
   
-  // 提取所有 HTML/XML 块（div, details, section, article, Phone 等自定义标签）
-  const htmlBlockRegex = /<(div|details|section|article|StatusBlock|Phone)[\s\S]*?<\/\1>/gi;
+  // 栈式提取顶层 HTML 块（正确处理嵌套标签）
   const extractedHtmlBlocks: string[] = [];
-  contentWithoutThinking = contentWithoutThinking.replace(htmlBlockRegex, (match) => {
-    extractedHtmlBlocks.push(match);
-    return '';
-  }).trim();
-  
-  // 清理残留的空代码块标记
-  contentWithoutThinking = contentWithoutThinking
-    .replace(/```\w*\s*```/g, '')  // 移除空代码块
-    .replace(/---\s*```\w*\s*```/g, '')  // 移除带分隔符的空代码块
-    .replace(/---\s+---/g, '')  // 移除连续分隔符
-    .trim();
-  
-  // 如果是最新的 AI 消息，存储提取的 HTML
-  useEffect(() => {
-    if (isLatest && isAi && extractedHtmlBlocks.length > 0) {
-      setLastExtractedHtml(extractedHtmlBlocks.join('\n'));
-    } else if (isLatest && isAi) {
-      setLastExtractedHtml(null);
+  const extractTopLevelHtmlBlocks = (text: string): string => {
+    // void elements 没有闭合标签，跳过
+    const voidTags = new Set(['area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr']);
+    const openRe = /<([A-Za-z][A-Za-z0-9-]*)(\s[^>]*)?>/g;
+    const closeRe = /<\/([A-Za-z][A-Za-z0-9-]*)>/g;
+    // 收集所有标签位置
+    type TagPos = { type: 'open' | 'close'; name: string; start: number; end: number };
+    const tags: TagPos[] = [];
+    let m: RegExpExecArray | null;
+    openRe.lastIndex = 0;
+    while ((m = openRe.exec(text)) !== null) {
+      if (text[m.index + m[0].length - 2] === '/') continue;
+      if (voidTags.has(m[1].toLowerCase())) continue;
+      tags.push({ type: 'open', name: m[1].toLowerCase(), start: m.index, end: m.index + m[0].length });
     }
-  }, [isLatest, isAi, extractedHtmlBlocks.length]);
+    closeRe.lastIndex = 0;
+    while ((m = closeRe.exec(text)) !== null) {
+      tags.push({ type: 'close', name: m[1].toLowerCase(), start: m.index, end: m.index + m[0].length });
+    }
+    tags.sort((a, b) => a.start - b.start);
+
+    const blocks: { start: number; end: number }[] = [];
+    const stack: { name: string; start: number }[] = [];
+    for (const tag of tags) {
+      if (tag.type === 'open') {
+        stack.push({ name: tag.name, start: tag.start });
+      } else {
+        // 找栈中最近匹配的开标签
+        for (let i = stack.length - 1; i >= 0; i--) {
+          if (stack[i].name === tag.name) {
+            const blockStart = stack[i].start;
+            stack.splice(i, 1);
+            // 只收集顶层（栈空时）
+            if (stack.length === 0) {
+              blocks.push({ start: blockStart, end: tag.end });
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    if (blocks.length === 0) return text;
+
+    let result = '';
+    let cursor = 0;
+    for (const b of blocks) {
+      result += text.slice(cursor, b.start);
+      extractedHtmlBlocks.push(text.slice(b.start, b.end));
+      cursor = b.end;
+    }
+    result += text.slice(cursor);
+    return result;
+  };
+  contentWithoutThinking = extractTopLevelHtmlBlocks(contentWithoutThinking).trim();
+  
+  // 清理残留空代码块和孤立标签
+  contentWithoutThinking = contentWithoutThinking
+    .replace(/```\w*\s*```/g, '')
+    .replace(/---\s*```\w*\s*```/g, '')
+    .replace(/---\s+---/g, '')
+    .replace(/<\/?[A-Za-z][A-Za-z0-9-]*(\s[^>]*)?>/g, '')
+    .trim();
   
   // 檢測是否為單層包裹標籤（如 <snow>...</snow>）
   const wrapperMatch = contentWithoutThinking.match(/^<(\w+)(?:\s[^>]*)?>[\s\S]*<\/\1>$/);

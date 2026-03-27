@@ -8,8 +8,7 @@ export interface ChatSlice {
   fragments: string[];
   currentAutoSlotId: string | null;
   _autoSaveTimer: ReturnType<typeof setTimeout> | null;
-  lastExtractedHtml: string | null;
-  
+
   addMessage: (msg: Message) => void;
   clearMessages: () => void;
   rollbackMessages: (index: number, shouldBranch?: boolean) => void;
@@ -18,7 +17,6 @@ export interface ChatSlice {
   updateMission: (id: string, updates: Partial<Mission>) => void;
   addFragment: (text: string) => void;
   autoSave: () => void;
-  setLastExtractedHtml: (html: string | null) => void;
 }
 
 export const createChatSlice = (set: any, get: any): ChatSlice => ({
@@ -29,7 +27,6 @@ export const createChatSlice = (set: any, get: any): ChatSlice => ({
   fragments: [],
   currentAutoSlotId: null,
   _autoSaveTimer: null,
-  lastExtractedHtml: null,
 
   addMessage: (msg) => {
     set((state: any) => ({ messages: [...state.messages, msg] }));
@@ -92,6 +89,4 @@ export const createChatSlice = (set: any, get: any): ChatSlice => ({
       return { saveSlots: [...limitedAutoSlots, ...manualSlots] };
     });
   },
-
-  setLastExtractedHtml: (html) => set({ lastExtractedHtml: html }),
 });

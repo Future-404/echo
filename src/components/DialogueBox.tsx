@@ -3,8 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { MoreHorizontal, Copy, RotateCcw, RotateCw } from 'lucide-react'
 import { useAppStore } from '../store/useAppStore'
 import MessageContent from './Dialogue/MessageContent'
-import { MissionPanel } from './Dialogue/MissionPanel'
-import { StatusPanel } from './Dialogue/StatusPanel'
 import { useDevice } from '../hooks/useMediaQuery'
 import { useDialog } from './GlobalDialog'
 
@@ -20,28 +18,20 @@ interface DialogueBoxProps {
 const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanAdvanceChange, onRetry, onSkipGreeting, isKeyboardVisible = false }) => {
   const { 
     messages, selectedCharacter, config, isLoading,
-    setCurrentView, missions, rollbackMessages, secondaryCharacter
+    setCurrentView, rollbackMessages, secondaryCharacter
   } = useAppStore()
   const { confirm } = useDialog()
   const { isMobile, isTouchDevice } = useDevice()
 
   const scrollRef = useRef<HTMLDivElement>(null)
-  const [isStatusExpanded, setIsStatusExpanded] = useState(false)
   const [activeMenuIndex, setActiveMenuIndex] = useState<number | null>(null)
   const [activeIdx, setActiveIdx] = useState<number | null>(null)
   const pressTimer = useRef<any>(null)
 
-  const isQuestSkillEnabled = config?.enabledSkillIds?.includes('manage_quest_state')
   const activePersona = config.personas.find(p => p.id === config.activePersonaId) || config.personas[0]
-  const userName = activePersona?.name || 'Observer'
 
   const lastAssistantMsg = useMemo(() =>
     [...messages].reverse().find(m => m.role === 'assistant'), [messages])
-
-  const statusCharacter = useMemo(() => {
-    if (!secondaryCharacter || !lastAssistantMsg?.speakerId) return selectedCharacter
-    return lastAssistantMsg.speakerId === secondaryCharacter.id ? secondaryCharacter : selectedCharacter
-  }, [lastAssistantMsg, selectedCharacter, secondaryCharacter])
 
   const visibleMessages = useMemo(() =>
     messages.filter(m => m.role === 'assistant' || m.role === 'user'), [messages])
@@ -134,14 +124,11 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
       onClick={() => setActiveMenuIndex(null)}
     >
       {/* 顶部状态条 */}
-      <div className="flex-shrink-0 z-40 flex flex-col border-b border-gray-300/10 dark:border-white/5 bg-echo-base/90 dark:bg-black/90 backdrop-blur-xl safe-area-top" onClick={e => e.stopPropagation()}>
-        <StatusPanel character={statusCharacter} userName={userName} isExpanded={isStatusExpanded} isMobile={isMobile} />
-        <MissionPanel missions={missions} isQuestSkillEnabled={isQuestSkillEnabled} isMobile={isMobile} />
+      <div className="flex-shrink-0 z-40 border-b border-gray-300/10 dark:border-white/5 bg-echo-base/90 dark:bg-black/90 backdrop-blur-xl" onClick={e => e.stopPropagation()}>
         <div className={`flex justify-between items-center ${isMobile ? 'px-4 py-2' : 'px-6 py-1.5'} min-h-[44px]`}>
           <span className="text-[9px] tracking-widest text-gray-400 uppercase font-serif">{selectedCharacter.name}</span>
           <div className={`flex ${isMobile ? 'gap-2' : 'gap-3'}`}>
             {[
-              { label: '状态', action: () => setIsStatusExpanded(v => !v) },
               { label: '存档', action: () => setCurrentView('save') },
               { label: '读档', action: () => setCurrentView('load') },
             ].map(btn => (
