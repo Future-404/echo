@@ -86,8 +86,10 @@ jobs:
 
       - name: Update wrangler.toml with real IDs
         run: |
-          sed -i "s/PLACEHOLDER_KV_ID/${{ steps.kv.outputs.id }}/g" echo-storage/cloudflare/wrangler.toml
-          sed -i "s/PLACEHOLDER_D1_ID/${{ steps.d1.outputs.id }}/g" echo-storage/cloudflare/wrangler.toml
+          sed -i "s/id = \".*\"/id = \"${{ steps.kv.outputs.id }}\"/" echo-storage/cloudflare/wrangler.toml
+          sed -i "s/database_id = \".*\"/database_id = \"${{ steps.d1.outputs.id }}\"/" echo-storage/cloudflare/wrangler.toml
+          echo "Updated wrangler.toml:"
+          cat echo-storage/cloudflare/wrangler.toml
 
       - name: Commit wrangler.toml
         run: |
