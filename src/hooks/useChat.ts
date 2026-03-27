@@ -96,7 +96,7 @@ export const useChat = () => {
 
     const apiMessages = multiCharMode && secondaryCharacter
       ? buildContextForChar(currentMessages, charId, charNames, contextWindow)
-      : currentMessages.slice(-contextWindow).map(m => ({ role: m.role as any, content: m.content }))
+      : currentMessages.slice(-contextWindow - 1, -1).map(m => ({ role: m.role as any, content: m.content }))
 
     // 注入 depth_prompt（ST 兼容：从末尾数第 depth 条位置插入）
     if (char.depthPrompt?.content) {
