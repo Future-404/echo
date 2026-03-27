@@ -19,30 +19,17 @@ const HELP_SECTIONS = [
           <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
             <div className="px-4 py-2.5 bg-orange-500/10 flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-widest text-orange-400">方式一：GitHub + Cloudflare（推荐小白）</span>
-              <span className="text-[9px] opacity-50">免费 · push 自动更新</span>
+              <span className="text-[9px] opacity-50">免费 · 全自动 · push 自动更新</span>
             </div>
             <div className="px-4 py-3 space-y-3 text-[10px]">
               <div className="space-y-1.5 opacity-80 leading-relaxed">
                 <p><span className="font-bold">1.</span> Fork 本仓库到你的 GitHub 账号</p>
-                <p><span className="font-bold">2.</span> 在终端执行以下命令完成后端初始化：</p>
-              </div>
-              <pre className="p-3 text-[9px] font-mono opacity-60 bg-black/5 dark:bg-black/20 rounded-xl overflow-x-auto whitespace-pre">{`npm install -g wrangler && wrangler login
-cd echo-storage/cloudflare
-wrangler kv:namespace create ECHO_KV        # 记录 id → 填入 wrangler.toml
-wrangler d1 create echo-images              # 记录 database_id → 填入 wrangler.toml
-wrangler d1 execute echo-images --file=schema.sql --remote
-openssl rand -hex 32                        # 复制输出作为密码
-wrangler secret put AUTH_TOKEN              # 粘贴上面的密码
-wrangler deploy                             # 记录返回的 Worker URL`}</pre>
-              <div className="space-y-1.5 opacity-80 leading-relaxed">
-                <p><span className="font-bold">3.</span> 将修改后的 <code className="bg-white/10 px-1 rounded">wrangler.toml</code> push 到你的 Fork</p>
-                <p><span className="font-bold">4.</span> 在 GitHub → Settings → Secrets 添加三个变量：</p>
+                <p><span className="font-bold">2.</span> 在 GitHub → Settings → Secrets 添加两个变量：</p>
               </div>
               <div className="rounded-xl border border-white/10 overflow-hidden">
                 {[
-                  ['CLOUDFLARE_API_TOKEN', 'Cloudflare → My Profile → API Tokens → Edit Cloudflare Workers'],
-                  ['VITE_API_URL', '上一步的 Worker URL，如 https://echo-storage.xxx.workers.dev'],
-                  ['CF_PAGES_PROJECT_NAME', '你在 Cloudflare Pages 创建的项目名'],
+                  ['CLOUDFLARE_API_TOKEN', 'Cloudflare → My Profile → API Tokens → 创建（需要 Workers、KV、D1 权限）'],
+                  ['CLOUDFLARE_ACCOUNT_ID', 'Cloudflare Dashboard 右侧边栏 → Account ID'],
                 ].map(([k, v]) => (
                   <div key={k} className="grid grid-cols-[auto_1fr] gap-x-3 px-3 py-2 border-b border-white/5 last:border-0">
                     <code className="text-blue-400 shrink-0">{k}</code>
@@ -50,7 +37,12 @@ wrangler deploy                             # 记录返回的 Worker URL`}</pre>
                   </div>
                 ))}
               </div>
-              <p className="opacity-60">之后每次 push 自动部署，访问 Pages 域名输入密码进入。</p>
+              <div className="space-y-1.5 opacity-80 leading-relaxed">
+                <p><span className="font-bold">3.</span> Actions → <strong>🚀 Setup (First Time)</strong> → Run workflow</p>
+                <p className="opacity-60 pl-4">AUTH_TOKEN 输入框留空自动生成，或填入你想要的密码</p>
+                <p><span className="font-bold">4.</span> 等约 2 分钟，在 workflow Summary 查看网站地址和 AUTH_TOKEN</p>
+              </div>
+              <p className="opacity-60">之后每次 push 自动重新部署，前后端一体，无需额外配置。</p>
             </div>
           </div>
 

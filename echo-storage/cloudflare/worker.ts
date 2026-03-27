@@ -37,11 +37,17 @@ async function parseBody<T>(req: Request): Promise<T | null> {
 
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
+    const url = new URL(req.url)
+
+    // 非 /api 路径交给 Workers Assets（前端静态文件）
+    if (!url.pathname.startsWith('/api')) {
+      return env.ASSETS.fetch(req)
+    }
+
     const origin = env.ALLOWED_ORIGIN || '*'
 
     if (req.method === 'OPTIONS') return json(null, 204, origin)
 
-    const url = new URL(req.url)
     const [, , resource, rawId] = url.pathname.split('/')
 
     try {

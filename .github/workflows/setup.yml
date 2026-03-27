@@ -1,0 +1,117 @@
+name: 🚀 Setup (First Time)
+
+on:
+  workflow_dispatch:
+    inputs:
+      auth_token:
+        description: 'AUTH_TOKEN — 网站访问密码（留空自动生成随机字符串）'
+        required: false
+        default: ''
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      secrets: write   # 需要 Fine-grained token 或 PAT 才能写 secrets
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate AUTH_TOKEN if not provided
+        id: token
+        run: |
+          if [ -z "${{ github.event.inputs.auth_token }}" ]; then
+            TOKEN=$(openssl rand -hex 32)
+          else
+            TOKEN="${{ github.event.inputs.auth_token }}"
+          fi
+          echo "value=$TOKEN" >> $GITHUB_OUTPUT
+
+      - name: Create KV namespace
+        id: kv
+        run: |
+          RESPONSE=$(curl -s -X POST \
+            "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/storage/kv/namespaces" \
+            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"title":"echo-kv"}')
+          echo "$RESPONSE"
+          KV_ID=$(echo "$RESPONSE" | jq -r '.result.id')
+          if [ "$KV_ID" = "null" ] || [ -z "$KV_ID" ]; then
+            echo "❌ Failed to create KV namespace"
+            exit 1
+          fi
+          echo "id=$KV_ID" >> $GITHUB_OUTPUT
+
+      - name: Create D1 database
+        id: d1
+        run: |
+          RESPONSE=$(curl -s -X POST \
+            "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/d1/database" \
+            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"name":"echo-db"}')
+          echo "$RESPONSE"
+          D1_ID=$(echo "$RESPONSE" | jq -r '.result.uuid')
+          if [ "$D1_ID" = "null" ] || [ -z "$D1_ID" ]; then
+            echo "❌ Failed to create D1 database"
+            exit 1
+          fi
+          echo "id=$D1_ID" >> $GITHUB_OUTPUT
+
+      - name: Initialize D1 schema
+        run: |
+          SQL=$(cat echo-storage/cloudflare/schema.sql | tr -d '\n' | sed "s/'/\\\\'/g")
+          curl -s -X POST \
+            "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/d1/database/${{ steps.d1.outputs.id }}/query" \
+            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"sql\":\"CREATE TABLE IF NOT EXISTS images (id TEXT PRIMARY KEY, base64 TEXT NOT NULL);\"}"
+
+      - name: Update wrangler.toml with real IDs
+        run: |
+          sed -i "s/PLACEHOLDER_KV_ID/${{ steps.kv.outputs.id }}/g" echo-storage/cloudflare/wrangler.toml
+          sed -i "s/PLACEHOLDER_D1_ID/${{ steps.d1.outputs.id }}/g" echo-storage/cloudflare/wrangler.toml
+
+      - name: Commit wrangler.toml
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add echo-storage/cloudflare/wrangler.toml
+          git commit -m "chore: set KV and D1 IDs from setup workflow"
+          git push
+
+      - name: Build frontend
+        run: npm ci && npm run build
+
+      - name: Deploy Worker + Assets
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: echo-storage/cloudflare
+          secrets: |
+            AUTH_TOKEN
+        env:
+          AUTH_TOKEN: ${{ steps.token.outputs.value }}
+
+      - name: Save AUTH_TOKEN as GitHub Secret
+        run: |
+          gh secret set AUTH_TOKEN --body "${{ steps.token.outputs.value }}"
+        env:
+          GH_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        continue-on-error: true  # 需要 PAT，失败不阻断流程
+
+      - name: 🎉 Summary
+        run: |
+          echo "## ✅ Echo 部署完成" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| 项目 | 值 |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| KV Namespace ID | \`${{ steps.kv.outputs.id }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| D1 Database ID | \`${{ steps.d1.outputs.id }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **AUTH_TOKEN（请保存）** | \`${{ steps.token.outputs.value }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "访问你的 Worker URL，输入上方 AUTH_TOKEN 即可进入。" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> ⚠️ 请立即保存 AUTH_TOKEN，这是你进入网站的唯一密码。" >> $GITHUB_STEP_SUMMARY

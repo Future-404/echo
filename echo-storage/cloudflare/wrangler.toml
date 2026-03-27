@@ -1,21 +1,17 @@
-name = "echo-storage"
+name = "echo"
 main = "worker.ts"
 compatibility_date = "2024-01-01"
 
-# 部署前必须配置：
-# 1. 创建 KV: wrangler kv:namespace create ECHO_KV
-# 2. 创建 D1: wrangler d1 create echo-images
-# 3. 将返回的 id 填入下方
+# 前端静态文件由 Workers Assets 自动 serve
+[assets]
+directory = "../../dist"
+binding = "ASSETS"
 
 [[kv_namespaces]]
 binding = "ECHO_KV"
-id = "YOUR_KV_NAMESPACE_ID"  # 替换为实际 KV id
+id = "PLACEHOLDER_KV_ID"
 
 [[d1_databases]]
 binding = "ECHO_DB"
-database_name = "echo-images"
-database_id = "YOUR_D1_DATABASE_ID"  # 替换为实际 D1 id
-
-# 安全配置（通过 wrangler secret 设置，不要写在这里）:
-# wrangler secret put AUTH_TOKEN
-# wrangler secret put ALLOWED_ORIGIN
+database_name = "echo-db"
+database_id = "PLACEHOLDER_D1_ID"
