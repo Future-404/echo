@@ -307,6 +307,7 @@ export const useChat = () => {
 
       // ── 单角色模式：复用 requestChar ───────────────────────────────────────
       await requestChar(selectedCharacter.id, currentMessages, content)
+      setIsTyping(false)
 
     } catch (err: any) {
       console.error('Chat Error:', err)
