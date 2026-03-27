@@ -98,8 +98,8 @@ jobs:
         run: |
           gh secret set AUTH_TOKEN --body "${{ steps.token.outputs.value }}"
         env:
-          GH_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        continue-on-error: true  # 需要 PAT，失败不阻断流程
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        continue-on-error: true  # 需要填写 GH_PAT secret 才能自动保存，否则请手动将 Summary 中的 AUTH_TOKEN 填入 GitHub Secrets
 
       - name: 🎉 Summary
         run: |
@@ -111,6 +111,13 @@ jobs:
           echo "| D1 Database ID | \`${{ steps.d1.outputs.id }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **AUTH_TOKEN（请保存）** | \`${{ steps.token.outputs.value }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "访问你的 Worker URL，输入上方 AUTH_TOKEN 即可进入。" >> $GITHUB_STEP_SUMMARY
+          echo "### ⚠️ 必须手动操作（重要）" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "> ⚠️ 请立即保存 AUTH_TOKEN，这是你进入网站的唯一密码。" >> $GITHUB_STEP_SUMMARY
+          echo "请将上方 AUTH_TOKEN 添加到 GitHub Secrets，否则后续自动部署会丢失密码设置：" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Fork 仓库 → Settings → Secrets and variables → Actions → New repository secret**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Name: \`AUTH_TOKEN\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Value: \`${{ steps.token.outputs.value }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "访问你的 Worker URL，输入上方 AUTH_TOKEN 即可进入。" >> $GITHUB_STEP_SUMMARY
