@@ -30,34 +30,52 @@ jobs:
       - name: Create KV namespace
         id: kv
         run: |
-          RESPONSE=$(curl -s -X POST \
-            "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/storage/kv/namespaces" \
-            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d '{"title":"echo-kv"}')
-          echo "$RESPONSE"
-          KV_ID=$(echo "$RESPONSE" | jq -r '.result.id')
-          if [ "$KV_ID" = "null" ] || [ -z "$KV_ID" ]; then
-            echo "❌ Failed to create KV namespace"
-            exit 1
+          # 先查询是否已存在
+          LIST=$(curl -s "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/storage/kv/namespaces" \
+            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}")
+          EXISTING=$(echo "$LIST" | jq -r '.result[] | select(.title=="echo-kv") | .id')
+          if [ -n "$EXISTING" ] && [ "$EXISTING" != "null" ]; then
+            echo "KV namespace already exists: $EXISTING"
+            echo "id=$EXISTING" >> $GITHUB_OUTPUT
+          else
+            RESPONSE=$(curl -s -X POST \
+              "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/storage/kv/namespaces" \
+              -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+              -H "Content-Type: application/json" \
+              -d '{"title":"echo-kv"}')
+            KV_ID=$(echo "$RESPONSE" | jq -r '.result.id')
+            if [ "$KV_ID" = "null" ] || [ -z "$KV_ID" ]; then
+              echo "$RESPONSE"
+              echo "❌ Failed to create KV namespace"
+              exit 1
+            fi
+            echo "id=$KV_ID" >> $GITHUB_OUTPUT
           fi
-          echo "id=$KV_ID" >> $GITHUB_OUTPUT
 
       - name: Create D1 database
         id: d1
         run: |
-          RESPONSE=$(curl -s -X POST \
-            "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/d1/database" \
-            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d '{"name":"echo-db"}')
-          echo "$RESPONSE"
-          D1_ID=$(echo "$RESPONSE" | jq -r '.result.uuid')
-          if [ "$D1_ID" = "null" ] || [ -z "$D1_ID" ]; then
-            echo "❌ Failed to create D1 database"
-            exit 1
+          # 先查询是否已存在
+          LIST=$(curl -s "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/d1/database" \
+            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}")
+          EXISTING=$(echo "$LIST" | jq -r '.result[] | select(.name=="echo-db") | .uuid')
+          if [ -n "$EXISTING" ] && [ "$EXISTING" != "null" ]; then
+            echo "D1 database already exists: $EXISTING"
+            echo "id=$EXISTING" >> $GITHUB_OUTPUT
+          else
+            RESPONSE=$(curl -s -X POST \
+              "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/d1/database" \
+              -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+              -H "Content-Type: application/json" \
+              -d '{"name":"echo-db"}')
+            D1_ID=$(echo "$RESPONSE" | jq -r '.result.uuid')
+            if [ "$D1_ID" = "null" ] || [ -z "$D1_ID" ]; then
+              echo "$RESPONSE"
+              echo "❌ Failed to create D1 database"
+              exit 1
+            fi
+            echo "id=$D1_ID" >> $GITHUB_OUTPUT
           fi
-          echo "id=$D1_ID" >> $GITHUB_OUTPUT
 
       - name: Initialize D1 schema
         run: |
