@@ -10,8 +10,9 @@ async function flushCharacters(get: () => any) {
     c.id.startsWith('custom-') ? { ...c, image: '' } : c
   )
   const stored = await getStorageAdapter().getItem(STORE_KEY)
-  const parsed = stored ? JSON.parse(stored) : {}
-  await getStorageAdapter().setItem(STORE_KEY, JSON.stringify({ ...parsed, characters: chars }))
+  const parsed = stored ? JSON.parse(stored) : { state: {}, version: 0 }
+  parsed.state = { ...parsed.state, characters: chars }
+  await getStorageAdapter().setItem(STORE_KEY, JSON.stringify(parsed))
 }
 
 export interface CharacterSlice {
