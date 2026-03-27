@@ -259,7 +259,8 @@ export const useAppStore = create<AppState>()(
         setItem: (key, value) => getStorageAdapter().setItem(key, value),
         removeItem: (key) => getStorageAdapter().removeItem(key),
       })),
-      onRehydrateStorage: () => (state) => {
+      onRehydrateStorage: () => (state, error) => {
+        if (error) console.error('[echo] rehydrate failed:', error)
         state?.setHasHydrated(true)
       },
       partialize: (state) => ({

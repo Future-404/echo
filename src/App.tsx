@@ -45,7 +45,7 @@ const App: React.FC = () => {
   // 1. 初始化应用生命周期
   React.useEffect(() => {
     if (_hasHydrated) {
-      syncImagesFromDb().then(() => {
+      syncImagesFromDb().catch(() => {}).finally(() => {
         setIsLoading(false)
         const splash = document.getElementById('splash-screen')
         if (splash) {
