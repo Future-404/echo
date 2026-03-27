@@ -1,5 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import { flushSync } from 'react-dom'
 import App from './App.tsx'
 import './styles/globals.css'
 import { registerSW } from 'virtual:pwa-register'
@@ -10,14 +11,20 @@ registerSW({ immediate: true })
 
 const root = ReactDOM.createRoot(document.getElementById('root')!)
 
+function renderApp() {
+  flushSync(() => {
+    root.render(<React.StrictMode><App /></React.StrictMode>)
+  })
+}
+
 if (initStorage() === 'ready') {
-  root.render(<React.StrictMode><App /></React.StrictMode>)
+  renderApp()
 } else {
   root.render(
     <React.StrictMode>
       <GateScreen onUnlock={async (password) => {
         await authenticateWithPassword(password)
-        root.render(<React.StrictMode><App /></React.StrictMode>)
+        renderApp()
       }} />
     </React.StrictMode>
   )

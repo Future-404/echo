@@ -56,6 +56,12 @@ const App: React.FC = () => {
     }
   }, [_hasHydrated, setIsLoading, syncImagesFromDb])
 
+  // 保底：5秒后强制解除 loading（防止 rehydrate 回调未触发）
+  React.useEffect(() => {
+    const t = setTimeout(() => setIsLoading(false), 5000)
+    return () => clearTimeout(t)
+  }, [])
+
   // 2. 初始化主题与字体
   useTheme()
   useFont()
