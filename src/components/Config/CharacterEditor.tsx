@@ -5,6 +5,7 @@ import { useAppStore } from '../../store/useAppStore'
 import type { WorldBookEntry } from '../../store/useAppStore'
 import TagTemplateEditor from './TagTemplateEditor'
 import { extractPersonaFromPng } from '../../utils/pngParser'
+import { useDialog } from '../GlobalDialog'
 
 interface CharacterEditorProps {
   charId: string
@@ -13,9 +14,10 @@ interface CharacterEditorProps {
 
 const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) => {
   const { 
-    characters, updateCharacter, removeCharacter, config, 
+    characters, updateCharacter, removeCharacter, config, saveSlots, deleteSaveSlot,
     addPrivateWorldBookEntry, updatePrivateWorldBookEntry, removePrivateWorldBookEntry 
   } = useAppStore()
+  const { confirm } = useDialog()
   
   const char = characters.find(c => c.id === charId)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -399,7 +401,17 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
         </div>
 
         <footer className="absolute bottom-0 left-0 right-0 p-6 md:p-8 pt-4 border-t-0.5 border-gray-100 dark:border-gray-800 flex gap-4 bg-echo-white dark:bg-[#0d0d0d] z-50">
-          <button onClick={() => { removeCharacter(charId); onClose(); }} className="flex-1 py-3 md:py-4 flex items-center justify-center gap-2 border-0.5 border-red-100 dark:border-red-900/30 text-red-300 rounded-full text-[10px] tracking-widest uppercase hover:bg-red-50 transition-all"><Trash2 size={14} /> Purge</button>
+          <button onClick={async () => {
+            const relatedSlots = (saveSlots || []).filter(s => s.characterId === charId)
+            const msg = relatedSlots.length > 0
+              ? `确定要删除此角色吗？同时将删除 ${relatedSlots.length} 个相关存档，此操作不可撤销。`
+              : '确定要删除此角色吗？此操作不可撤销。'
+            const ok = await confirm(msg, { confirmText: 'Purge', danger: true })
+            if (!ok) return
+            relatedSlots.forEach(s => deleteSaveSlot(s.id))
+            removeCharacter(charId)
+            onClose()
+          }} className="flex-1 py-3 md:py-4 flex items-center justify-center gap-2 border-0.5 border-red-100 dark:border-red-900/30 text-red-300 rounded-full text-[10px] tracking-widest uppercase hover:bg-red-50 transition-all"><Trash2 size={14} /> Purge</button>
           <button onClick={onClose} className="flex-[2] py-3 md:py-4 bg-white dark:bg-gray-900 border-0.5 border-gray-200 dark:border-gray-800 rounded-full text-[10px] tracking-widest uppercase text-gray-400 hover:text-gray-600 transition-all flex items-center justify-center gap-2 shadow-sm"><Check size={14} /> Commit Sync</button>
         </footer>
       </motion.div>
