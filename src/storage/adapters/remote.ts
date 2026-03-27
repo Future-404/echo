@@ -1,7 +1,7 @@
 import type { StorageAdapter } from '../types'
 
 export function createRemoteAdapter(baseUrl: string, token: string): StorageAdapter {
-  const base = baseUrl.replace(/\/+$/, '') // 规范化末尾斜杠
+  const base = baseUrl.replace(/\/+$/, '') // 空字符串時走相對路徑 /api/...
   const headers = {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${token}`,

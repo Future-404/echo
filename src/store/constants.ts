@@ -25,7 +25,18 @@ To ensure the rendering engine works correctly, you MUST strictly follow these f
 4. **UI Cards**: Use {{card_type|data}} only if explicitly instructed by a tool or skill.
 `;
 
-export const INITIAL_DIRECTIVES: Directive[] = []
+export const INITIAL_DIRECTIVES: Directive[] = [
+  {
+    id: 'system-format',
+    title: '格式渲染协议',
+    enabled: false,
+    content: `为确保渲染引擎正确工作，请在每次回复中严格遵守以下格式：
+1. 对话内容用引号包裹：{{char}}："对话内容"
+2. 动作与场景描写用星号包裹：*动作描写*
+3. 心理活动用括号包裹：（内心独白）
+请勿省略这些标记符号。`
+  }
+]
 
 export const INITIAL_MISSIONS: Mission[] = []
 

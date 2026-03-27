@@ -41,6 +41,8 @@ lerna-debug.log*
 # Testing and Coverage
 coverage/
 .nyc_output/
+playwright-report/
+test-results/
 
 # OS and Temporary files
 .DS_Store

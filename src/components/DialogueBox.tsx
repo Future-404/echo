@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MoreHorizontal, Copy, RotateCcw, RotateCw } from 'lucide-react'
+import { MoreHorizontal, Copy, RotateCcw, RotateCw, Maximize2, Minimize2 } from 'lucide-react'
 import { useAppStore } from '../store/useAppStore'
 import MessageContent from './Dialogue/MessageContent'
 import { useDevice } from '../hooks/useMediaQuery'
@@ -18,7 +18,8 @@ interface DialogueBoxProps {
 const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanAdvanceChange, onRetry, onSkipGreeting, isKeyboardVisible = false }) => {
   const { 
     messages, selectedCharacter, config, isLoading,
-    setCurrentView, rollbackMessages, secondaryCharacter
+    setCurrentView, rollbackMessages, secondaryCharacter,
+    isDialogueFullscreen, setDialogueFullscreen
   } = useAppStore()
   const { confirm } = useDialog()
   const { isMobile, isTouchDevice } = useDevice()
@@ -123,13 +124,14 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
           <span className="text-[9px] tracking-widest text-gray-400 uppercase font-serif">{selectedCharacter.name}</span>
           <div className={`flex ${isMobile ? 'gap-2' : 'gap-3'}`}>
             {[
+              { label: isDialogueFullscreen ? <Minimize2 size={12}/> : <Maximize2 size={12}/>, action: () => setDialogueFullscreen(!isDialogueFullscreen) },
               { label: '存档', action: () => setCurrentView('save') },
               { label: '读档', action: () => setCurrentView('load') },
-            ].map(btn => (
+            ].map((btn, i) => (
               <button
-                key={btn.label}
+                key={i}
                 onClick={(e) => { e.stopPropagation(); btn.action() }}
-                className={`${isMobile ? 'text-[10px] min-w-[44px] min-h-[44px] -my-2 px-2' : 'text-[9px]'} font-serif tracking-widest text-gray-500 dark:text-gray-400 hover:text-blue-500 active:scale-95 transition-all uppercase touch-manipulation`}
+                className={`${isMobile ? 'text-[10px] min-w-[44px] min-h-[44px] -my-2 px-2' : 'text-[9px]'} font-serif tracking-widest text-gray-500 dark:text-gray-400 hover:text-blue-500 active:scale-95 transition-all uppercase touch-manipulation flex items-center`}
               >
                 {btn.label}
               </button>
@@ -218,11 +220,6 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
                       {isAi && isLatest && isTyping ? (
                         <div className="font-serif leading-relaxed text-gray-700 dark:text-gray-300 whitespace-pre-wrap" style={{ fontSize: 'var(--app-font-size, 1.125rem)' }}>
                           {displayText}
-                          <motion.span
-                            animate={{ opacity: [1, 0] }}
-                            transition={{ duration: 0.6, repeat: Infinity, ease: 'linear' }}
-                            className="inline-block w-[2px] h-[1em] bg-gray-400 dark:bg-gray-500 ml-0.5 align-middle"
-                          />
                         </div>
                       ) : isAi && msg.content.startsWith('错误') ? (
                         <span className="text-red-500 dark:text-red-400 text-sm">{msg.content}</span>

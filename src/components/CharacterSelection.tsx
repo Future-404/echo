@@ -12,6 +12,12 @@ const CharacterSelection: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null)
   
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [greetingPicker, setGreetingPicker] = useState<CharacterCard | null>(null)
+
+  const isHtmlGreeting = (char: CharacterCard) => {
+    const g = char.greeting || ''
+    return g.trim().startsWith('<') && g.includes('</div>')
+  }
 
   const handleBack = () => {
     if (messages.length > 0) {
@@ -86,6 +92,7 @@ const CharacterSelection: React.FC = () => {
               enabled: e.enabled !== false,
               comment: e.comment || '',
               insertionOrder: e.insertion_order ?? 0,
+              position: (e.position === 0 ? 0 : 1) as 0 | 1,
               constant: e.constant ?? false,
               extensions: e.extensions ?? {},
             }));
@@ -158,6 +165,7 @@ const CharacterSelection: React.FC = () => {
                   enabled: e.enabled !== false,
                   comment: e.comment || '',
                   insertionOrder: e.insertion_order ?? 0,
+              position: (e.position === 0 ? 0 : 1) as 0 | 1,
                   constant: e.constant ?? false,
                   extensions: e.extensions ?? {},
                 }));
@@ -228,7 +236,13 @@ const CharacterSelection: React.FC = () => {
                   initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.05, duration: 0.6 }}
                   whileHover={{ y: -10 }}
-                  onClick={() => setSelectedCharacter(char)}
+                  onClick={() => {
+                    if (!isHtmlGreeting(char) && char.alternateGreetings?.length) {
+                      setGreetingPicker(char)
+                    } else {
+                      setSelectedCharacter(char)
+                    }
+                  }}
                   className="snap-center flex-shrink-0 w-64 md:w-72 h-[420px] md:h-[480px] bg-white/80 dark:bg-white/5 backdrop-blur-2xl border-0.5 border-gray-200 dark:border-white/10 rounded-[3rem] cursor-pointer group flex flex-col transition-all shadow-xl hover:shadow-2xl relative select-none"
                 >
                   <button 
@@ -287,6 +301,48 @@ const CharacterSelection: React.FC = () => {
 
           <AnimatePresence>
             {editingId && <CharacterEditor charId={editingId} onClose={() => setEditingId(null)} />}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {greetingPicker && (
+              <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-sm flex items-end md:items-center justify-center p-4"
+                onClick={() => setGreetingPicker(null)}
+              >
+                <motion.div
+                  initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
+                  onClick={e => e.stopPropagation()}
+                  className="w-full max-w-lg bg-echo-white dark:bg-[#0d0d0d] rounded-[2rem] border-0.5 border-echo-border shadow-2xl overflow-hidden"
+                >
+                  <div className="p-6 border-b border-gray-100 dark:border-white/5">
+                    <p className="text-[9px] tracking-[0.5em] text-gray-400 uppercase">选择开场白 // Select Greeting</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{greetingPicker.name}</p>
+                  </div>
+                  <div className="overflow-y-auto max-h-[60vh] no-scrollbar divide-y divide-gray-100 dark:divide-white/5">
+                    {[greetingPicker.greeting, ...(greetingPicker.alternateGreetings || [])].map((g, i) => (
+                      <button
+                        key={i}
+                        onClick={() => { setSelectedCharacter(greetingPicker, g ?? undefined); setGreetingPicker(null) }}
+                        className="w-full text-left px-6 py-4 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group"
+                      >
+                        <span className="text-[8px] tracking-widest text-gray-400 uppercase block mb-1">
+                          {i === 0 ? '默认开场白' : `备选 ${i}`}
+                        </span>
+                        <p className="text-xs text-gray-600 dark:text-gray-300 font-serif leading-relaxed line-clamp-3">
+                          {g?.replace(/<[^>]+>/g, '').slice(0, 120) || '（空）'}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="p-4 border-t border-gray-100 dark:border-white/5">
+                    <button onClick={() => setGreetingPicker(null)} className="w-full py-2 text-[9px] tracking-widest uppercase text-gray-400 hover:text-gray-600 transition-colors">
+                      取消
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
           </AnimatePresence>
         </motion.div>
       )}

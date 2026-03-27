@@ -6,7 +6,7 @@ export interface CharacterSlice {
   characters: CharacterCard[];
   selectedCharacter: CharacterCard;
   
-  setSelectedCharacter: (char: CharacterCard) => void;
+  setSelectedCharacter: (char: CharacterCard, overrideGreeting?: string) => void;
   addCharacter: (char: CharacterCard) => Promise<void>;
   updateCharacter: (id: string, updates: Partial<CharacterCard>) => Promise<void>;
   removeCharacter: (id: string) => Promise<void>;
@@ -22,11 +22,12 @@ export const createCharacterSlice = (set: any, get: any, DEFAULT_CHARACTERS: Cha
   characters: DEFAULT_CHARACTERS,
   selectedCharacter: DEFAULT_CHARACTERS[0],
 
-  setSelectedCharacter: (char) => {
+  setSelectedCharacter: (char, overrideGreeting) => {
     const state = get();
     const activePersona = state.config.personas.find((p: any) => p.id === state.config.activePersonaId) || state.config.personas[0];
     const userName = activePersona?.name || 'Observer';
-    const finalGreeting = char.greeting ? replaceMacros(char.greeting, userName, char.name) : undefined;
+    const rawGreeting = overrideGreeting ?? char.greeting;
+    const finalGreeting = rawGreeting ? replaceMacros(rawGreeting, userName, char.name) : undefined;
     
     set({ 
       selectedCharacter: char, 

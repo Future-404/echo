@@ -1,11 +1,30 @@
 services:
-  echo-dev:
-    image: node:24-alpine
-    container_name: echo-dev-env
+  storage:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./echo-storage/node:/app
+      - echo-data:/data
+    environment:
+      AUTH_TOKEN: ${AUTH_TOKEN:-please_change_this_token}
+      DB_PATH: /data/echo.db
+      ALLOWED_ORIGIN: "*"
+      PORT: "3456"
+    command: sh -c "npm install && node server.js"
+    restart: unless-stopped
+
+  frontend:
+    image: node:20-alpine
     working_dir: /app
     volumes:
       - .:/app
       - /app/node_modules
     ports:
       - "8888:8888"
+    depends_on:
+      - storage
     command: sh -c "npm install && npm run dev"
+    restart: unless-stopped
+
+volumes:
+  echo-data:

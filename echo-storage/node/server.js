@@ -1,5 +1,11 @@
 import http from 'node:http'
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import Database from 'better-sqlite3'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const STATIC_DIR = process.env.STATIC_DIR || path.join(__dirname, '../../dist')
 
 const PORT = process.env.PORT || 3456
 const TOKEN = process.env.AUTH_TOKEN
@@ -10,6 +16,26 @@ const MAX_VALUE_BYTES = 5 * 1024 * 1024 // 单条记录 5MB
 if (!TOKEN) {
   console.error('[echo-storage] AUTH_TOKEN environment variable is required.\n  Example: AUTH_TOKEN=your_secret node server.js')
   process.exit(1)
+}
+
+const MIME = {
+  '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css',
+  '.png': 'image/png', '.svg': 'image/svg+xml', '.webp': 'image/webp',
+  '.ico': 'image/x-icon', '.json': 'application/json', '.woff2': 'font/woff2',
+  '.mp3': 'audio/mpeg', '.txt': 'text/plain',
+}
+
+function serveStatic(req, res) {
+  let filePath = path.join(STATIC_DIR, req.url === '/' ? 'index.html' : req.url)
+  // strip query string
+  filePath = filePath.split('?')[0]
+  if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
+    filePath = path.join(STATIC_DIR, 'index.html') // SPA fallback
+  }
+  const ext = path.extname(filePath)
+  const mime = MIME[ext] || 'application/octet-stream'
+  res.writeHead(200, { 'Content-Type': mime })
+  fs.createReadStream(filePath).pipe(res)
 }
 
 const db = new Database(process.env.DB_PATH || './echo.db')
@@ -50,11 +76,23 @@ function readBody(req) {
 }
 
 http.createServer(async (req, res) => {
-  if (req.method === 'OPTIONS') return send(res, 204, null)
-  if (req.headers['authorization'] !== `Bearer ${TOKEN}`) return send(res, 401, { error: 'Unauthorized' })
+  // 靜態文件（非 /api 路徑）
+  if (!req.url.startsWith('/api')) return serveStatic(req, res)
 
-  const parts = req.url.split('/').filter(Boolean) // ['api', resource, id?]
+  if (req.method === 'OPTIONS') return send(res, 204, null)
+
+  const parts = req.url.split('/').filter(Boolean)
   const resource = parts[1]
+
+  // ── /api/auth（無需鑒權，驗證密碼後返回 token）────────────────────────
+  if (resource === 'auth') {
+    if (req.method !== 'POST') return send(res, 405, { error: 'Method Not Allowed' })
+    const { password } = await readBody(req)
+    if (password !== TOKEN) return send(res, 401, { error: 'Invalid password' })
+    return send(res, 200, { token: TOKEN })
+  }
+
+  if (req.headers['authorization'] !== `Bearer ${TOKEN}`) return send(res, 401, { error: 'Unauthorized' })
 
   // ── /api/ping ─────────────────────────────────────────────────────────────
   if (resource === 'ping') return send(res, 200, { ok: true })

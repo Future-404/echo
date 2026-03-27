@@ -9,8 +9,6 @@ import { useCustomCss } from './hooks/useCustomCss'
 import { useCustomBg } from './hooks/useCustomBg'
 import { useKeyboard } from './hooks/useKeyboardHeight'
 import { ErrorBoundary } from './components/ErrorBoundary'
-import { UnlockScreen } from './components/UnlockScreen'
-import { SetPasswordScreen } from './components/SetPasswordScreen'
 
 // 核心/重型组件：改回静态导入以确保 WebGL 上下文稳定
 import Stage from './engine/Stage'
@@ -40,77 +38,20 @@ const App: React.FC = () => {
   const { 
     isLoading, setIsLoading, currentView, syncImagesFromDb, _hasHydrated, 
     multiCharMode, selectedCharacter, secondaryCharacter,
-    config
+    isDialogueFullscreen, config
   } = useAppStore()
-  
-  const [unlocked, setUnlocked] = React.useState(!!sessionStorage.getItem('_mpwd'))
-  
-  // 監聽解鎖狀態變化
-  React.useEffect(() => {
-    const checkUnlock = () => setUnlocked(!!sessionStorage.getItem('_mpwd'))
-    window.addEventListener('storage', checkUnlock)
-    const interval = setInterval(checkUnlock, 500)
-    return () => {
-      window.removeEventListener('storage', checkUnlock)
-      clearInterval(interval)
-    }
-  }, [])
-
-  // 30分鐘無操作自動鎖定
-  React.useEffect(() => {
-    if (!unlocked) return
-
-    let timeout: NodeJS.Timeout
-    const resetTimer = () => {
-      clearTimeout(timeout)
-      timeout = setTimeout(() => {
-        sessionStorage.removeItem('_mpwd')
-        setUnlocked(false)
-      }, 30 * 60 * 1000) // 30分鐘
-    }
-
-    const events = ['mousedown', 'keydown', 'scroll', 'touchstart']
-    events.forEach(e => window.addEventListener(e, resetTimer))
-    resetTimer()
-
-    return () => {
-      clearTimeout(timeout)
-      events.forEach(e => window.removeEventListener(e, resetTimer))
-    }
-  }, [unlocked])
-  
-  const hasPassword = !!config.masterPasswordHash && config.masterPasswordHash !== 'skipped'
-  const isLocked = hasPassword && !unlocked
+  const setSelectedCharacter = useAppStore(s => s.setSelectedCharacter)
   
   // 1. 初始化应用生命周期
   React.useEffect(() => {
     if (_hasHydrated) {
-      // 自動解密：如果有密碼且 sessionStorage 中有密鑰
-      const autoUnlock = async () => {
-        const password = sessionStorage.getItem('_mpwd')
-        const hasEncrypted = !!config.encryptedProviders
-        const hasPassword = !!config.masterPasswordHash && config.masterPasswordHash !== 'skipped'
-        
-        if (password && hasPassword && hasEncrypted && config.providers.length === 0) {
-          try {
-            await useAppStore.getState().unlockProviders(password)
-          } catch (err) {
-            console.error('[App] 自動解密失敗:', err)
-            sessionStorage.removeItem('_mpwd')
-            setUnlocked(false)
-          }
+      syncImagesFromDb().then(() => {
+        setIsLoading(false)
+        const splash = document.getElementById('splash-screen')
+        if (splash) {
+          splash.style.opacity = '0'
+          setTimeout(() => splash.remove(), 800)
         }
-      }
-      
-      autoUnlock().then(() => {
-        syncImagesFromDb().then(() => {
-          setIsLoading(false)
-          const splash = document.getElementById('splash-screen')
-          if (splash) {
-            splash.style.opacity = '0'
-            setTimeout(() => splash.remove(), 800)
-          }
-        })
       })
     }
   }, [_hasHydrated, setIsLoading, syncImagesFromDb])
@@ -132,6 +73,7 @@ const App: React.FC = () => {
 
   // 6. VN 对话框的进度状态 (用于阻塞输入)
   const [isWaitingForClick, setIsWaitingForClick] = React.useState(false)
+  const [showGreetingPicker, setShowGreetingPicker] = React.useState(false)
   
   // HTML 開場白檢測
   const firstMessage = useAppStore(s => s.messages[0])
@@ -146,21 +88,8 @@ const App: React.FC = () => {
     }
   }, [isHtmlGreeting, firstMessage])
 
-  // 7. 加密检查
-  const hasProviders = useAppStore(s => s.config.providers.length > 0)
-
   // 判断是否应该渲染游戏主界面
   const isGameView = currentView === 'main'
-
-  // 首次使用且有 Provider：提示設置密碼（排除已跳過的情況）
-  if (!hasPassword && hasProviders && !isLoading && config.masterPasswordHash !== 'skipped') {
-    return <SetPasswordScreen />
-  }
-
-  // 已設置密碼但未解鎖
-  if (isLocked && !isLoading) {
-    return <UnlockScreen />
-  }
 
   return (
     <ErrorBoundary>
@@ -221,9 +150,11 @@ const App: React.FC = () => {
             
             {/* 对话框区域 */}
             <div className="flex-1 min-h-0 flex flex-col items-center pointer-events-auto px-4 pt-4">
-              <div className="mb-4 flex-shrink-0">
-                {multiCharMode ? <MultiCharAvatar activeSpeakerId={activeSpeakerId} /> : <CharacterAvatar />}
-              </div>
+              {!isDialogueFullscreen && (
+                <div className="mb-4 flex-shrink-0">
+                  {multiCharMode ? <MultiCharAvatar activeSpeakerId={activeSpeakerId} /> : <CharacterAvatar />}
+                </div>
+              )}
               <div className="w-full flex-1 min-h-0 mb-4">
                 <DialogueBox 
                   displayText={displayText} 
@@ -257,9 +188,59 @@ const App: React.FC = () => {
             content={firstMessage.content}
             onEnter={() => {
               setShowHtmlGreeting(false)
-              skipGreeting()
+              if (selectedCharacter.alternateGreetings?.length) {
+                setShowGreetingPicker(true)
+              } else {
+                skipGreeting()
+              }
             }}
           />
+        )}
+      </AnimatePresence>
+
+      {/* 多开场白选择（HTML预览后触发，或直接选角色时触发） */}
+      <AnimatePresence>
+        {showGreetingPicker && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-end md:items-center justify-center p-4"
+            onClick={() => { setShowGreetingPicker(false); skipGreeting() }}
+          >
+            <motion.div
+              initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              className="w-full max-w-lg bg-echo-white dark:bg-[#0d0d0d] rounded-[2rem] border-0.5 border-echo-border shadow-2xl overflow-hidden"
+            >
+              <div className="p-6 border-b border-gray-100 dark:border-white/5">
+                <p className="text-[9px] tracking-[0.5em] text-gray-400 uppercase">选择开场白 // Select Greeting</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{selectedCharacter.name}</p>
+              </div>
+              <div className="overflow-y-auto max-h-[60vh] no-scrollbar divide-y divide-gray-100 dark:divide-white/5">
+                {[selectedCharacter.greeting, ...(selectedCharacter.alternateGreetings || [])].map((g, i) => (
+                    <button
+                      key={i}
+                      onClick={() => {
+                        setSelectedCharacter(selectedCharacter, g ?? undefined)
+                        setShowGreetingPicker(false)
+                      }}
+                      className="w-full text-left px-6 py-4 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+                    >
+                      <span className="text-[8px] tracking-widest text-gray-400 uppercase block mb-1">
+                        {i === 0 ? '默认开场白' : `备选 ${i}`}
+                      </span>
+                      <p className="text-xs text-gray-600 dark:text-gray-300 font-serif leading-relaxed line-clamp-3">
+                        {g?.replace(/<[^>]+>/g, '').slice(0, 120) || '（空）'}
+                      </p>
+                    </button>
+                  ))}
+              </div>
+              <div className="p-4 border-t border-gray-100 dark:border-white/5">
+                <button onClick={() => { setShowGreetingPicker(false); skipGreeting() }} className="w-full py-2 text-[9px] tracking-widest uppercase text-gray-400 hover:text-gray-600 transition-colors">
+                  使用默认
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

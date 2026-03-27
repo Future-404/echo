@@ -1,5 +1,4 @@
 import type { Provider, Directive, WorldBook, WorldBookEntry, UserPersona, ThemeMode } from './useAppStore'
-import { SecureStorage } from '../utils/crypto'
 
 export interface ConfigSlice {
   config: {
@@ -17,11 +16,9 @@ export interface ConfigSlice {
     fontSize: number;
     customCss: string;
     customBg: boolean;
-    masterPasswordHash?: string;
-    encryptedProviders?: string;
-    dialogueQuotes?: string; // 對話引號字符，默認 """" 
-    actionMarkers?: string;  // 動作標記，默認 **
-    thoughtMarkers?: string; // 心理標記，默認 ()（）
+    dialogueQuotes?: string;
+    actionMarkers?: string;
+    thoughtMarkers?: string;
   };
   
   updateConfig: (newConfig: Partial<ConfigSlice['config']>) => void;
@@ -51,9 +48,6 @@ export interface ConfigSlice {
   addPersonaWorldBookEntry: (personaId: string, entry: WorldBookEntry) => void;
   updatePersonaWorldBookEntry: (personaId: string, entryId: string, updates: Partial<WorldBookEntry>) => void;
   removePersonaWorldBookEntry: (personaId: string, entryId: string) => void;
-  setMasterPassword: (password: string) => Promise<void>;
-  unlockProviders: (password: string) => Promise<void>;
-  isLocked: () => boolean;
 }
 
 export const createConfigSlice = (set: any, get: any, INITIAL_CONFIG: ConfigSlice['config']): ConfigSlice => ({
@@ -80,71 +74,22 @@ export const createConfigSlice = (set: any, get: any, INITIAL_CONFIG: ConfigSlic
 
   updateCustomBg: (hasImage) => set((state: any) => ({ config: { ...state.config, customBg: hasImage } })),
 
-  addProvider: async (provider) => {
-    const password = sessionStorage.getItem('_mpwd')
-    if (password) {
-      const providers = [...(get().config.providers || []), provider]
-      const encrypted = await SecureStorage.encrypt(JSON.stringify(providers), password)
-      set((state: any) => ({ config: { ...state.config, providers, encryptedProviders: encrypted } }))
-    } else {
-      set((state: any) => ({ config: { ...state.config, providers: [...(state.config.providers || []), provider] } }))
-    }
+  addProvider: (provider) => {
+    set((state: any) => ({ config: { ...state.config, providers: [...(state.config.providers || []), provider] } }))
   },
 
-  updateProvider: async (id, updates) => {
-    const password = sessionStorage.getItem('_mpwd')
+  updateProvider: (id, updates) => {
     const providers = (get().config.providers || []).map((p: Provider) => p.id === id ? { ...p, ...updates } : p)
-    if (password) {
-      const encrypted = await SecureStorage.encrypt(JSON.stringify(providers), password)
-      set((state: any) => ({ config: { ...state.config, providers, encryptedProviders: encrypted } }))
-    } else {
-      set((state: any) => ({ config: { ...state.config, providers } }))
-    }
+    set((state: any) => ({ config: { ...state.config, providers } }))
   },
 
-  removeProvider: async (id) => {
-    const password = sessionStorage.getItem('_mpwd')
+  removeProvider: (id) => {
     const providers = (get().config.providers || []).filter((p: Provider) => p.id !== id)
     const activeProviderId = get().config.activeProviderId === id ? 'default' : get().config.activeProviderId
-    if (password) {
-      const encrypted = await SecureStorage.encrypt(JSON.stringify(providers), password)
-      set((state: any) => ({ config: { ...state.config, providers, activeProviderId, encryptedProviders: encrypted } }))
-    } else {
-      set((state: any) => ({ config: { ...state.config, providers, activeProviderId } }))
-    }
+    set((state: any) => ({ config: { ...state.config, providers, activeProviderId } }))
   },
 
   setActiveProvider: (id) => set((state: any) => ({ config: { ...state.config, activeProviderId: id } })),
-
-  setMasterPassword: async (password: string) => {
-    const hash = await SecureStorage.hashPassword(password)
-    const providers = get().config.providers || []
-    const encrypted = await SecureStorage.encrypt(JSON.stringify(providers), password)
-    sessionStorage.setItem('_mpwd', password)
-    set((state: any) => ({ config: { ...state.config, masterPasswordHash: hash, encryptedProviders: encrypted } }))
-    // 設置完成後自動解鎖，不需要再次輸入密碼
-  },
-
-  unlockProviders: async (password: string) => {
-    const hash = await SecureStorage.hashPassword(password)
-    const storedHash = get().config.masterPasswordHash
-    if (hash !== storedHash) throw new Error('密碼錯誤')
-    
-    const encrypted = get().config.encryptedProviders
-    if (!encrypted) throw new Error('無加密數據')
-    
-    const decrypted = await SecureStorage.decrypt(encrypted, password)
-    const providers = JSON.parse(decrypted)
-    sessionStorage.setItem('_mpwd', password)
-    set((state: any) => ({ config: { ...state.config, providers }, _unlockTimestamp: Date.now() }))
-  },
-
-  isLocked: () => {
-    const hasPassword = !!get().config.masterPasswordHash
-    const isSkipped = get().config.masterPasswordHash === 'skipped'
-    const isUnlocked = !!sessionStorage.getItem('_mpwd')
-    return hasPassword && !isSkipped && !isUnlocked
-  },
 
   addWorldBook: (book) => set((state: any) => ({ 
     config: { ...state.config, worldBookLibrary: [...(state.config.worldBookLibrary || []), book] } 

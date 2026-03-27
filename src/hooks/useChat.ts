@@ -33,47 +33,26 @@ export const useChat = () => {
   const [activeSpeakerId, setActiveSpeakerId] = useState<string | undefined>(undefined)
   const lastGreetingKey = useRef<string | null>(null)
   const activePersona = config.personas?.find(p => p.id === config.activePersonaId) || config.personas?.[0]
-  const greetingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const greetingFullTextRef = useRef<string>('')
 
   const skipGreeting = useCallback(() => {
-    if (greetingTimerRef.current) {
-      clearInterval(greetingTimerRef.current)
-      greetingTimerRef.current = null
-      setDisplayText(greetingFullTextRef.current)
-      setIsTyping(false)
-      const firstMsg = messages[0]
-      if (firstMsg) extractAndSyncTags(firstMsg.content, selectedCharacter, updateAttributes)
-    }
+    const firstMsg = messages[0]
+    if (firstMsg) extractAndSyncTags(firstMsg.content, selectedCharacter, updateAttributes)
+    setIsTyping(false)
   }, [messages, selectedCharacter, updateAttributes, setIsTyping])
 
   useEffect(() => {
     const firstMsg = messages.length === 1 ? messages[0] : null;
     const greetingKey = `${selectedCharacter.id}-${firstMsg?.content}`;
     if (isGreetingSession && firstMsg && firstMsg.role === 'assistant' && lastGreetingKey.current !== greetingKey) {
-      const fullText = applyCharacterRegexScripts(firstMsg.content, selectedCharacter, 1);
-      greetingFullTextRef.current = fullText
-      setDisplayText('')
-      setIsTyping(true)
       lastGreetingKey.current = greetingKey
-      let i = 0
-      const timer = setInterval(() => {
-        if (i < fullText.length) {
-          setDisplayText(prev => prev + fullText.charAt(i))
-          i++
-        } else {
-          setIsTyping(false)
-          clearInterval(timer)
-          greetingTimerRef.current = null
-          extractAndSyncTags(firstMsg.content, selectedCharacter, updateAttributes);
-        }
-      }, 16)
-      greetingTimerRef.current = timer
-      return () => { clearInterval(timer); greetingTimerRef.current = null }
+      const fullText = applyCharacterRegexScripts(firstMsg.content, selectedCharacter, 1);
+      setDisplayText(fullText)
+      setIsTyping(false)
+      extractAndSyncTags(firstMsg.content, selectedCharacter, updateAttributes);
     } else if (!isGreetingSession && firstMsg && lastGreetingKey.current !== greetingKey) {
       lastGreetingKey.current = greetingKey;
     }
-  }, [selectedCharacter.id, messages, setIsTyping, isGreetingSession, updateAttributes])
+  }, [selectedCharacter.id, messages, isGreetingSession, updateAttributes])
 
   // ─── 单角色请求核心（可复用） ────────────────────────────────────────────────
   const requestChar = useCallback(async (

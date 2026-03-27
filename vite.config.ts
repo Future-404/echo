@@ -46,6 +46,9 @@ export default defineConfig({
     port: 8888,
     strictPort: true,
     allowedHosts: ['rka.qzz.io', 'echo.rka.qzz.io'],
+    proxy: {
+      '/api': 'http://localhost:3456',
+    },
     watch: {
       usePolling: true,
     }

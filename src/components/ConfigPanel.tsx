@@ -15,9 +15,8 @@ import SkillArsenal from './Config/SkillArsenal'
 import AppearanceEditor from './Config/AppearanceEditor'
 import PersonaManager from './Config/PersonaManager'
 import DebugConsole from './Config/DebugConsole'
-import StorageConfig from './Config/StorageConfig'
 
-type SubView = 'main' | 'advanced' | 'gateway' | 'world' | 'prompt' | 'provider-edit' | 'directive-edit' | 'skills' | 'persona' | 'debug' | 'storage' | 'appearance'
+type SubView = 'main' | 'advanced' | 'gateway' | 'world' | 'prompt' | 'provider-edit' | 'directive-edit' | 'skills' | 'persona' | 'debug' | 'appearance'
 
 const MAIN_ITEMS = [
   { id: 'gateway', label: 'API 参数', icon: 'G', sub: 'API Gateway' },
@@ -29,7 +28,6 @@ const MAIN_ITEMS = [
 
 const ADVANCED_ITEMS = [
   { id: 'appearance', label: '视觉风格', icon: 'A', sub: 'Appearance' },
-  { id: 'storage',    label: '存储后端', icon: 'K', sub: 'Storage' },
   { id: 'debug',      label: '调试日志', icon: 'D', sub: 'Debug' },
 ]
 
@@ -54,35 +52,11 @@ const NavItem: React.FC<{ id: string; label: string; icon: string; sub: string; 
 )
 
 const ConfigPanel: React.FC = () => {
-  const { isConfigOpen, setIsConfigOpen, setCurrentView, addProvider, addDirective, config, updateConfig, configSubView, setConfigSubView, multiCharMode, setMultiCharMode, routerProviderId, setRouterProviderId, setMasterPassword } = useAppStore()
+  const { isConfigOpen, setIsConfigOpen, setCurrentView, addProvider, addDirective, config, updateConfig, configSubView, setConfigSubView, multiCharMode, setMultiCharMode, routerProviderId, setRouterProviderId } = useAppStore()
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [showEncryptionSetup, setShowEncryptionSetup] = useState(false)
-  const [encryptPassword, setEncryptPassword] = useState('')
-  const [encryptConfirm, setEncryptConfirm] = useState('')
-  const [encryptError, setEncryptError] = useState('')
 
   const activeView = configSubView as SubView
   const setActiveView = (view: SubView) => setConfigSubView(view as any)
-
-  const handleEnableEncryption = async () => {
-    if (encryptPassword.length < 8) {
-      setEncryptError('密碼至少 8 位')
-      return
-    }
-    if (encryptPassword !== encryptConfirm) {
-      setEncryptError('兩次密碼不一致')
-      return
-    }
-    try {
-      await setMasterPassword(encryptPassword)
-      setShowEncryptionSetup(false)
-      setEncryptPassword('')
-      setEncryptConfirm('')
-      setEncryptError('')
-    } catch (err: any) {
-      setEncryptError(err.message)
-    }
-  }
 
   return (
     <AnimatePresence>
@@ -193,7 +167,7 @@ const ConfigPanel: React.FC = () => {
                   </motion.div>
                 )}
 
-                {activeView === 'gateway' && <ProviderManager onEdit={(id) => { setEditingId(id); setActiveView('provider-edit') }} onAdd={() => { const newId = `provider-${Date.now()}`; addProvider({ id: newId, name: '新节点', apiKey: '', endpoint: 'https://api.openai.com/v1', model: 'gpt-4o' }); setEditingId(newId); setActiveView('provider-edit') }} onEnableEncryption={() => setShowEncryptionSetup(true)} />}
+                {activeView === 'gateway' && <ProviderManager onEdit={(id) => { setEditingId(id); setActiveView('provider-edit') }} onAdd={() => { const newId = `provider-${Date.now()}`; addProvider({ id: newId, name: '新节点', apiKey: '', endpoint: 'https://api.openai.com/v1', model: 'gpt-4o' }); setEditingId(newId); setActiveView('provider-edit') }} />}
                 {activeView === 'provider-edit' && editingId && <ProviderEditor id={editingId} onClose={() => setActiveView('gateway')} />}
                 {activeView === 'prompt' && <DirectiveManager onEdit={(id) => { setEditingId(id); setActiveView('directive-edit') }} onAdd={() => { const newId = `dir-${Date.now()}`; addDirective({ id: newId, title: '新指令', content: '', enabled: true }); setEditingId(newId); setActiveView('directive-edit') }} />}
                 {activeView === 'directive-edit' && editingId && <DirectiveEditor id={editingId} onClose={() => setActiveView('prompt')} />}
@@ -202,11 +176,6 @@ const ConfigPanel: React.FC = () => {
                 {activeView === 'persona' && <PersonaManager />}
                 {activeView === 'debug' && <DebugConsole />}
                 {activeView === 'appearance' && <AppearanceEditor />}
-                {activeView === 'storage' && (
-                  <motion.div key="storage" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="p-6">
-                    <StorageConfig />
-                  </motion.div>
-                )}
 
               </AnimatePresence>
             </div>
@@ -216,36 +185,6 @@ const ConfigPanel: React.FC = () => {
             </footer>
           </motion.div>
 
-          {showEncryptionSetup && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[102] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-              <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-white dark:bg-gray-900 rounded-2xl p-6 w-96 shadow-2xl">
-                <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-gray-200">啟用加密保護</h3>
-                <input
-                  type="password"
-                  placeholder="主密碼（至少 8 位）"
-                  value={encryptPassword}
-                  onChange={e => setEncryptPassword(e.target.value)}
-                  className="w-full px-4 py-2 mb-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200"
-                />
-                <input
-                  type="password"
-                  placeholder="確認密碼"
-                  value={encryptConfirm}
-                  onChange={e => setEncryptConfirm(e.target.value)}
-                  className="w-full px-4 py-2 mb-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200"
-                />
-                {encryptError && <p className="text-red-500 text-sm mb-3">{encryptError}</p>}
-                <div className="flex gap-2">
-                  <button onClick={handleEnableEncryption} className="flex-1 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                    確認
-                  </button>
-                  <button onClick={() => { setShowEncryptionSetup(false); setEncryptError('') }} className="flex-1 py-2 bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-400">
-                    取消
-                  </button>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
         </>
       )}
     </AnimatePresence>

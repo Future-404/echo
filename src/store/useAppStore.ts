@@ -15,6 +15,7 @@ export interface WorldBookEntry {
   comment?: string;
   insertionOrder?: number;
   constant?: boolean;
+  position?: 0 | 1; // 0=before_char, 1=after_char (ST 规范)
   extensions?: Record<string, any>;
 }
 
@@ -126,7 +127,8 @@ export interface SaveSlot {
 
 interface AppState extends ChatSlice, CharacterSlice, ConfigSlice, SaveSlice {
   isLoading: boolean; 
-  isConfigOpen: boolean; 
+  isConfigOpen: boolean;
+  isDialogueFullscreen: boolean;
   currentView: 'home' | 'main' | 'selection' | 'multi-selection' | 'save' | 'load' | 'help';
   configSubView: 'main' | 'advanced' | 'gateway' | 'world' | 'prompt' | 'provider-edit' | 'directive-edit' | 'skills' | 'persona' | 'debug' | 'parsers' | 'appearance';
   lastInteraction: { x: number; y: number } | null; 
@@ -151,6 +153,7 @@ interface AppState extends ChatSlice, CharacterSlice, ConfigSlice, SaveSlice {
   setIsConfigOpen: (open: boolean, subView?: AppState['configSubView']) => void;
   setConfigSubView: (view: AppState['configSubView']) => void;
   setCurrentView: (view: 'home' | 'main' | 'selection' | 'multi-selection' | 'save' | 'load' | 'help') => void;
+  setDialogueFullscreen: (v: boolean) => void;
   setInteraction: (x: number, y: number, interacting: boolean) => void;
   addDebugLog: (entry: Omit<DebugEntry, 'id' | 'timestamp'>) => void;
   clearDebugLogs: () => void;
@@ -183,6 +186,7 @@ export const useAppStore = create<AppState>()(
       _hasHydrated: false,
       isLoading: true,
       isConfigOpen: false,
+      isDialogueFullscreen: false,
       currentView: 'home',
       configSubView: 'main',
       lastInteraction: null,
@@ -201,6 +205,7 @@ export const useAppStore = create<AppState>()(
       })),
       setConfigSubView: (view) => set({ configSubView: view }),
       setCurrentView: (view) => set({ currentView: view }),
+      setDialogueFullscreen: (v) => set({ isDialogueFullscreen: v }),
       setInteraction: (x, y, interacting) => set({ lastInteraction: interacting ? { x, y } : null, isInteracting: interacting }),
       
       addDebugLog: (entry) => set((state) => ({ 
@@ -257,15 +262,8 @@ export const useAppStore = create<AppState>()(
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true)
       },
-      partialize: (state) => {
-        const hasPassword = state.config.masterPasswordHash && state.config.masterPasswordHash !== 'skipped';
-        return {
-          config: {
-            ...state.config,
-            // 有主密碼：清空明文 providers，保留 encryptedProviders
-            // 無主密碼：保留明文 providers
-            providers: hasPassword ? [] : state.config.providers,
-          },
+      partialize: (state) => ({
+          config: state.config,
           currentView: state.currentView,
           characters: state.characters.map(c => c.id.startsWith('custom-') ? { ...c, image: '' } : c),
           selectedCharacter: state.selectedCharacter.id.startsWith('custom-') ? { ...state.selectedCharacter, image: '' } : state.selectedCharacter, 
@@ -278,8 +276,7 @@ export const useAppStore = create<AppState>()(
           missions: state.missions, 
           fragments: state.fragments,
           saveSlots: state.saveSlots,
-        };
-      },
+        }),
     }
   )
 )

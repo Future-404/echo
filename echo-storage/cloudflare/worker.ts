@@ -40,12 +40,21 @@ export default {
     const origin = env.ALLOWED_ORIGIN || '*'
 
     if (req.method === 'OPTIONS') return json(null, 204, origin)
-    if (!auth(req, env)) return json({ error: 'Unauthorized' }, 401, origin)
 
     const url = new URL(req.url)
     const [, , resource, rawId] = url.pathname.split('/')
 
     try {
+      // ── /api/auth（無需鑒權，驗證密碼後返回 token）────────────────────────
+      if (resource === 'auth') {
+        if (req.method !== 'POST') return json({ error: 'Method Not Allowed' }, 405, origin)
+        const body = await parseBody<{ password: string }>(req)
+        if (!body || body.password !== env.AUTH_TOKEN) return json({ error: 'Invalid password' }, 401, origin)
+        return json({ token: env.AUTH_TOKEN }, 200, origin)
+      }
+
+      if (!auth(req, env)) return json({ error: 'Unauthorized' }, 401, origin)
+
       // ── /api/ping ──────────────────────────────────────────────────────────
       if (resource === 'ping') return json({ ok: true }, 200, origin)
 

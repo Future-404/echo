@@ -1,12 +1,121 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, BookOpen, Layers, Database, Cpu, Info, ChevronRight, BarChart2, MessageCircle, Paintbrush, Users } from 'lucide-react';
+import { X, BookOpen, Layers, Database, Cpu, Info, ChevronRight, BarChart2, MessageCircle, Paintbrush, Users, Rocket } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 
 const HELP_SECTIONS = [
   {
-    id: 'chara',
-    title: '角色卡规范',
+    id: 'quickstart',
+    title: '快速开始',
+    icon: <Rocket size={18} />,
+    content: (
+      <div className="space-y-6 text-xs md:text-sm">
+        <p>Echo 是私有部署应用，需要配合后端服务使用。选择适合你的部署方式，完成后输入密码即可进入。</p>
+
+        {/* 方式对比 */}
+        <div className="grid grid-cols-1 gap-3">
+
+          {/* Cloudflare 自动部署 */}
+          <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+            <div className="px-4 py-2.5 bg-orange-500/10 flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-orange-400">方式一：GitHub + Cloudflare（推荐小白）</span>
+              <span className="text-[9px] opacity-50">免费 · push 自动更新</span>
+            </div>
+            <div className="px-4 py-3 space-y-3 text-[10px]">
+              <div className="space-y-1.5 opacity-80 leading-relaxed">
+                <p><span className="font-bold">1.</span> Fork 本仓库到你的 GitHub 账号</p>
+                <p><span className="font-bold">2.</span> 在终端执行以下命令完成后端初始化：</p>
+              </div>
+              <pre className="p-3 text-[9px] font-mono opacity-60 bg-black/5 dark:bg-black/20 rounded-xl overflow-x-auto whitespace-pre">{`npm install -g wrangler && wrangler login
+cd echo-storage/cloudflare
+wrangler kv:namespace create ECHO_KV        # 记录 id → 填入 wrangler.toml
+wrangler d1 create echo-images              # 记录 database_id → 填入 wrangler.toml
+wrangler d1 execute echo-images --file=schema.sql --remote
+openssl rand -hex 32                        # 复制输出作为密码
+wrangler secret put AUTH_TOKEN              # 粘贴上面的密码
+wrangler deploy                             # 记录返回的 Worker URL`}</pre>
+              <div className="space-y-1.5 opacity-80 leading-relaxed">
+                <p><span className="font-bold">3.</span> 将修改后的 <code className="bg-white/10 px-1 rounded">wrangler.toml</code> push 到你的 Fork</p>
+                <p><span className="font-bold">4.</span> 在 GitHub → Settings → Secrets 添加三个变量：</p>
+              </div>
+              <div className="rounded-xl border border-white/10 overflow-hidden">
+                {[
+                  ['CLOUDFLARE_API_TOKEN', 'Cloudflare → My Profile → API Tokens → Edit Cloudflare Workers'],
+                  ['VITE_API_URL', '上一步的 Worker URL，如 https://echo-storage.xxx.workers.dev'],
+                  ['CF_PAGES_PROJECT_NAME', '你在 Cloudflare Pages 创建的项目名'],
+                ].map(([k, v]) => (
+                  <div key={k} className="grid grid-cols-[auto_1fr] gap-x-3 px-3 py-2 border-b border-white/5 last:border-0">
+                    <code className="text-blue-400 shrink-0">{k}</code>
+                    <span className="opacity-50">{v}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="opacity-60">之后每次 push 自动部署，访问 Pages 域名输入密码进入。</p>
+            </div>
+          </div>
+
+          {/* Docker */}
+          <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+            <div className="px-4 py-2.5 bg-blue-500/10 flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400">方式二：Docker 自托管</span>
+              <span className="text-[9px] opacity-50">有服务器 · 完全私有</span>
+            </div>
+            <div className="px-4 py-3 space-y-2 text-[10px]">
+              <pre className="p-3 text-[9px] font-mono opacity-60 bg-black/5 dark:bg-black/20 rounded-xl overflow-x-auto whitespace-pre">{`git clone https://github.com/your-username/echo.git && cd echo
+cp .env.example .env
+# 编辑 .env，将 AUTH_TOKEN 改为随机字符串（openssl rand -hex 32）
+docker-compose up -d
+# 访问 http://localhost:8888，输入 AUTH_TOKEN 进入`}</pre>
+              <p className="opacity-50">数据持久化到 Docker volume，重启不丢失。</p>
+            </div>
+          </div>
+
+          {/* Node.js 生产 */}
+          <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+            <div className="px-4 py-2.5 bg-green-500/10 flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-green-400">方式三：Node.js 生产部署</span>
+              <span className="text-[9px] opacity-50">单端口 · 前后端一体</span>
+            </div>
+            <div className="px-4 py-3 space-y-2 text-[10px]">
+              <pre className="p-3 text-[9px] font-mono opacity-60 bg-black/5 dark:bg-black/20 rounded-xl overflow-x-auto whitespace-pre">{`npm install && npm run build
+cd echo-storage/node && npm install
+AUTH_TOKEN=your_token node server.js
+# 访问 http://your-server:3456，输入 AUTH_TOKEN 进入`}</pre>
+              <p className="opacity-50">后端同时 serve 前端静态文件，只需一个端口。</p>
+            </div>
+          </div>
+        </div>
+
+        {/* 进入后第一步 */}
+        <div className="space-y-2">
+          <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">进入后第一步</p>
+          <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+            <div className="divide-y divide-white/5 text-[10px]">
+              {[
+                ['1', '配置 API', '设置 → API 参数 → 填入 Endpoint、API Key、模型名称'],
+                ['2', '导入角色卡', '主界面 → 点击角色区域 → 上传 PNG 角色卡（SillyTavern 格式）'],
+                ['3', '开始对话', '选择角色后点击开场白，或直接在输入框发送消息'],
+              ].map(([num, title, desc]) => (
+                <div key={num} className="flex gap-3 px-4 py-2.5">
+                  <span className="text-[9px] font-mono text-blue-400 opacity-60 w-3 shrink-0 mt-0.5">{num}</span>
+                  <div>
+                    <span className="font-bold text-gray-600 dark:text-gray-300">{title}</span>
+                    <span className="opacity-60"> — {desc}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="p-3 rounded-2xl bg-amber-500/5 border border-amber-500/10 text-[10px] space-y-1">
+          <p className="font-bold text-amber-400 uppercase tracking-widest">⚠️ AUTH_TOKEN 是唯一密码</p>
+          <p className="opacity-70 leading-relaxed">后端必须设置 <code className="bg-white/10 px-1 rounded">AUTH_TOKEN</code> 环境变量，无此变量服务直接退出。这个 token 同时是网站访问密码和 API 鉴权凭证，请妥善保管，不要使用默认值。</p>
+        </div>
+      </div>
+    )
+  },
+  {
     icon: <BookOpen size={18} />,
     content: (
       <div className="space-y-6 text-xs md:text-sm">
@@ -399,17 +508,11 @@ const HELP_SECTIONS = [
                 ['--dialogue-text-narration', '#6b7280', '旁白文字颜色（居中小字）'],
                 ['--dialogue-text-thought', '#6b7280', '心理描写颜色（斜体括号内）'],
                 ['--dialogue-text-action', '#4b5563', '动作描写颜色（居中斜体）'],
-                ['--stat-color-love', '#f43f5e', '状态栏：love 进度条颜色'],
-                ['--stat-color-hate', '#9333ea', '状态栏：hate 进度条颜色'],
-                ['--stat-color-hp', '#ef4444', '状态栏：hp 进度条颜色'],
-                ['--stat-color-mana', '#3b82f6', '状态栏：mana 进度条颜色'],
-                ['--stat-color-favor', '#fb7185', '状态栏：favor 进度条颜色'],
-                ['--stat-color-value', '#fbbf24', '状态栏：value 进度条颜色'],
-                ['--stat-color-default', '#94a3b8', '状态栏：其余未命名属性颜色'],
                 ['--char-a-color', '#60a5fa', '双角色模式：CharA 头像/名字颜色'],
                 ['--char-b-color', '#c084fc', '双角色模式：CharB 头像/名字颜色'],
                 ['--app-font', 'Noto Sans SC', '全局字体（也可在字体选择器中设置）'],
                 ['--app-font-size', '16px', '全局字号（也可在字号滑块中设置）'],
+                ['--custom-bg', 'none', '自定义背景图（url(...) 格式）'],
               ].map(([varName, defaultVal, desc]) => (
                 <div key={varName} className="grid grid-cols-[auto_auto_1fr] gap-x-4 items-start px-4 py-2.5 text-[10px]">
                   <code className="font-mono text-blue-400 shrink-0">{varName}</code>
@@ -483,6 +586,21 @@ const HELP_SECTIONS = [
   --dialogue-bg: rgba(255, 250, 240, 0.9);
 }`}</pre>
           </div>
+
+          <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+            <div className="px-4 py-2 bg-rose-500/10 flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-rose-400">角色卡 HTML 内容样式覆盖</span>
+            </div>
+            <pre className="p-4 text-[10px] leading-relaxed opacity-70 overflow-x-auto whitespace-pre bg-black/5 dark:bg-black/20 font-mono">{`/* 统一缩小角色卡 HTML 内容的字号（移动端适配）*/
+.echo-html-block * {
+  font-size: 13px !important;
+}
+
+/* 覆盖角色卡状态栏背景色 */
+.echo-html-block details {
+  background: rgba(0, 0, 0, 0.6) !important;
+}`}</pre>
+          </div>
         </div>
 
         <div className="p-3 rounded-2xl bg-amber-500/5 border border-amber-500/10 text-[10px] space-y-1">
@@ -497,13 +615,13 @@ const HELP_SECTIONS = [
     icon: <Database size={18} />,
     content: (
       <div className="space-y-6 text-xs md:text-sm">
-        <p>ECHO 采用统一的 <code className="bg-white/10 px-1 rounded">StorageAdapter</code> 接口，本地与远程后端无缝切换，存档数据随状态一起落盘。</p>
+        <p>ECHO 采用统一的 <code className="bg-white/10 px-1 rounded">StorageAdapter</code> 接口，所有数据（配置、对话、图片）存储在私有后端服务，支持多设备同步。</p>
 
-        {/* 本地存储 */}
+        {/* 访问控制 */}
         <div className="space-y-2">
-          <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">本地存储（默认）</p>
+          <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">访问控制</p>
           <div className="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/10 space-y-2 text-[11px] leading-relaxed opacity-80">
-            <p>所有数据默认存储于浏览器 <strong>IndexedDB</strong>，数据库名 <code className="bg-white/10 px-1 rounded">EchoAppDB</code>（配置/存档）和 <code className="bg-white/10 px-1 rounded">EchoImageDB</code>（图片）。无需任何配置，离线可用。</p>
+            <p>首次访问时显示密码输入页，输入正确的 <code className="bg-white/10 px-1 rounded">AUTH_TOKEN</code> 后进入应用。Token 存入浏览器 <code className="bg-white/10 px-1 rounded">localStorage</code>，后续自动登录。清除浏览器数据或换设备需重新输入。</p>
           </div>
         </div>
 
@@ -526,39 +644,38 @@ const HELP_SECTIONS = [
           </div>
         </div>
 
-        {/* 远程后端 */}
+        {/* 后端部署 */}
         <div className="space-y-2">
-          <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">远程后端（跨设备同步）</p>
+          <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">后端部署</p>
           <p className="opacity-60 text-[10px] leading-relaxed">配套开源后端 <code className="bg-white/10 px-1 rounded">echo-storage</code> 提供两种部署方式，共享同一套 REST API 协议。</p>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="p-3 rounded-2xl bg-orange-500/5 border border-orange-500/10 space-y-1.5">
               <p className="font-bold text-orange-400 text-[10px] uppercase tracking-widest">Cloudflare Workers</p>
-              <p className="opacity-60 text-[10px] leading-relaxed">生产级推荐。KV 存储配置与存档，D1 数据库存储图片。全球边缘节点，免费额度充足。</p>
+              <p className="opacity-60 text-[10px] leading-relaxed">KV 存储配置与存档，D1 数据库存储图片。全球边缘节点，免费额度充足。</p>
               <div className="space-y-0.5 pt-1">
                 {[
-                  'npx wrangler login',
-                  'npx wrangler d1 create echo-images',
-                  '# 填写 wrangler.toml 中的 database_id',
-                  'npx wrangler d1 execute echo-images \\',
+                  'wrangler kv:namespace create ECHO_KV',
+                  'wrangler d1 create echo-images',
+                  'wrangler d1 execute echo-images \\',
                   '  --file=schema.sql --remote',
-                  'npx wrangler secret put AUTH_TOKEN',
-                  'cd cloudflare && npx wrangler deploy',
+                  'wrangler secret put AUTH_TOKEN',
+                  'wrangler deploy',
                 ].map((cmd, i) => (
-                  <pre key={i} className={`text-[9px] font-mono leading-relaxed ${cmd.startsWith('#') ? 'opacity-30' : 'opacity-60'}`}>{cmd}</pre>
+                  <pre key={i} className="text-[9px] font-mono leading-relaxed opacity-60">{cmd}</pre>
                 ))}
               </div>
             </div>
 
             <div className="p-3 rounded-2xl bg-green-500/5 border border-green-500/10 space-y-1.5">
               <p className="font-bold text-green-400 text-[10px] uppercase tracking-widest">Node.js</p>
-              <p className="opacity-60 text-[10px] leading-relaxed">私有部署首选。SQLite 存储全部数据，适合本地服务器、家用 NAS、树莓派等环境。</p>
+              <p className="opacity-60 text-[10px] leading-relaxed">SQLite 存储全部数据，适合本地服务器、家用 NAS、树莓派等环境。</p>
               <div className="space-y-0.5 pt-1">
                 {[
-                  'cd node && npm install',
-                  'export AUTH_TOKEN=your_secret',
+                  'cd echo-storage/node',
+                  'npm install',
+                  'AUTH_TOKEN=your_secret node server.js',
                   '# 默认端口 3456',
-                  'node server.js',
                 ].map((cmd, i) => (
                   <pre key={i} className={`text-[9px] font-mono leading-relaxed ${cmd.startsWith('#') ? 'opacity-30' : 'opacity-60'}`}>{cmd}</pre>
                 ))}
@@ -573,28 +690,23 @@ const HELP_SECTIONS = [
           <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
             <div className="divide-y divide-white/5 text-[10px] font-mono">
               {[
-                ['GET',    '/api/storage/:key',  '读取配置/存档（KV）'],
-                ['PUT',    '/api/storage/:key',  '写入，body: { value: string }'],
-                ['DELETE', '/api/storage/:key',  '删除指定 key'],
-                ['GET',    '/api/images/:id',    '读取图片，返回 { base64 }'],
-                ['PUT',    '/api/images/:id',    '上传，body: { base64: string }'],
-                ['DELETE', '/api/images/:id',    '删除图片'],
+                ['POST',   '/api/auth',           '验证密码，返回 token（无需鉴权）'],
+                ['GET',    '/api/storage/:key',   '读取配置/存档（KV）'],
+                ['PUT',    '/api/storage/:key',   '写入，body: { value: string }'],
+                ['DELETE', '/api/storage/:key',   '删除指定 key'],
+                ['GET',    '/api/images/:id',     '读取图片，返回 { base64 }'],
+                ['PUT',    '/api/images/:id',     '上传，body: { base64: string }'],
+                ['DELETE', '/api/images/:id',     '删除图片'],
               ].map(([method, path, desc]) => (
-                <div key={path + method} className="grid grid-cols-[3rem_auto_1fr] gap-x-3 items-start px-4 py-2">
-                  <span className={`font-bold shrink-0 ${method === 'GET' ? 'text-blue-400' : method === 'PUT' ? 'text-green-400' : 'text-red-400'}`}>{method}</span>
+                <div key={path + method} className="grid grid-cols-[3.5rem_auto_1fr] gap-x-3 items-start px-4 py-2">
+                  <span className={`font-bold shrink-0 ${method === 'GET' ? 'text-blue-400' : method === 'POST' ? 'text-yellow-400' : method === 'PUT' ? 'text-green-400' : 'text-red-400'}`}>{method}</span>
                   <code className="opacity-70 shrink-0">{path}</code>
                   <span className="opacity-40 font-sans">{desc}</span>
                 </div>
               ))}
             </div>
           </div>
-          <p className="opacity-40 text-[10px] px-1">所有请求需携带 <code className="bg-white/10 px-1 rounded">Authorization: Bearer &lt;AUTH_TOKEN&gt;</code>。客户端内置写入串行队列，防止乱序覆盖。</p>
-        </div>
-
-        {/* 前端配置 */}
-        <div className="p-3 rounded-2xl bg-amber-500/5 border border-amber-500/10 text-[10px] space-y-1">
-          <p className="font-bold text-amber-400 uppercase tracking-widest">前端配置</p>
-          <p className="opacity-70 leading-relaxed">部署完成后，在 <strong>设置 → 高级设置 → 存储后端</strong> 面板中填入后端地址（如 <code className="bg-white/10 px-1 rounded">https://echo-storage.your-name.workers.dev</code>）和 AUTH_TOKEN，保存后立即切换为远程存储。</p>
+          <p className="opacity-40 text-[10px] px-1">除 <code className="bg-white/10 px-1 rounded">/api/auth</code> 外，所有请求需携带 <code className="bg-white/10 px-1 rounded">Authorization: Bearer &lt;token&gt;</code>。</p>
         </div>
       </div>
     )
@@ -605,34 +717,39 @@ const HELP_SECTIONS = [
     icon: <Info size={18} />,
     content: (
       <div className="space-y-6 text-xs md:text-sm">
-        <p>ECHO 采用客户端加密存储架构，所有敏感数据（API Key）在本地加密后存储，密钥永不离开你的设备。</p>
+        <p>ECHO 采用单 Token 私有部署架构，网站本身受 <code className="bg-white/10 px-1 rounded">AUTH_TOKEN</code> 保护，未授权用户无法访问任何内容。</p>
 
-        {/* API Key 安全 */}
+        {/* 访问控制 */}
         <div className="space-y-2">
-          <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">API Key 保护</p>
-          <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/10 space-y-3 text-[11px] leading-relaxed">
-            <p className="font-bold text-amber-400">⚠️ 重要：请务必设置主密码</p>
-            <p className="opacity-80">添加第一个 API Provider 时会自动提示设置主密码：</p>
-            <ul className="list-disc pl-5 space-y-1 opacity-70">
-              <li>所有 API Key 使用 <strong>AES-GCM 256 位加密</strong>存储</li>
-              <li>密钥通过 <strong>PBKDF2</strong> 从主密码派生（100,000 次迭代）</li>
-              <li>每次打开应用需输入主密码解锁</li>
-              <li>30 分钟无操作自动锁定</li>
-              <li>忘记密码将无法恢复数据，请妥善保管</li>
-            </ul>
-          </div>
-        </div>
-
-        {/* 后端部署安全 */}
-        <div className="space-y-2">
-          <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">后端部署安全</p>
+          <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">访问控制机制</p>
           <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
             <div className="divide-y divide-white/5 text-[10px]">
               {[
-                ['强随机 Token', '使用 openssl rand -hex 32 生成至少 32 字符的认证令牌'],
+                ['密码网关', '首次访问显示密码输入页，输入 AUTH_TOKEN 后才能进入应用'],
+                ['Token 缓存', '验证成功后 token 存入 localStorage，同设备同浏览器自动登录'],
+                ['API 鉴权', '所有后端请求携带 Authorization: Bearer <token>，无效 token 返回 401'],
+                ['换设备登录', '清除浏览器数据或换设备需重新输入密码'],
+              ].map(([title, desc]) => (
+                <div key={title} className="flex gap-3 px-4 py-2.5">
+                  <span className="font-bold text-gray-600 dark:text-gray-300 shrink-0 w-20">{title}</span>
+                  <span className="opacity-60">{desc}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* 部署安全建议 */}
+        <div className="space-y-2">
+          <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">部署安全建议</p>
+          <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+            <div className="divide-y divide-white/5 text-[10px]">
+              {[
+                ['强随机 Token', '使用 openssl rand -hex 32 生成至少 32 字符的 AUTH_TOKEN'],
                 ['限制 CORS', '生产环境将 ALLOWED_ORIGIN 设为前端域名，不使用 *'],
                 ['HTTPS 部署', 'Cloudflare Workers 自动提供 HTTPS；Node.js 需配置 Nginx/Caddy 反向代理'],
                 ['定期备份', 'Node.js 版本定期备份 echo.db；Cloudflare 自动备份'],
+                ['Token 泄露', '立即在后端重新设置 AUTH_TOKEN，旧 token 立即失效'],
               ].map(([title, desc]) => (
                 <div key={title} className="flex gap-3 px-4 py-2.5">
                   <span className="font-bold text-gray-600 dark:text-gray-300 shrink-0 w-24">{title}</span>
@@ -643,49 +760,35 @@ const HELP_SECTIONS = [
           </div>
         </div>
 
-        {/* 生产部署检查清单 */}
+        {/* 部署检查清单 */}
         <div className="space-y-2">
-          <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">生产部署检查清单</p>
-          <div className="space-y-2">
-            {[
-              { title: '前端应用', items: [
-                '✅ 已设置主密码加密',
-                '✅ 已配置远程存储后端（可选）',
-                '✅ 使用 HTTPS 访问（必需，HTTP 下加密功能不可用）',
-                '✅ 已测试 API Key 连接',
-              ]},
-              { title: '后端存储（如果使用）', items: [
-                '✅ AUTH_TOKEN 已设置为强随机字符串',
+          <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">部署检查清单</p>
+          <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+            <div className="divide-y divide-white/5">
+              {[
+                '✅ AUTH_TOKEN 已设置为强随机字符串（非默认值）',
                 '✅ ALLOWED_ORIGIN 已设为前端域名',
-                '✅ 数据库已初始化（D1 或 SQLite）',
-                '✅ 已测试 /api/ping 端点',
-              ]},
-            ].map(({ title, items }) => (
-              <div key={title} className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
-                <div className="px-4 py-2 bg-blue-500/5 text-[10px] font-bold uppercase tracking-widest text-blue-400">
-                  {title}
+                '✅ 使用 HTTPS 访问',
+                '✅ 已测试密码登录流程',
+                '✅ 已测试 API 数据读写',
+                '✅ 数据库已初始化（D1 schema 或 SQLite 文件）',
+              ].map((item, i) => (
+                <div key={i} className="px-4 py-2 text-[10px] opacity-70 font-mono">
+                  {item}
                 </div>
-                <div className="divide-y divide-white/5">
-                  {items.map((item, i) => (
-                    <div key={i} className="px-4 py-2 text-[10px] opacity-70 font-mono">
-                      {item}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* 安全最佳实践 */}
-        <div className="p-3 rounded-2xl bg-green-500/5 border border-green-500/10 text-[10px] space-y-2">
-          <p className="font-bold text-green-400 uppercase tracking-widest">💡 安全最佳实践</p>
+        {/* API Key 安全 */}
+        <div className="p-3 rounded-2xl bg-amber-500/5 border border-amber-500/10 text-[10px] space-y-1">
+          <p className="font-bold text-amber-400 uppercase tracking-widest">⚠️ API Key 安全提示</p>
           <ul className="list-disc pl-5 space-y-1 opacity-70 leading-relaxed">
-            <li>使用 OpenAI/Anthropic 的 <strong>API Key 限额功能</strong>，设置每月最大消费</li>
-            <li>定期检查 API 使用量，避免意外超支</li>
+            <li>API Key 以明文存储在后端数据库，后端安全即数据安全</li>
+            <li>建议在 OpenAI/Anthropic 控制台设置 <strong>每月消费限额</strong></li>
             <li>不要在公共设备上使用，或使用后清除浏览器数据</li>
-            <li>定期导出存档备份，防止数据丢失</li>
-            <li>后端 Token 泄露时立即重新生成并更新</li>
+            <li>定期检查 API 使用量，避免意外超支</li>
           </ul>
         </div>
 
@@ -698,9 +801,8 @@ const HELP_SECTIONS = [
                 ['前端框架', 'React 18 + TypeScript + Vite'],
                 ['渲染引擎', 'PixiJS 7 (WebGL)'],
                 ['状态管理', 'Zustand + Persist'],
-                ['加密算法', 'AES-GCM 256 + PBKDF2'],
-                ['本地存储', 'IndexedDB'],
-                ['后端选项', 'Cloudflare Workers / Node.js'],
+                ['访问控制', 'AUTH_TOKEN 单密码网关'],
+                ['后端选项', 'Cloudflare Workers / Node.js + SQLite'],
               ].map(([key, value]) => (
                 <div key={key} className="grid grid-cols-[6rem_1fr] gap-x-4 px-4 py-2.5">
                   <span className="font-bold text-gray-600 dark:text-gray-300">{key}</span>

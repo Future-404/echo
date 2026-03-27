@@ -1,44 +1,45 @@
 import type { StorageAdapter } from './types'
-import { indexedDbAdapter } from './adapters/indexeddb'
 import { createRemoteAdapter } from './adapters/remote'
 
-export type StorageBackend = 'local' | 'remote'
+const BOOTSTRAP_KEY = 'echo-storage-token'
+const API_BASE = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/+$/, '') ?? ''
 
-// bootstrap 配置：这3个字段极小，允许放 localStorage
-export interface StorageConfig {
-  backend: StorageBackend
-  remoteUrl?: string
-  remoteToken?: string
+export function getSavedToken(): string {
+  return localStorage.getItem(BOOTSTRAP_KEY) ?? ''
 }
 
-const BOOTSTRAP_KEY = 'echo-storage-config'
-
-export function getStorageConfig(): StorageConfig {
-  try {
-    const raw = localStorage.getItem(BOOTSTRAP_KEY)
-    if (raw) return JSON.parse(raw)
-  } catch {}
-  return { backend: 'local' }
-}
-
-export function setStorageConfig(config: StorageConfig) {
-  localStorage.setItem(BOOTSTRAP_KEY, JSON.stringify(config))
+function saveToken(token: string) {
+  localStorage.setItem(BOOTSTRAP_KEY, token)
 }
 
 let _adapter: StorageAdapter | null = null
 
 export function getStorageAdapter(): StorageAdapter {
   if (_adapter) return _adapter
-  const config = getStorageConfig()
-  if (config.backend === 'remote' && config.remoteUrl && config.remoteToken) {
-    _adapter = createRemoteAdapter(config.remoteUrl, config.remoteToken)
-  } else {
-    _adapter = indexedDbAdapter
-  }
+  const token = getSavedToken()
+  if (!token) throw new Error('[echo] 未認證，無法訪問存儲')
+  _adapter = createRemoteAdapter(API_BASE, token)
   return _adapter
 }
 
-// 切换后端时重置适配器实例（需要刷新页面生效）
 export function resetStorageAdapter() {
   _adapter = null
+}
+
+// 啟動時：有 token 直接用，沒有則需要 GateScreen
+export function initStorage(): 'ready' | 'need-auth' {
+  return getSavedToken() ? 'ready' : 'need-auth'
+}
+
+// GateScreen 驗證成功後調用
+export async function authenticateWithPassword(password: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/auth`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+  })
+  if (!res.ok) throw new Error('密碼錯誤')
+  const { token } = await res.json() as { token: string }
+  saveToken(token)
+  _adapter = createRemoteAdapter(API_BASE, token)
 }

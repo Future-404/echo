@@ -1,4 +1,3 @@
-import { CORE_FORMATTING_RULES } from '../store/constants';
 import type { CharacterCard, UserPersona, Directive, Mission, WorldBook } from '../store/useAppStore';
 import { getEnabledSkillPrompts } from '../skills';
 
@@ -114,14 +113,22 @@ export const buildSystemPrompt = (ctx: PromptContext): string => {
     .filter(entry => entry.enabled)
     .sort((a, b) => (a.insertionOrder ?? 0) - (b.insertionOrder ?? 0));
 
-  const allActiveEntries = [...libraryEntries, ...privateEntries];
+  // 按 position 分区：before_char(0) 注入在角色描述前，after_char(1) 注入在后
+  const allActive = [...libraryEntries, ...privateEntries];
+  const beforeCharEntries = allActive.filter(e => e.position === 0);
+  const afterCharEntries = allActive.filter(e => e.position !== 0);
 
-  const activeWorldContext = allActiveEntries
-    .map(entry => {
-      const label = entry.keys && entry.keys.length > 0 ? ` [Knowledge: ${entry.keys.join(', ')}]` : '';
+  const renderEntries = (entries: typeof allActive) =>
+    entries.map(entry => {
+      const label = entry.keys?.length ? ` [Knowledge: ${entry.keys.join(', ')}]` : '';
       return `${label}\n${fastReplace(entry.content)}`;
-    })
-    .join('\n\n') || 'A digital echo chamber where memories fragment and reform.';
+    }).join('\n\n');
+
+  const beforeCharContext = renderEntries(beforeCharEntries);
+  const afterCharContext = renderEntries(afterCharEntries);
+
+  const activeWorldContext = [beforeCharContext, afterCharContext].filter(Boolean).join('\n\n')
+    || 'A digital echo chamber where memories fragment and reform.';
 
   const rawSkillPrompts = getEnabledSkillPrompts(enabledSkillIds);
   const dynamicSkillPrompts = rawSkillPrompts 
@@ -138,11 +145,10 @@ export const buildSystemPrompt = (ctx: PromptContext): string => {
     : '';
 
   // 3. system_prompt：支持 {{original}} 占位符（V2 规范）
-  const globalSystemPrompt = `${enabledDirectives}\n\n${CORE_FORMATTING_RULES}`.trim();
   const rawSystemPrompt = character.systemPrompt || '';
   const systemPrompt = fastReplace(
     rawSystemPrompt.includes('{{original}}')
-      ? rawSystemPrompt.replace(/\{\{original\}\}/gi, globalSystemPrompt)
+      ? rawSystemPrompt.replace(/\{\{original\}\}/gi, enabledDirectives)
       : rawSystemPrompt
   );
 
@@ -157,7 +163,8 @@ export const buildSystemPrompt = (ctx: PromptContext): string => {
 
   return `
   ### CORE IDENTITY
-  ${systemPrompt}
+  ${beforeCharContext ? beforeCharContext + '\n\n' : ''}${systemPrompt}${afterCharContext ? '\n\n' + afterCharContext : ''}
+  ${attributeContext}${skillSection}
 
   ### USER PERSONA
   You are interacting with: ${actualUserName}
@@ -168,14 +175,7 @@ export const buildSystemPrompt = (ctx: PromptContext): string => {
   ### OPERATIONAL PROTOCOLS
   ${enabledDirectives}
 
-  ### WORLD CONTEXT
-  ${activeWorldContext}
-  ${attributeContext}${skillSection}
-
   ### CURRENT OBJECTIVE STATUS (READ BEFORE RESPONDING)
-  ${missionStatus || 'No active narrative objectives.'}
-
-  ### FORMATTING RULES (SYSTEM IMMUTABLE)
-  ${CORE_FORMATTING_RULES}${multiCharSection}
+  ${missionStatus || 'No active narrative objectives.'}${multiCharSection}
   `.trim();
 };
