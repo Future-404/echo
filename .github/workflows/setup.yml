@@ -89,6 +89,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           workingDirectory: echo-storage/cloudflare
+          wranglerVersion: '4'
 
       - name: Set AUTH_TOKEN as Worker secret
         run: |
