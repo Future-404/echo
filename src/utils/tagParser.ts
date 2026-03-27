@@ -1,29 +1,18 @@
-import type { CharacterCard, CustomParser } from '../store/useAppStore';
+import type { CharacterCard } from '../store/useAppStore';
 import { parseUniversalStatus } from './statusParser';
 
-/**
- * 应用角色卡自定义正则脚本进行内容转换
- */
-export const applyCharacterRegexScripts = (text: string, char: CharacterCard, customParsers: CustomParser[] = []): string => {
+// layer: 1=存储层, 2=渲染层
+export const applyCharacterRegexScripts = (text: string, char: CharacterCard, layer: 1 | 2 = 1): string => {
   let transformedText = text;
-  
-  // 1. 优先应用用户全局定义的自定义解析器 (支持隐藏逻辑)
-  customParsers.forEach(parser => {
-    if (!parser.enabled || !parser.triggerRegex) return;
-    try {
-      const regex = new RegExp(parser.triggerRegex, 'gi');
-      if (parser.hideFromChat) {
-        transformedText = transformedText.replace(regex, '');
-      }
-    } catch (e) {
-      console.warn(`[TagParser] Failed to apply custom hide: ${parser.name}`, e);
-    }
-  });
 
   const templates = char.extensions?.tagTemplates || [];
   
   templates.forEach(tpl => {
-    if (!tpl.enabled || !tpl.originalRegex || !tpl.replaceString) return;
+    if (!tpl.enabled || !tpl.originalRegex) return;
+    if (tpl.replaceString === undefined || tpl.replaceString === null) return;
+    // placement 未设置时默认两层都跑（兼容旧数据）
+    const placement = tpl.placement ?? [1, 2];
+    if (!placement.includes(layer)) return;
     
     try {
       let pattern = String(tpl.originalRegex).trim();
@@ -134,29 +123,11 @@ export const extractAndSyncTags = (
   text: string, 
   char: CharacterCard, 
   updateAttributes: (id: string, attrs: Record<string, any>) => void,
-  customParsers: CustomParser[] = []
 ) => {
   const newAttrs: Record<string, any> = {};
 
-  // 0. 优先应用用户全局定义的自定义解析器进行提取
-  customParsers.forEach(parser => {
-    if (!parser.enabled || !parser.triggerRegex) return;
-    try {
-      const regex = new RegExp(parser.triggerRegex, 'gi');
-      let match;
-      while ((match = regex.exec(text)) !== null) {
-        parser.fields.forEach(field => {
-          const val = match[field.index];
-          if (val) newAttrs[field.name] = val.trim();
-        });
-      }
-    } catch (e) {
-      console.warn(`[TagParser] Custom extractor failed: ${parser.name}`, e);
-    }
-  });
-
   // 先对文本应用转换，以支持从转换后的 HTML 界面中提取数据
-  const processedText = applyCharacterRegexScripts(text, char, customParsers);
+  const processedText = applyCharacterRegexScripts(text, char, 1);
 
   // --- 1. 自动解析 <status>, <details>, <html> 等容器标签内部的 Markdown 表格 ---
   const containerTags = ['status', 'details', 'html', 'card'];

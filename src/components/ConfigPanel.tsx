@@ -14,11 +14,10 @@ import WorldBookEditor from './Config/WorldBookEditor'
 import SkillArsenal from './Config/SkillArsenal'
 import AppearanceEditor from './Config/AppearanceEditor'
 import PersonaManager from './Config/PersonaManager'
-import StatusParserEditor from './Config/StatusParserEditor'
 import DebugConsole from './Config/DebugConsole'
 import StorageConfig from './Config/StorageConfig'
 
-type SubView = 'main' | 'advanced' | 'gateway' | 'world' | 'prompt' | 'provider-edit' | 'directive-edit' | 'skills' | 'persona' | 'debug' | 'storage' | 'appearance' | 'parsers'
+type SubView = 'main' | 'advanced' | 'gateway' | 'world' | 'prompt' | 'provider-edit' | 'directive-edit' | 'skills' | 'persona' | 'debug' | 'storage' | 'appearance'
 
 const MAIN_ITEMS = [
   { id: 'gateway', label: 'API 参数', icon: 'G', sub: 'API Gateway' },
@@ -203,7 +202,6 @@ const ConfigPanel: React.FC = () => {
                 {activeView === 'persona' && <PersonaManager />}
                 {activeView === 'debug' && <DebugConsole />}
                 {activeView === 'appearance' && <AppearanceEditor />}
-                {activeView === 'parsers' && <StatusParserEditor />}
                 {activeView === 'storage' && (
                   <motion.div key="storage" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="p-6">
                     <StorageConfig />

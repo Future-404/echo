@@ -1,4 +1,4 @@
-import type { Provider, Directive, WorldBook, WorldBookEntry, UserPersona, CustomParser, ThemeMode } from './useAppStore'
+import type { Provider, Directive, WorldBook, WorldBookEntry, UserPersona, ThemeMode } from './useAppStore'
 import { SecureStorage } from '../utils/crypto'
 
 export interface ConfigSlice {
@@ -12,7 +12,6 @@ export interface ConfigSlice {
     personas: UserPersona[];
     activePersonaId: string;
     isDebugEnabled: boolean;
-    customParsers: CustomParser[];
     userName?: string;
     fontFamily: string;
     fontSize: number;
@@ -34,9 +33,6 @@ export interface ConfigSlice {
   updateProvider: (id: string, updates: Partial<Provider>) => void;
   removeProvider: (id: string) => void;
   setActiveProvider: (id: string) => void;
-  addCustomParser: (parser: CustomParser) => void;
-  updateCustomParser: (id: string, updates: Partial<CustomParser>) => void;
-  removeCustomParser: (id: string) => void;
   addWorldBook: (book: WorldBook) => void;
   updateWorldBook: (id: string, updates: Partial<WorldBook>) => void;
   removeWorldBook: (id: string) => void;
@@ -149,18 +145,6 @@ export const createConfigSlice = (set: any, get: any, INITIAL_CONFIG: ConfigSlic
     const isUnlocked = !!sessionStorage.getItem('_mpwd')
     return hasPassword && !isSkipped && !isUnlocked
   },
-
-  addCustomParser: (parser) => set((state: any) => ({ 
-    config: { ...state.config, customParsers: [...(state.config.customParsers || []), parser] } 
-  })),
-
-  updateCustomParser: (id, updates) => set((state: any) => ({ 
-    config: { ...state.config, customParsers: (state.config.customParsers || []).map((p: CustomParser) => p.id === id ? { ...p, ...updates } : p) } 
-  })),
-
-  removeCustomParser: (id) => set((state: any) => ({ 
-    config: { ...state.config, customParsers: (state.config.customParsers || []).filter((p: CustomParser) => p.id !== id) } 
-  })),
 
   addWorldBook: (book) => set((state: any) => ({ 
     config: { ...state.config, worldBookLibrary: [...(state.config.worldBookLibrary || []), book] } 

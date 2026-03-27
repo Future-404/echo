@@ -98,6 +98,8 @@ const CharacterSelection: React.FC = () => {
               id: s.id || Math.random().toString(36).substr(2, 9),
               name: s.scriptName || 'unnamed',
               originalRegex: s.findRegex,
+              replaceString: s.replaceString ?? '',
+              placement: Array.isArray(s.placement) ? s.placement : [1, 2],
               enabled: s.disabled !== true,
               fields: s.findRegex ? (s.findRegex.match(/\(.*?\)/g) || []).map((_: any, i: number) => `param${i + 1}`) : []
             }));
@@ -113,6 +115,9 @@ const CharacterSelection: React.FC = () => {
           postHistoryInstructions: embeddedData.post_history_instructions || undefined,
           alternateGreetings: embeddedData.alternate_greetings?.length ? embeddedData.alternate_greetings : undefined,
           greeting: embeddedData.first_mes || embeddedData.first_message || embeddedData.greeting || `你好，我是 ${charName}。`,
+          depthPrompt: embeddedData.extensions?.depth_prompt?.prompt
+            ? { content: embeddedData.extensions.depth_prompt.prompt, depth: embeddedData.extensions.depth_prompt.depth ?? 4, role: embeddedData.extensions.depth_prompt.role || 'system' }
+            : undefined,
           extensions
         })
       }
@@ -163,6 +168,8 @@ const CharacterSelection: React.FC = () => {
                   id: s.id || Math.random().toString(36).substr(2, 9),
                   name: s.scriptName || 'unnamed',
                   originalRegex: s.findRegex,
+                  replaceString: s.replaceString ?? '',
+              placement: Array.isArray(s.placement) ? s.placement : [1, 2],
                   enabled: s.disabled !== true,
                   fields: s.findRegex ? (s.findRegex.match(/\(.*?\)/g) || []).map((_: any, i: number) => `param${i + 1}`) : []
                 }));
@@ -177,6 +184,9 @@ const CharacterSelection: React.FC = () => {
                 postHistoryInstructions: data.post_history_instructions || undefined,
                 alternateGreetings: data.alternate_greetings?.length ? data.alternate_greetings : undefined,
                 greeting,
+                depthPrompt: data.extensions?.depth_prompt?.prompt
+                  ? { content: data.extensions.depth_prompt.prompt, depth: data.extensions.depth_prompt.depth ?? 4, role: data.extensions.depth_prompt.role || 'system' }
+                  : undefined,
                 extensions
               })
               importedCount++;

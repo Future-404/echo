@@ -39,7 +39,7 @@ const HelpScreen = lazy(() => import('./components/HelpScreen'))
 const App: React.FC = () => {
   const { 
     isLoading, setIsLoading, currentView, syncImagesFromDb, _hasHydrated, 
-    isHistoryExpanded, multiCharMode, selectedCharacter, secondaryCharacter,
+    multiCharMode, selectedCharacter, secondaryCharacter,
     config
   } = useAppStore()
   
@@ -221,20 +221,10 @@ const App: React.FC = () => {
             
             {/* 对话框区域 */}
             <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col items-center justify-start pointer-events-auto px-4 pt-4">
-              <AnimatePresence>
-                {!isHistoryExpanded && (
-                  <motion.div
-                    key="avatar-container"
-                    initial={{ opacity: 0, scale: 0.8, height: 0 }}
-                    animate={{ opacity: 1, scale: 1, height: 'auto' }}
-                    exit={{ opacity: 0, scale: 0.8, height: 0 }}
-                    transition={{ duration: 0.3, ease: 'easeInOut' }}
-                  >
-                    {multiCharMode ? <MultiCharAvatar activeSpeakerId={activeSpeakerId} /> : <CharacterAvatar />}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-              <div className={`w-full ${isHistoryExpanded ? 'mt-0' : 'mt-4'} mb-4 transition-all duration-300`}>
+              <div className="mb-4">
+                {multiCharMode ? <MultiCharAvatar activeSpeakerId={activeSpeakerId} /> : <CharacterAvatar />}
+              </div>
+              <div className="w-full mb-4">
                 <DialogueBox 
                   displayText={displayText} 
                   isTyping={isTyping} 

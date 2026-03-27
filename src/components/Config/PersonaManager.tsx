@@ -174,6 +174,16 @@ const PersonaManager: React.FC = () => {
                     <label className="text-[8px] tracking-widest text-gray-300 dark:text-gray-600 uppercase mb-2 block font-medium">名称 / Name</label>
                     <input type="text" value={p.name} onChange={(e) => updatePersona(p.id, { name: e.target.value })} className="w-full bg-transparent border-b-0.5 border-gray-200 dark:border-gray-800 py-1 text-sm text-gray-600 dark:text-gray-300 focus:outline-none" />
                   </div>
+                  <div className="flex gap-4">
+                    <div className="group flex-1">
+                      <label className="text-[8px] tracking-widest text-gray-300 dark:text-gray-600 uppercase mb-2 block font-medium">姓氏 {{user_surname}}</label>
+                      <input type="text" value={p.surname || ''} onChange={(e) => updatePersona(p.id, { surname: e.target.value })} placeholder="如：金" className="w-full bg-transparent border-b-0.5 border-gray-200 dark:border-gray-800 py-1 text-sm text-gray-600 dark:text-gray-300 focus:outline-none" />
+                    </div>
+                    <div className="group flex-1">
+                      <label className="text-[8px] tracking-widest text-gray-300 dark:text-gray-600 uppercase mb-2 block font-medium">昵称 {{user_nickname}}</label>
+                      <input type="text" value={p.nickname || ''} onChange={(e) => updatePersona(p.id, { nickname: e.target.value })} placeholder="如：小金" className="w-full bg-transparent border-b-0.5 border-gray-200 dark:border-gray-800 py-1 text-sm text-gray-600 dark:text-gray-300 focus:outline-none" />
+                    </div>
+                  </div>
                   <div className="group">
                     <label className="text-[8px] tracking-widest text-gray-300 dark:text-gray-600 uppercase mb-2 block font-medium">头像 / Avatar</label>
                     <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleAvatarUpload(p.id, e)} />

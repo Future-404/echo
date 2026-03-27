@@ -43,7 +43,7 @@ export const useChat = () => {
       setDisplayText(greetingFullTextRef.current)
       setIsTyping(false)
       const firstMsg = messages[0]
-      if (firstMsg) extractAndSyncTags(firstMsg.content, selectedCharacter, updateAttributes, selectedCharacter.extensions?.customParsers)
+      if (firstMsg) extractAndSyncTags(firstMsg.content, selectedCharacter, updateAttributes)
     }
   }, [messages, selectedCharacter, updateAttributes, setIsTyping])
 
@@ -51,7 +51,7 @@ export const useChat = () => {
     const firstMsg = messages.length === 1 ? messages[0] : null;
     const greetingKey = `${selectedCharacter.id}-${firstMsg?.content}`;
     if (isGreetingSession && firstMsg && firstMsg.role === 'assistant' && lastGreetingKey.current !== greetingKey) {
-      const fullText = applyCharacterRegexScripts(firstMsg.content, selectedCharacter, selectedCharacter.extensions?.customParsers);
+      const fullText = applyCharacterRegexScripts(firstMsg.content, selectedCharacter, 1);
       greetingFullTextRef.current = fullText
       setDisplayText('')
       setIsTyping(true)
@@ -65,7 +65,7 @@ export const useChat = () => {
           setIsTyping(false)
           clearInterval(timer)
           greetingTimerRef.current = null
-          extractAndSyncTags(firstMsg.content, selectedCharacter, updateAttributes, selectedCharacter.extensions?.customParsers);
+          extractAndSyncTags(firstMsg.content, selectedCharacter, updateAttributes);
         }
       }, 16)
       greetingTimerRef.current = timer
@@ -119,6 +119,13 @@ export const useChat = () => {
       ? buildContextForChar(currentMessages, charId, charNames, contextWindow)
       : currentMessages.slice(-contextWindow).map(m => ({ role: m.role as any, content: m.content }))
 
+    // 注入 depth_prompt（ST 兼容：从末尾数第 depth 条位置插入）
+    if (char.depthPrompt?.content) {
+      const dp = char.depthPrompt
+      const insertIdx = Math.max(0, apiMessages.length - dp.depth)
+      apiMessages.splice(insertIdx, 0, { role: dp.role as any, content: replaceMacros(dp.content, activePersona?.name || 'User', char.name) })
+    }
+
     let fetchUrl = `${provider.endpoint}/chat/completions`
     let fetchHeaders: any = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${provider.apiKey}` }
     let fetchBody: any = {}
@@ -163,8 +170,8 @@ export const useChat = () => {
 
     const handleFinish = async (fullText: string, toolCalls?: any[]) => {
       if (config.isDebugEnabled) addDebugLog({ direction: 'IN', label: `[${char.name}] Response`, data: { text: fullText } })
-      extractAndSyncTags(fullText, char, updateAttributes, char.extensions?.customParsers)
-      const transformed = applyCharacterRegexScripts(fullText, char, char.extensions?.customParsers)
+      extractAndSyncTags(fullText, char, updateAttributes)
+      const transformed = applyCharacterRegexScripts(fullText, char, 1)
 
       if (toolCalls?.length) {
         const assistantMsg: Message = { role: 'assistant', content: transformed || '*…*', tool_calls: toolCalls, speakerId: charId }
@@ -190,8 +197,8 @@ export const useChat = () => {
               const followUpData = await followUpRes.json()
               const followUpText = format === 'anthropic' ? followUpData.content?.[0]?.text : followUpData.choices?.[0]?.message?.content
               if (followUpText) {
-                extractAndSyncTags(followUpText, char, updateAttributes, char.extensions?.customParsers)
-                addMessage({ role: 'assistant', content: applyCharacterRegexScripts(followUpText, char, char.extensions?.customParsers), speakerId: charId })
+                extractAndSyncTags(followUpText, char, updateAttributes)
+                addMessage({ role: 'assistant', content: applyCharacterRegexScripts(followUpText, char, 1), speakerId: charId })
               }
             }
           } catch (e) { console.error('Tool follow-up error:', e) }

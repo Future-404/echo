@@ -32,6 +32,7 @@ export interface TagTemplate {
   originalRegex?: string;
   replaceString?: string;
   enabled: boolean;
+  placement?: number[]; // ST 兼容：1=存储层, 2=渲染层，默认 [1,2]
 }
 
 export type CharacterAsset = {
@@ -52,6 +53,7 @@ export type CharacterCard = {
   greeting?: string;
   attributes?: Record<string, any>;
   providerId?: string;
+  depthPrompt?: { content: string; depth: number; role: 'system' | 'user' | 'assistant' }; // ST depth_prompt
   extensions?: {
     missions?: Mission[];
     directives?: Directive[];
@@ -59,7 +61,6 @@ export type CharacterCard = {
     worldBookIds?: string[];
     tagTemplates?: TagTemplate[];
     luminescence?: any;
-    customParsers?: CustomParser[];
     assets?: CharacterAsset[];
     activeEmotion?: string;
     activeBackground?: string;
@@ -95,19 +96,12 @@ export type ThemeMode = 'light' | 'dark' | 'system'
 export interface UserPersona { 
   id: string; 
   name: string; 
+  surname?: string;    // {{user_surname}} 姓氏
+  nickname?: string;   // {{user_nickname}} 昵称
   description: string; 
   background: string;
   worldBook?: WorldBookEntry[];
   avatarId?: string; // IndexedDB key: `persona-${id}`
-}
-
-export interface CustomParser {
-  id: string;
-  name: string;
-  triggerRegex: string;
-  hideFromChat: boolean;
-  fields: { index: number; name: string }[];
-  enabled: boolean;
 }
 
 export interface DebugEntry {
@@ -137,7 +131,6 @@ interface AppState extends ChatSlice, CharacterSlice, ConfigSlice, SaveSlice {
   configSubView: 'main' | 'advanced' | 'gateway' | 'world' | 'prompt' | 'provider-edit' | 'directive-edit' | 'skills' | 'persona' | 'debug' | 'parsers' | 'appearance';
   lastInteraction: { x: number; y: number } | null; 
   isInteracting: boolean;
-  isHistoryExpanded: boolean;
   debugLogs: DebugEntry[];
 
   // 三人聊天
@@ -158,7 +151,6 @@ interface AppState extends ChatSlice, CharacterSlice, ConfigSlice, SaveSlice {
   setIsConfigOpen: (open: boolean, subView?: AppState['configSubView']) => void;
   setConfigSubView: (view: AppState['configSubView']) => void;
   setCurrentView: (view: 'home' | 'main' | 'selection' | 'multi-selection' | 'save' | 'load' | 'help') => void;
-  setIsHistoryExpanded: (expanded: boolean) => void;
   setInteraction: (x: number, y: number, interacting: boolean) => void;
   addDebugLog: (entry: Omit<DebugEntry, 'id' | 'timestamp'>) => void;
   clearDebugLogs: () => void;
@@ -178,7 +170,6 @@ const INITIAL_CONFIG = {
   fontSize: 16,
   customCss: '',
   customBg: false,
-  customParsers: [],
 };
 
 export const useAppStore = create<AppState>()(
@@ -196,7 +187,6 @@ export const useAppStore = create<AppState>()(
       configSubView: 'main',
       lastInteraction: null,
       isInteracting: false,
-      isHistoryExpanded: false,
       debugLogs: [],
       secondaryCharacter: null,
       routerProviderId: '',
@@ -211,7 +201,6 @@ export const useAppStore = create<AppState>()(
       })),
       setConfigSubView: (view) => set({ configSubView: view }),
       setCurrentView: (view) => set({ currentView: view }),
-      setIsHistoryExpanded: (expanded) => set({ isHistoryExpanded: expanded }),
       setInteraction: (x, y, interacting) => set({ lastInteraction: interacting ? { x, y } : null, isInteracting: interacting }),
       
       addDebugLog: (entry) => set((state) => ({ 

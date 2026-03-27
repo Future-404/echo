@@ -15,18 +15,17 @@ export interface PromptContext {
   otherCharName?: string;
 }
 
-/**
- * 宏替换引擎上下文接口
- */
 export interface MacroOptions {
   otherName?: string;
   currentQuest?: string;
   userDescription?: string;
   userBackground?: string;
+  userSurname?: string;   // {{user_surname}}
+  userNickname?: string;  // {{user_nickname}}
 }
 
 /**
- * 宏替换引擎：将文本中的 {{user}}, {{char}}, {{time}}, {{date}}, {{weekday}}, {{other}}, {{current_quest}}, {{description}}, {{background}} 替换为实际内容
+ * 宏替换引擎：将文本中的 {{user}}, {{char}}, {{time}}, {{date}}, {{weekday}}, {{other}}, {{current_quest}}, {{description}}, {{background}}, {{user_surname}}, {{user_nickname}} 替换为实际内容
  */
 export const replaceMacros = (text: string, userName: string, charName: string, options: MacroOptions = {}): string => {
   if (!text) return '';
@@ -45,7 +44,9 @@ export const replaceMacros = (text: string, userName: string, charName: string, 
     .replace(/\{\{weekday\}\}/gi, weekday)
     .replace(/\{\{current_quest\}\}/gi, options.currentQuest || 'None')
     .replace(/\{\{description\}\}/gi, options.userDescription || '')
-    .replace(/\{\{background\}\}/gi, options.userBackground || '');
+    .replace(/\{\{background\}\}/gi, options.userBackground || '')
+    .replace(/\{\{user_surname\}\}/gi, options.userSurname || userName)
+    .replace(/\{\{user_nickname\}\}/gi, options.userNickname || userName);
 };
 
 /**
@@ -69,6 +70,8 @@ export const buildSystemPrompt = (ctx: PromptContext): string => {
     currentQuest: activeMainQuest?.title,
     userDescription: persona?.description,
     userBackground: persona?.background,
+    userSurname: persona?.surname,
+    userNickname: persona?.nickname,
   };
 
   // 快捷调用函数

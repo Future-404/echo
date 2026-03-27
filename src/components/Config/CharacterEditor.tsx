@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Trash2, Check, Globe, Plus, Book, Settings2, Edit2, ChevronDown, ChevronUp, Key, Camera } from 'lucide-react'
 import { useAppStore } from '../../store/useAppStore'
 import type { WorldBookEntry } from '../../store/useAppStore'
-import StatusParserEditor from './StatusParserEditor'
+import TagTemplateEditor from './TagTemplateEditor'
 import { extractPersonaFromPng } from '../../utils/pngParser'
 
 interface CharacterEditorProps {
@@ -355,7 +355,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
             <AnimatePresence>
               {isParsersExpanded && (
                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden bg-gray-50/50 dark:bg-white/5 rounded-[2rem] border border-gray-100 dark:border-white/5">
-                  <StatusParserEditor />
+                  <TagTemplateEditor />
                 </motion.div>
               )}
             </AnimatePresence>
