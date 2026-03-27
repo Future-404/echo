@@ -9,9 +9,9 @@ binding = "ASSETS"
 
 [[kv_namespaces]]
 binding = "ECHO_KV"
-id = "PLACEHOLDER_KV_ID"
+id = "fd5d339432524257a7d03e7d276f5d85"
 
 [[d1_databases]]
 binding = "ECHO_DB"
 database_name = "echo-db"
-database_id = "PLACEHOLDER_D1_ID"
+database_id = "c60eb168-95c0-4576-a0b3-a688a1226063"
