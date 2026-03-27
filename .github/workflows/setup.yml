@@ -89,10 +89,14 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           workingDirectory: echo-storage/cloudflare
-          secrets: |
-            AUTH_TOKEN
-        env:
-          AUTH_TOKEN: ${{ steps.token.outputs.value }}
+
+      - name: Set AUTH_TOKEN as Worker secret
+        run: |
+          curl -s -X PUT \
+            "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/workers/scripts/echo/secrets" \
+            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"name\":\"AUTH_TOKEN\",\"text\":\"${{ steps.token.outputs.value }}\",\"type\":\"secret_text\"}"
 
       - name: Save AUTH_TOKEN as GitHub Secret
         run: |
