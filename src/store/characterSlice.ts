@@ -2,6 +2,18 @@ import type { CharacterCard, WorldBookEntry } from './useAppStore'
 import { getStorageAdapter } from '../storage'
 import { replaceMacros } from '../logic/promptEngine'
 
+const STORE_KEY = 'echo-storage-v16'
+
+async function flushCharacters(get: () => any) {
+  const state = get()
+  const chars = (state.characters || []).map((c: CharacterCard) =>
+    c.id.startsWith('custom-') ? { ...c, image: '' } : c
+  )
+  const stored = await getStorageAdapter().getItem(STORE_KEY)
+  const parsed = stored ? JSON.parse(stored) : {}
+  await getStorageAdapter().setItem(STORE_KEY, JSON.stringify({ ...parsed, characters: chars }))
+}
+
 export interface CharacterSlice {
   characters: CharacterCard[];
   selectedCharacter: CharacterCard;
@@ -42,6 +54,7 @@ export const createCharacterSlice = (set: any, get: any, DEFAULT_CHARACTERS: Cha
   addCharacter: async (char) => {
     if (char.image.startsWith('data:')) await getStorageAdapter().saveImage(char.id, char.image);
     set((state: any) => ({ characters: [...(state.characters || []), char] }));
+    await flushCharacters(get);
   },
 
   updateCharacter: async (id, updates) => {
@@ -50,6 +63,7 @@ export const createCharacterSlice = (set: any, get: any, DEFAULT_CHARACTERS: Cha
       characters: (state.characters || []).map((c: CharacterCard) => c.id === id ? { ...c, ...updates } : c),
       selectedCharacter: state.selectedCharacter.id === id ? { ...state.selectedCharacter, ...updates } : state.selectedCharacter
     }));
+    await flushCharacters(get);
   },
 
   removeCharacter: async (id) => {
@@ -58,6 +72,7 @@ export const createCharacterSlice = (set: any, get: any, DEFAULT_CHARACTERS: Cha
       characters: (state.characters || []).filter((c: CharacterCard) => c.id !== id),
       selectedCharacter: state.selectedCharacter.id === id ? (state.characters[0] || DEFAULT_CHARACTERS[0]) : state.selectedCharacter
     }));
+    await flushCharacters(get);
   },
 
   syncImagesFromDb: async () => {
