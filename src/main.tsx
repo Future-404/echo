@@ -11,24 +11,8 @@ registerSW({ immediate: true })
 
 const root = ReactDOM.createRoot(document.getElementById('root')!)
 
-function renderApp() {
-  flushSync(() => {
-    root.render(<React.StrictMode><App /></React.StrictMode>)
-  })
-}
-
-if (initStorage() === 'ready') {
-  renderApp()
-} else {
-  root.render(
-    <React.StrictMode>
-      <GateScreen onUnlock={async (password) => {
-        await authenticateWithPassword(password)
-        // 登錄後強制重新從 KV rehydrate store（store 是單例，不會自動重新讀取）
-        const { useAppStore } = await import('./store/useAppStore')
-        await useAppStore.persist.rehydrate()
-        renderApp()
-      }} />
-    </React.StrictMode>
-  )
-}
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+)

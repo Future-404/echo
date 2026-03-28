@@ -72,55 +72,40 @@ export default {
       const id = decodeURIComponent(rawId)
       validateKey(id)
       
-      if (resource === 'storage') {
-        if (req.method === 'GET') {
-          const obj = await env.ECHO_R2.get(id)
-          if (!obj) return json({ value: null }, 200, origin)
-          const value = await obj.text()
-          return json({ value }, 200, origin)
+      if (resource === 'storage' || resource === 'images') {
+        if (!env.ECHO_R2) {
+          return json({ error: 'Cloud Storage (R2) not configured. This feature is optional for advanced users.' }, 501, origin)
         }
+        const r2Path = `${resource}/${id}`
+
+        if (req.method === 'GET') {
+          const obj = await env.ECHO_R2.get(r2Path)
+          if (!obj) return json({ [resource === 'images' ? 'base64' : 'value']: null }, 200, origin)
+          const data = await obj.text()
+          return json({ [resource === 'images' ? 'base64' : 'value']: data }, 200, origin)
+        }
+
         if (req.method === 'PUT') {
           const contentType = req.headers.get('content-type') || ''
           let value: string
 
           if (contentType.includes('application/json')) {
-            const body = await parseBody<{ value: string }>(req)
-            if (!body || typeof body.value !== 'string') return json({ error: 'Invalid body' }, 400, origin)
-            value = body.value
+            const body = await parseBody<any>(req)
+            value = body?.value || body?.base64 || ''
           } else {
             value = await req.text()
           }
           
-          if (!env.ECHO_R2) return json({ error: 'Server misconfigured: ECHO_R2 not bound' }, 500, origin)
-          await env.ECHO_R2.put(id, value, {
-            httpMetadata: { contentType: 'text/plain; charset=UTF-8' }
+          if (!value) return json({ error: 'Invalid body' }, 400, origin)
+
+          await env.ECHO_R2.put(r2Path, value, {
+            httpMetadata: { contentType: resource === 'images' ? 'text/plain' : 'text/plain; charset=UTF-8' }
           })
           return json({ ok: true }, 200, origin)
         }
-        if (req.method === 'DELETE') {
-          await env.ECHO_R2.delete(id)
-          return json({ ok: true }, 200, origin)
-        }
-        return json({ error: 'Method Not Allowed' }, 405, origin)
-      }
 
-      // ── D1: /api/images/:id ──────────────────────────────────────────────
-      if (resource === 'images') {
-        if (req.method === 'GET') {
-          const row = await env.ECHO_DB.prepare('SELECT base64 FROM images WHERE id = ?').bind(id).first<{ base64: string }>()
-          return json({ base64: row?.base64 ?? null }, 200, origin)
-        }
-        if (req.method === 'PUT') {
-          const body = await parseBody<{ base64: string }>(req)
-          if (!body || typeof body.base64 !== 'string') return json({ error: 'Invalid body' }, 400, origin)
-          if (body.base64.length > MAX_VALUE_BYTES) return json({ error: 'Image too large (max 5MB)' }, 413, origin)
-          await env.ECHO_DB.prepare(
-            'INSERT INTO images (id, base64) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET base64 = excluded.base64'
-          ).bind(id, body.base64).run()
-          return json({ ok: true }, 200, origin)
-        }
         if (req.method === 'DELETE') {
-          await env.ECHO_DB.prepare('DELETE FROM images WHERE id = ?').bind(id).run()
+          await env.ECHO_R2.delete(r2Path)
           return json({ ok: true }, 200, origin)
         }
         return json({ error: 'Method Not Allowed' }, 405, origin)

@@ -644,17 +644,17 @@ AUTH_TOKEN=your_token node server.js
           <div className="grid grid-cols-2 gap-3">
             <div className="p-3 rounded-2xl bg-orange-500/5 border border-orange-500/10 space-y-1.5">
               <p className="font-bold text-orange-400 text-[10px] uppercase tracking-widest">Cloudflare Workers</p>
-              <p className="opacity-60 text-[10px] leading-relaxed">R2 存储配置与存档，D1 数据库存储图片。全球边缘节点，免费额度极充裕。</p>
+              <p className="opacity-60 text-[10px] leading-relaxed">默认使用本地存储。云端同步 (R2) 是极客玩家的可选项。</p>
               <div className="space-y-0.5 pt-1">
                 {[
-                  'wrangler r2 bucket create echo-storage',
-                  'wrangler d1 create echo-images',
-                  'wrangler d1 execute echo-images \\',
-                  '  --file=schema.sql --remote',
-                  'wrangler secret put AUTH_TOKEN',
+                  '# 基础部署：',
                   'wrangler deploy',
+                  '',
+                  '# 进阶：开启云端同步',
+                  'wrangler r2 bucket create echo-storage',
+                  '# 修改 wrangler.toml 取消 R2 注释后重新 deploy',
                 ].map((cmd, i) => (
-                  <pre key={i} className="text-[9px] font-mono leading-relaxed opacity-60">{cmd}</pre>
+                  <pre key={i} className={`text-[9px] font-mono leading-relaxed ${cmd.startsWith('#') ? 'opacity-30' : 'opacity-60'}`}>{cmd}</pre>
                 ))}
               </div>
             </div>

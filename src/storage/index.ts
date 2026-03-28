@@ -1,5 +1,6 @@
 import type { StorageAdapter } from './types'
 import { createRemoteAdapter } from './adapters/remote'
+import { localAdapter } from './adapters/local'
 
 const BOOTSTRAP_KEY = 'echo-storage-token'
 const API_BASE = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/+$/, '') ?? ''
@@ -16,9 +17,16 @@ let _adapter: StorageAdapter | null = null
 
 export function getStorageAdapter(): StorageAdapter {
   if (_adapter) return _adapter
+  
   const token = getSavedToken()
-  if (!token) throw new Error('[echo] 未認證，無法訪問存儲')
-  _adapter = createRemoteAdapter(API_BASE, token)
+  // 如果有 token 且有 API 地址，则使用远程适配器（或混合适配器）
+  if (token && API_BASE) {
+    _adapter = createRemoteAdapter(API_BASE, token)
+  } else {
+    // 否则默认使用本地存储
+    _adapter = localAdapter
+  }
+  
   return _adapter
 }
 
@@ -26,9 +34,11 @@ export function resetStorageAdapter() {
   _adapter = null
 }
 
-// 啟動時：有 token 直接用，沒有則需要 GateScreen
+// 啟動時：本地模式總是 ready，除非用户想同步
 export function initStorage(): 'ready' | 'need-auth' {
-  return getSavedToken() ? 'ready' : 'need-auth'
+  const token = getSavedToken()
+  // 即使没有 token，我们也返回 ready，因为可以使用本地存储
+  return 'ready'
 }
 
 // GateScreen 驗證成功後調用

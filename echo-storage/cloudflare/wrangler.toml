@@ -8,11 +8,10 @@ binding = "ASSETS"
 not_found_handling = "single-page-application"
 run_worker_first = true
 
-[[r2_buckets]]
-binding = "ECHO_R2"
-bucket_name = "echo-storage"
-
-[[d1_databases]]
-binding = "ECHO_DB"
-database_name = "echo-db"
-database_id = "c60eb168-95c0-4576-a0b3-a688a1226063"
+# [进阶] 云端同步支持 (可选)
+# 开启步骤:
+# 1. 运行 wrangler r2 bucket create echo-storage
+# 2. 取消下方 3 行注释并填写正确的 bucket_name
+# [[r2_buckets]]
+# binding = "ECHO_R2"
+# bucket_name = "echo-storage"
