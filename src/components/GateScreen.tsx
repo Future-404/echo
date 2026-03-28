@@ -89,7 +89,7 @@ export const GateScreen: React.FC<Props> = ({ onUnlock }) => {
                 placeholder="AUTHENTICATION TOKEN"
                 autoFocus
                 disabled={loading}
-                className="w-full pl-12 pr-6 py-4 bg-black/40 border-0.5 border-white/20 rounded-2xl text-white text-[11px] font-bold tracking-[0.2em] placeholder:text-white/40 focus:outline-none focus:border-blue-500 focus:bg-black/60 transition-all"
+                className="w-full pl-12 pr-6 py-4 bg-black/80 border border-white/30 rounded-2xl text-white text-sm font-mono tracking-widest placeholder:text-white/30 focus:outline-none focus:border-blue-400 focus:bg-black/90 transition-all"
               />
             </div>
 
