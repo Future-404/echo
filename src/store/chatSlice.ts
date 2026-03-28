@@ -1,4 +1,5 @@
 import type { CharacterCard, Message, Mission, SaveSlot } from './useAppStore'
+import { persistSlots, SAVE_KEY } from './saveSlice'
 
 export interface ChatSlice {
   messages: Message[];
@@ -92,7 +93,9 @@ export const createChatSlice = (set: any, get: any): ChatSlice => ({
       const otherAutoSlots = slots.filter((slot: SaveSlot) => slot.id.startsWith('auto_') && slot.id !== autoId);
       const manualSlots = slots.filter((slot: SaveSlot) => !slot.id.startsWith('auto_'));
       const limitedAutoSlots = [autoSlot, ...otherAutoSlots].sort((a, b) => b.timestamp - a.timestamp).slice(0, 10);
-      return { saveSlots: [...limitedAutoSlots, ...manualSlots] };
+      const finalSlots = [...limitedAutoSlots, ...manualSlots];
+      persistSlots(SAVE_KEY, finalSlots);
+      return { saveSlots: finalSlots };
     });
   },
 });

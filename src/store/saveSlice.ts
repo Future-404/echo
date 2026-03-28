@@ -5,7 +5,7 @@ import { getStorageAdapter } from '../storage'
 const SAVE_KEY = 'echo-saves'
 const MULTI_SAVE_KEY = 'echo-multi-saves'
 
-async function persistSlots(key: string, slots: SaveSlot[]) {
+export async function persistSlots(key: string, slots: SaveSlot[]) {
   await getStorageAdapter().setItem(key, JSON.stringify(slots))
 }
 
