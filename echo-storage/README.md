@@ -17,10 +17,10 @@ npm install -g wrangler
 wrangler login
 ```
 
-**2. 创建 KV 命名空间**:
+**2. 创建 R2 存储桶**:
 ```bash
-wrangler kv:namespace create ECHO_KV
-# 记录返回的 id，填入 cloudflare/wrangler.toml
+wrangler r2 bucket create echo-storage
+# 此步骤会自动在 Cloudflare 控制台创建一个存储桶
 ```
 
 **3. 创建 D1 数据库**:
@@ -35,9 +35,9 @@ wrangler d1 execute echo-images --file=cloudflare/schema.sql --remote
 **4. 配置 wrangler.toml**:
 ```toml
 # cloudflare/wrangler.toml
-[[kv_namespaces]]
-binding = "ECHO_KV"
-id = "<步骤2的id>"
+[[r2_buckets]]
+binding = "ECHO_R2"
+bucket_name = "echo-storage"
 
 [[d1_databases]]
 binding = "ECHO_DB"
@@ -208,13 +208,13 @@ curl -X GET http://localhost:3456/api/storage/test \
 
 ## 📊 性能指标
 
-| 指标 | Cloudflare | Node.js |
+| 指标 | Cloudflare (R2 + D1) | Node.js (SQLite) |
 |------|-----------|---------|
 | 冷启动 | ~50ms | N/A |
 | 响应延迟 | 10-50ms | 5-20ms |
 | 并发能力 | 无限 | 取决于服务器 |
-| 存储限制 | KV: 25MB/key<br>D1: 10GB | 取决于磁盘 |
-| 成本 | 免费额度充足 | 服务器成本 |
+| 存储限制 | R2: 无限 (免费 10GB)<br>D1: 10GB | 取决于磁盘 |
+| 成本 | 免费额度极充裕 | 服务器成本 |
 
 ---
 
@@ -231,8 +231,8 @@ curl -X GET http://localhost:3456/api/storage/test \
 - 生产环境: 设置为前端域名 `https://your-domain.com`
 
 ### 问题: 413 Payload Too Large
-**原因**: 单条记录超过 5MB  
-**解决**: 压缩数据或分片存储
+**原因**: 数据超过 20MB (Worker 限制)  
+**解决**: 检查是否存储了过多的大体积图片或异常长的历史记录
 
 ---
 

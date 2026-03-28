@@ -8,9 +8,9 @@ binding = "ASSETS"
 not_found_handling = "single-page-application"
 run_worker_first = true
 
-[[kv_namespaces]]
-binding = "ECHO_KV"
-id = "fd5d339432524257a7d03e7d276f5d85"
+[[r2_buckets]]
+binding = "ECHO_R2"
+bucket_name = "echo-storage"
 
 [[d1_databases]]
 binding = "ECHO_DB"

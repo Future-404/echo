@@ -29,29 +29,13 @@ jobs:
           fi
           echo "value=$TOKEN" >> $GITHUB_OUTPUT
 
-      - name: Create KV namespace
-        id: kv
+      - name: Create R2 bucket
         run: |
-          LIST=$(curl -s "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/storage/kv/namespaces" \
-            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}")
-          EXISTING=$(echo "$LIST" | jq -r '.result // [] | .[] | select(.title=="echo-kv") | .id')
-          if [ -n "$EXISTING" ] && [ "$EXISTING" != "null" ]; then
-            echo "KV namespace already exists: $EXISTING"
-            echo "id=$EXISTING" >> $GITHUB_OUTPUT
-          else
-            RESPONSE=$(curl -s -X POST \
-              "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/storage/kv/namespaces" \
-              -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
-              -H "Content-Type: application/json" \
-              -d '{"title":"echo-kv"}')
-            KV_ID=$(echo "$RESPONSE" | jq -r '.result.id // empty')
-            if [ -z "$KV_ID" ]; then
-              echo "$RESPONSE"
-              echo "❌ Failed to create KV namespace"
-              exit 1
-            fi
-            echo "id=$KV_ID" >> $GITHUB_OUTPUT
-          fi
+          curl -s -X POST \
+            "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/r2/buckets" \
+            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"name":"echo-storage"}' || true
 
       - name: Create D1 database
         id: d1
@@ -88,7 +72,6 @@ jobs:
 
       - name: Update wrangler.toml with real IDs
         run: |
-          sed -i "s/id = \".*\"/id = \"${{ steps.kv.outputs.id }}\"/" echo-storage/cloudflare/wrangler.toml
           sed -i "s/database_id = \".*\"/database_id = \"${{ steps.d1.outputs.id }}\"/" echo-storage/cloudflare/wrangler.toml
           echo "Updated wrangler.toml:"
           cat echo-storage/cloudflare/wrangler.toml
@@ -125,7 +108,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| 项目 | 值 |" >> $GITHUB_STEP_SUMMARY
           echo "|---|---|" >> $GITHUB_STEP_SUMMARY
-          echo "| KV Namespace ID | \`${{ steps.kv.outputs.id }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| R2 Bucket | \`echo-storage\` |" >> $GITHUB_STEP_SUMMARY
           echo "| D1 Database ID | \`${{ steps.d1.outputs.id }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **AUTH_TOKEN（请保存）** | \`${{ steps.token.outputs.value }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

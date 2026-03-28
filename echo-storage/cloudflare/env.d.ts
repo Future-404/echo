@@ -1,5 +1,5 @@
 export interface Env {
-  ECHO_KV: KVNamespace
+  ECHO_R2: R2Bucket
   ECHO_DB: D1Database
   ASSETS: Fetcher
   AUTH_TOKEN: string

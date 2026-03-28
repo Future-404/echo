@@ -136,7 +136,7 @@ Echo 是一个运行在浏览器中的视觉小说引擎，核心特性：
 | 渲染引擎 | PixiJS v7 + @pixi/react |
 | 状态管理 | Zustand v5 + persist |
 | PWA | vite-plugin-pwa |
-| 存储（云端） | Cloudflare KV + D1 |
+| 存储（云端） | Cloudflare R2 + D1 |
 | 存储（自托管） | Node.js + SQLite (better-sqlite3) |
 
 ---
@@ -318,7 +318,7 @@ GET    /api/ping              → { "ok": true }
 ```bash
 cd echo-storage/cloudflare
 
-wrangler kv:namespace create ECHO_KV          # 填入 wrangler.toml
+wrangler r2 bucket create echo-storage        # 自动创建 R2 存储桶
 wrangler d1 create echo-images                # 填入 wrangler.toml
 wrangler d1 execute echo-images --file=schema.sql --remote
 wrangler secret put AUTH_TOKEN                # 设置访问密码

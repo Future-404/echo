@@ -644,10 +644,10 @@ AUTH_TOKEN=your_token node server.js
           <div className="grid grid-cols-2 gap-3">
             <div className="p-3 rounded-2xl bg-orange-500/5 border border-orange-500/10 space-y-1.5">
               <p className="font-bold text-orange-400 text-[10px] uppercase tracking-widest">Cloudflare Workers</p>
-              <p className="opacity-60 text-[10px] leading-relaxed">KV 存储配置与存档，D1 数据库存储图片。全球边缘节点，免费额度充足。</p>
+              <p className="opacity-60 text-[10px] leading-relaxed">R2 存储配置与存档，D1 数据库存储图片。全球边缘节点，免费额度极充裕。</p>
               <div className="space-y-0.5 pt-1">
                 {[
-                  'wrangler kv:namespace create ECHO_KV',
+                  'wrangler r2 bucket create echo-storage',
                   'wrangler d1 create echo-images',
                   'wrangler d1 execute echo-images \\',
                   '  --file=schema.sql --remote',
@@ -683,8 +683,8 @@ AUTH_TOKEN=your_token node server.js
             <div className="divide-y divide-white/5 text-[10px] font-mono">
               {[
                 ['POST',   '/api/auth',           '验证密码，返回 token（无需鉴权）'],
-                ['GET',    '/api/storage/:key',   '读取配置/存档（KV）'],
-                ['PUT',    '/api/storage/:key',   '写入，body: { value: string }'],
+                ['GET',    '/api/storage/:key',   '读取配置/存档（R2）'],
+                ['PUT',    '/api/storage/:key',   '写入，body: string (text/plain)'],
                 ['DELETE', '/api/storage/:key',   '删除指定 key'],
                 ['GET',    '/api/images/:id',     '读取图片，返回 { base64 }'],
                 ['PUT',    '/api/images/:id',     '上传，body: { base64: string }'],
@@ -794,7 +794,7 @@ AUTH_TOKEN=your_token node server.js
                 ['渲染引擎', 'PixiJS 7 (WebGL)'],
                 ['状态管理', 'Zustand + Persist'],
                 ['访问控制', 'AUTH_TOKEN 单密码网关'],
-                ['后端选项', 'Cloudflare Workers / Node.js + SQLite'],
+                ['后端选项', 'Cloudflare R2 + D1 / Node.js + SQLite'],
               ].map(([key, value]) => (
                 <div key={key} className="grid grid-cols-[6rem_1fr] gap-x-4 px-4 py-2.5">
                   <span className="font-bold text-gray-600 dark:text-gray-300">{key}</span>

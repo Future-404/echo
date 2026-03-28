@@ -74,7 +74,9 @@ export default {
       
       if (resource === 'storage') {
         if (req.method === 'GET') {
-          const value = await env.ECHO_KV.get(id)
+          const obj = await env.ECHO_R2.get(id)
+          if (!obj) return json({ value: null }, 200, origin)
+          const value = await obj.text()
           return json({ value }, 200, origin)
         }
         if (req.method === 'PUT') {
@@ -89,17 +91,14 @@ export default {
             value = await req.text()
           }
           
-          const sizeBytes = new TextEncoder().encode(value).length
-          if (sizeBytes > MAX_VALUE_BYTES) {
-            return json({ error: `Value too large (${(sizeBytes / 1024 / 1024).toFixed(2)}MB, max 10MB)` }, 413, origin)
-          }
-
-          if (!env.ECHO_KV) return json({ error: 'Server misconfigured: ECHO_KV not bound' }, 500, origin)
-          await env.ECHO_KV.put(id, value)
+          if (!env.ECHO_R2) return json({ error: 'Server misconfigured: ECHO_R2 not bound' }, 500, origin)
+          await env.ECHO_R2.put(id, value, {
+            httpMetadata: { contentType: 'text/plain; charset=UTF-8' }
+          })
           return json({ ok: true }, 200, origin)
         }
         if (req.method === 'DELETE') {
-          await env.ECHO_KV.delete(id)
+          await env.ECHO_R2.delete(id)
           return json({ ok: true }, 200, origin)
         }
         return json({ error: 'Method Not Allowed' }, 405, origin)

@@ -277,6 +277,7 @@ export const useAppStore = create<AppState>()(
           missions: state.missions, 
           fragments: state.fragments,
           saveSlots: state.saveSlots,
+          currentAutoSlotId: state.currentAutoSlotId,
         }),
     }
   )

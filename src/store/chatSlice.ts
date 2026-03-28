@@ -29,10 +29,16 @@ export const createChatSlice = (set: any, get: any): ChatSlice => ({
   _autoSaveTimer: null,
 
   addMessage: (msg) => {
+    // 立即更新内存状态以保证 UI 响应
     set((state: any) => ({ messages: [...state.messages, msg] }));
+    
+    // 防抖处理：1.5s 后执行 autoSave，这不仅会更新 saveSlots 分支，
+    // 还会触发 Zustand persist 将完整的 state (包括最新的 messages) 同步到 R2。
     const state = get();
     if (state._autoSaveTimer) clearTimeout(state._autoSaveTimer);
-    const timer = setTimeout(() => get().autoSave(), 1500); // 增加到 1.5s 防抖
+    const timer = setTimeout(() => {
+      get().autoSave();
+    }, 1500);
     set({ _autoSaveTimer: timer });
   },
 
