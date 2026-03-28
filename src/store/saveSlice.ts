@@ -109,6 +109,6 @@ export const createSaveSlice = (set: any, get: any): SaveSlice => ({
       currentAutoSlotId: null,
     })
   },
-}
+})
 
 export { SAVE_KEY, MULTI_SAVE_KEY }
