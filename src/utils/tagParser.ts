@@ -29,6 +29,9 @@ export const applyCharacterRegexScripts = (text: string, char: CharacterCard, la
         }
       }
 
+      // 把 pattern 裡的字面 \n \t 轉成真正的控制字符
+      pattern = pattern.replace(/\\n/g, '\n').replace(/\\t/g, '\t')
+
       const regex = new RegExp(pattern, flags);
       const replacement = String(tpl.replaceString).replace(/\\\\n/g, '\n').replace(/\\n/g, '\n');
       transformedText = transformedText.replace(regex, replacement);
