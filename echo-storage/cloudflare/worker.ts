@@ -1,10 +1,12 @@
 import type { Env } from './env'
 
 const MAX_BODY_BYTES = 20 * 1024 * 1024 // 20MB
-const MAX_VALUE_BYTES = 5 * 1024 * 1024 // 单条记录 5MB
+const MAX_VALUE_BYTES = 10 * 1024 * 1024 // 10MB (Cloudflare KV free limit)
 
 function auth(req: Request, env: Env): boolean {
-  return req.headers.get('Authorization') === `Bearer ${env.AUTH_TOKEN}`
+  const authHeader = req.headers.get('Authorization')
+  if (!authHeader || !env.AUTH_TOKEN) return false
+  return authHeader === `Bearer ${env.AUTH_TOKEN}`
 }
 
 function validateKey(key: string): void {
@@ -78,7 +80,13 @@ export default {
         if (req.method === 'PUT') {
           const body = await parseBody<{ value: string }>(req)
           if (!body || typeof body.value !== 'string') return json({ error: 'Invalid body' }, 400, origin)
-          if (body.value.length > MAX_VALUE_BYTES) return json({ error: 'Value too large (max 5MB)' }, 413, origin)
+          
+          const sizeBytes = new TextEncoder().encode(body.value).length
+          if (sizeBytes > MAX_VALUE_BYTES) {
+            return json({ error: `Value too large (${(sizeBytes / 1024 / 1024).toFixed(2)}MB, max 10MB)` }, 413, origin)
+          }
+
+          if (!env.ECHO_KV) return json({ error: 'Server misconfigured: ECHO_KV not bound' }, 500, origin)
           await env.ECHO_KV.put(id, body.value)
           return json({ ok: true }, 200, origin)
         }
@@ -114,7 +122,8 @@ export default {
       return json({ error: 'Not Found' }, 404, origin)
     } catch (err) {
       console.error('[echo-storage] Error:', err)
-      return json({ error: 'Internal Server Error' }, 500, origin)
+      const msg = err instanceof Error ? err.message : String(err)
+      return json({ error: 'Internal Server Error', message: msg }, 500, origin)
     }
   },
 }

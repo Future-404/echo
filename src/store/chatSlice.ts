@@ -1,5 +1,4 @@
 import type { CharacterCard, Message, Mission, SaveSlot } from './useAppStore'
-import { forcePersist } from './persist'
 
 export interface ChatSlice {
   messages: Message[];
@@ -89,6 +88,5 @@ export const createChatSlice = (set: any, get: any): ChatSlice => ({
       const limitedAutoSlots = [autoSlot, ...otherAutoSlots].sort((a, b) => b.timestamp - a.timestamp).slice(0, 10);
       return { saveSlots: [...limitedAutoSlots, ...manualSlots] };
     });
-    forcePersist(get)
   },
 });

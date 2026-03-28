@@ -1,6 +1,5 @@
 import type { SaveSlot } from './useAppStore'
 import { replaceMacros } from '../logic/promptEngine'
-import { forcePersist } from './persist'
 
 export interface SaveSlice {
   saveSlots: SaveSlot[];
@@ -34,14 +33,12 @@ export const createSaveSlice = (set: any, get: any): SaveSlice => ({
         ? s.saveSlots.map((slot: SaveSlot) => slot.id === slotId ? newSlot : slot) 
         : [...(s.saveSlots || []), newSlot] 
     }));
-    forcePersist(get)
   },
 
   renameSaveSlot: (slotId, newName) => {
     set((state: any) => ({ 
       saveSlots: (state.saveSlots || []).map((slot: SaveSlot) => slot.id === slotId ? { ...slot, name: newName } : slot) 
     }))
-    forcePersist(get)
   },
 
   loadGame: (slotId) => {
@@ -66,7 +63,6 @@ export const createSaveSlice = (set: any, get: any): SaveSlice => ({
       saveSlots: (state.saveSlots || []).filter((s: SaveSlot) => s.id !== slotId), 
       currentAutoSlotId: state.currentAutoSlotId === slotId ? null : state.currentAutoSlotId 
     }))
-    forcePersist(get)
   },
 
   startNewGame: (charId) => {

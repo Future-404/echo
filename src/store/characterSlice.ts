@@ -1,7 +1,6 @@
 import type { CharacterCard, WorldBookEntry } from './useAppStore'
 import { getStorageAdapter } from '../storage'
 import { replaceMacros } from '../logic/promptEngine'
-import { forcePersist } from './persist'
 
 export interface CharacterSlice {
   characters: CharacterCard[];
@@ -47,7 +46,6 @@ export const createCharacterSlice = (set: any, get: any, DEFAULT_CHARACTERS: Cha
   addCharacter: async (char) => {
     if (char.image.startsWith('data:')) await getStorageAdapter().saveImage(char.id, char.image);
     set((state: any) => ({ characters: [...(state.characters || []), char] }));
-    await forcePersist(get);
   },
 
   updateCharacter: async (id, updates) => {
@@ -56,7 +54,6 @@ export const createCharacterSlice = (set: any, get: any, DEFAULT_CHARACTERS: Cha
       characters: (state.characters || []).map((c: CharacterCard) => c.id === id ? { ...c, ...updates } : c),
       selectedCharacter: state.selectedCharacter.id === id ? { ...state.selectedCharacter, ...updates } : state.selectedCharacter
     }));
-    await forcePersist(get);
   },
 
   removeCharacter: async (id) => {
@@ -65,7 +62,6 @@ export const createCharacterSlice = (set: any, get: any, DEFAULT_CHARACTERS: Cha
       characters: (state.characters || []).filter((c: CharacterCard) => c.id !== id),
       selectedCharacter: state.selectedCharacter.id === id ? (state.characters[0] || DEFAULT_CHARACTERS[0]) : state.selectedCharacter
     }));
-    await forcePersist(get);
   },
 
   syncImagesFromDb: async () => {
