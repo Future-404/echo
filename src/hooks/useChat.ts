@@ -12,6 +12,7 @@ import { routerSchema, parseRouterResult } from '../skills/router/schema'
 import { buildRouterPrompt } from '../skills/router/prompt'
 import type { RouterAction } from '../skills/router/schema'
 import { iframeBus } from '../utils/iframeBus'
+import { ttsService } from '../utils/ttsService'
 
 const cleanJson = (str: string) => {
   let cleaned = str.trim();
@@ -28,6 +29,7 @@ export const useChat = () => {
     addMessage, isTyping, setIsTyping, addDebugLog,
     updateAttributes, isGreetingSession,
     secondaryCharacter, multiCharMode, routerProviderId,
+    ttsSettings,
   } = useAppStore()
 
   const [displayText, setDisplayText] = useState('')
@@ -72,8 +74,8 @@ export const useChat = () => {
     const contextWindow = provider.contextWindow ?? 10
     const enabledTools = getEnabledSkills(config.enabledSkillIds)
 
-    // 构建 system prompt
-    const systemContext = buildSystemPrompt({
+    // 组装完整的 API 消息数组 (ST 1:1 复刻逻辑)
+    const apiMessages = buildPromptMessages({
       character: char,
       persona: activePersona,
       directives: config.directives || [],
@@ -81,12 +83,12 @@ export const useChat = () => {
       missions,
       userName: config.userName || 'Observer',
       enabledSkillIds: config.enabledSkillIds,
-      recentMessages: currentMessages.filter(m => m.role === 'user' || m.role === 'assistant').slice(-10),
+      recentMessages: currentMessages,
       isMultiChar: !!secondaryCharacter,
       otherCharName: secondaryCharacter ? (charId === selectedCharacter.id ? secondaryCharacter.name : selectedCharacter.name) : undefined,
-    })
+    }, contextWindow)
 
-    // 多角色模式：折叠合并历史；单角色模式：直接切片
+    // 多角色模式：处理发言者前缀（如果需要）
     const charNames: Record<string, string> = {
       user: activePersona?.name || 'User',
       [selectedCharacter.id]: selectedCharacter.name,
@@ -95,48 +97,125 @@ export const useChat = () => {
     }
     const stopSeqs = secondaryCharacter ? buildStopSequences(charId, charNames) : []
 
-    const apiMessages = multiCharMode && secondaryCharacter
-      ? buildContextForChar(currentMessages, charId, charNames, contextWindow)
-      : currentMessages.slice(-contextWindow - 1, -1).map(m => ({ role: m.role as any, content: m.content }))
-
-    // 注入 depth_prompt（ST 兼容：从末尾数第 depth 条位置插入）
-    if (char.depthPrompt?.content) {
-      const dp = char.depthPrompt
-      const insertIdx = Math.max(0, apiMessages.length - dp.depth)
-      apiMessages.splice(insertIdx, 0, { role: dp.role as any, content: replaceMacros(dp.content, activePersona?.name || 'User', char.name) })
-    }
-
     let fetchUrl = `${provider.endpoint}/chat/completions`
     let fetchHeaders: any = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${provider.apiKey}` }
+    
+    // 合并自定义 Headers
+    if (provider.customHeaders) {
+      try {
+        const extraHeaders = JSON.parse(provider.customHeaders);
+        fetchHeaders = { ...fetchHeaders, ...extraHeaders };
+      } catch (e) { console.error('Failed to parse custom headers:', e) }
+    }
+
     let fetchBody: any = {}
 
     if (format === 'openai') {
-      const postHistory = char.postHistoryInstructions
-        ? [{ role: 'system', content: replaceMacros(char.postHistoryInstructions, activePersona?.name || 'User', char.name) }]
-        : []
+      const mappedMessages = apiMessages.map(m => {
+        if (m.images && m.images.length > 0) {
+          return {
+            role: m.role,
+            content: [
+              { type: 'text', text: m.content },
+              ...m.images.map((img: string) => ({ type: 'image_url', image_url: { url: img } }))
+            ]
+          }
+        }
+        return { role: m.role, content: m.content }
+      })
+
+      const prefill = provider.assistantPrefill?.trim()
       fetchBody = {
         model: provider.model,
-        messages: [{ role: 'system', content: systemContext }, ...apiMessages, ...postHistory, { role: 'user', content: userContent, name: charNames['user'] }],
+        messages: prefill ? [...mappedMessages, { role: 'assistant', content: prefill }] : mappedMessages,
         ...(enabledTools.length > 0 && { tools: enabledTools }),
         ...(stopSeqs.length > 0 && { stop: stopSeqs }),
         stream: isStreaming,
+        ...(isStreaming && { stream_options: { "include_usage": true } }),
         temperature: provider.temperature ?? 0.7,
         ...(provider.topP != null && provider.topP !== 1.0 && { top_p: provider.topP }),
       }
     } else if (format === 'anthropic') {
       fetchUrl = `${provider.endpoint.replace(/\/chat\/completions$/, '')}/messages`
       fetchHeaders = { 'Content-Type': 'application/json', 'x-api-key': provider.apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }
+      
+      const systemMsg = apiMessages.find(m => m.role === 'system')?.content || ''
+      const nonSystemMsgs = apiMessages.filter(m => m.role !== 'system').map(m => {
+        if (m.images && m.images.length > 0) {
+          return {
+            role: m.role === 'assistant' ? 'assistant' : 'user',
+            content: [
+              ...m.images.map((img: string) => {
+                const match = img.match(/^data:(image\/\w+);base64,(.*)$/)
+                return {
+                  type: 'image',
+                  source: {
+                    type: 'base64',
+                    media_type: match ? match[1] : 'image/jpeg',
+                    data: match ? match[2] : img
+                  }
+                }
+              }),
+              { type: 'text', text: m.content }
+            ]
+          }
+        }
+        return {
+          role: m.role === 'assistant' ? 'assistant' : 'user',
+          content: m.content
+        }
+      })
+
       fetchBody = {
         model: provider.model,
-        system: systemContext,
-        messages: [...apiMessages.filter(m => m.role !== 'system'), { role: 'user', content: userContent }],
+        system: systemMsg,
+        messages: prefill ? [...nonSystemMsgs, { role: 'assistant', content: prefill }] : nonSystemMsgs,
         max_tokens: 4096,
         ...(stopSeqs.length > 0 && { stop_sequences: stopSeqs }),
         stream: isStreaming,
         temperature: provider.temperature ?? 0.7,
       }
+    } else if (format === 'gemini') {
+      // Gemini 原生接口支持
+      const isStreamSuffix = isStreaming ? 'streamGenerateContent?alt=sse&' : 'generateContent?'
+      fetchUrl = `${provider.endpoint.replace(/\/chat\/completions$/, '')}/models/${provider.model}:${isStreamSuffix}key=${provider.apiKey}`
+      fetchHeaders = { 'Content-Type': 'application/json' }
+      
+      const systemMsg = apiMessages.find(m => m.role === 'system')?.content || ''
+      const contents = apiMessages.filter(m => m.role !== 'system').map(m => {
+        const parts: any[] = []
+        if (m.images && m.images.length > 0) {
+          m.images.forEach((img: string) => {
+            const match = img.match(/^data:(image\/\w+);base64,(.*)$/)
+            if (match) {
+              parts.push({
+                inlineData: {
+                  mimeType: match[1],
+                  data: match[2]
+                }
+              })
+            }
+          })
+        }
+        parts.push({ text: m.content })
+        return {
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts
+        }
+      })
+
+      fetchBody = {
+        contents,
+        system_instruction: { parts: [{ text: systemMsg }] },
+        generationConfig: {
+          temperature: provider.temperature ?? 0.7,
+          topP: provider.topP ?? 1.0,
+          maxOutputTokens: 4096,
+          stopSequences: stopSeqs,
+        }
+      }
     } else {
-      addMessage({ role: 'assistant', content: '错误：Gemini 格式暂不支持，请使用 OpenAI 兼容端点。', speakerId: charId })
+      addMessage({ role: 'assistant', content: '错误：不支持的接口格式。', speakerId: charId })
       return
     }
 
@@ -148,7 +227,15 @@ export const useChat = () => {
       throw new Error(`[${char.name}] HTTP ${response.status}${err?.error?.message ? ': ' + err.error.message : ''}`)
     }
 
-    const handleFinish = async (fullText: string, toolCalls?: any[]) => {
+    const handleFinish = async (fullText: string, toolCalls?: any[], usage?: any) => {
+      if (usage) {
+        useAppStore.getState().setTokenStats(usage.total_tokens || (usage.prompt_tokens + (usage.completion_tokens || 0)), provider.contextWindow || 32000);
+      } else {
+        // 估算逻辑
+        const estTokens = Math.ceil(fullText.length / 3.5) + (apiMessages.reduce((acc, m) => acc + m.content.length, 0) / 3.5);
+        useAppStore.getState().setTokenStats(Math.ceil(estTokens), provider.contextWindow || 32000);
+      }
+
       if (config.isDebugEnabled) addDebugLog({ direction: 'IN', label: `[${char.name}] Response`, data: { text: fullText } })
       extractAndSyncTags(fullText, char, updateAttributes)
       const transformed = applyCharacterRegexScripts(fullText, char, 1)
@@ -174,7 +261,7 @@ export const useChat = () => {
               : { ...fetchBody, messages: [...fetchBody.messages, assistantMsg, ...toolResults], stream: false }
             const followUpRes = await fetch(fetchUrl, { method: 'POST', headers: fetchHeaders, body: JSON.stringify(followUpBody) })
             if (followUpRes.ok) {
-              const followUpData = await followUpRes.json()
+              const followUpData = await followUpRes.ok ? await followUpRes.json() : {}
               const followUpText = format === 'anthropic' ? followUpData.content?.[0]?.text : followUpData.choices?.[0]?.message?.content
               if (followUpText) {
                 extractAndSyncTags(followUpText, char, updateAttributes)
@@ -186,19 +273,55 @@ export const useChat = () => {
       } else {
         addMessage({ role: 'assistant', content: transformed, speakerId: charId })
       }
+
+      // 触发 TTS
+      if (ttsSettings.enabled && ttsSettings.autoSpeak) {
+        const voiceId = ttsSettings.voiceMap[charId];
+        ttsService.speak(transformed, ttsSettings, voiceId);
+      }
     }
 
     if (isStreaming) {
+      let ttsBuffer = ''
+      const voiceId = ttsSettings.enabled && ttsSettings.autoSpeak ? ttsSettings.voiceMap[charId] : null
       await processChatStream(response, {
-        onChunk: (chunk) => setDisplayText(prev => prev + chunk),
+        onChunk: (chunk) => {
+          setDisplayText(prev => prev + chunk)
+          if (voiceId !== null) {
+            ttsBuffer += chunk
+            // 检测句子边界（中英文标点）
+            const sentenceEnd = /[。！？!?.]+/.exec(ttsBuffer)
+            if (sentenceEnd) {
+              const sentence = ttsBuffer.slice(0, sentenceEnd.index + sentenceEnd[0].length).trim()
+              ttsBuffer = ttsBuffer.slice(sentenceEnd.index + sentenceEnd[0].length)
+              if (sentence) ttsService.speak(sentence, ttsSettings, voiceId)
+            }
+          }
+        },
         onFinish: handleFinish,
         onError: (err) => { throw new Error(err) }
       }, format)
     } else {
       const data = await response.json()
-      const content = format === 'anthropic' ? data.content?.[0]?.text : data.choices?.[0]?.message?.content
-      const tcs = format === 'openai' ? data.choices?.[0]?.message?.tool_calls : undefined
-      await handleFinish(content || '', tcs)
+      let content = ''
+      let tcs = undefined
+      let usage = data.usage
+
+      if (format === 'anthropic') {
+        content = data.content?.[0]?.text
+      } else if (format === 'gemini') {
+        content = data.candidates?.[0]?.content?.parts?.[0]?.text
+        usage = data.usageMetadata ? {
+          prompt_tokens: data.usageMetadata.promptTokenCount,
+          completion_tokens: data.usageMetadata.candidatesTokenCount,
+          total_tokens: data.usageMetadata.totalTokenCount
+        } : undefined
+      } else {
+        content = data.choices?.[0]?.message?.content
+        tcs = data.choices?.[0]?.message?.tool_calls
+      }
+      
+      await handleFinish(content || '', tcs, usage)
     }
   }, [config, selectedCharacter, secondaryCharacter, activePersona, missions, multiCharMode, addMessage, addDebugLog, updateAttributes])
 
@@ -255,10 +378,10 @@ export const useChat = () => {
   }, [config, selectedCharacter, secondaryCharacter, activePersona, routerProviderId, addDebugLog])
 
   // ─── 主入口 ──────────────────────────────────────────────────────────────────
-  const sendMessage = useCallback(async (content: string) => {
-    if (!content.trim() || isTyping) return
+  const sendMessage = useCallback(async (content: string, images?: string[]) => {
+    if ((!content.trim() && (!images || images.length === 0)) || isTyping) return
 
-    const userMsg: Message = { role: 'user', content, speakerId: 'user' }
+    const userMsg: Message = { role: 'user', content, speakerId: 'user', ...(images && images.length > 0 ? { images } : {}) }
     addMessage(userMsg)
     setIsTyping(true)
     setDisplayText('')
@@ -270,6 +393,7 @@ export const useChat = () => {
       return
     }
 
+    // 这里需要获取包含新消息在内的最新状态，否则 currentMessages 会少一条
     const currentMessages = [...useAppStore.getState().messages]
 
     try {

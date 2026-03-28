@@ -14,7 +14,7 @@ export interface ToolCall {
 
 export interface StreamCallbacks {
   onChunk: (text: string) => void;
-  onFinish: (fullText: string, toolCalls?: ToolCall[]) => void;
+  onFinish: (fullText: string, toolCalls?: ToolCall[], usage?: any) => void;
   onError: (error: any) => void;
 }
 
@@ -32,6 +32,7 @@ export const processChatStream = async (
   const decoder = new TextDecoder('utf-8');
   let fullText = '';
   let buffer = ''; // 处理 SSE 碎片
+  let lastUsage: any = null;
   
   // 用于收集流式的 tool_calls
   const toolCallsMap: Record<number, ToolCall> = {};
@@ -54,11 +55,12 @@ export const processChatStream = async (
           const dataStr = cleanedLine.slice(6);
           if (dataStr === '[DONE]') {
             reader.releaseLock();
-            callbacks.onFinish(fullText, Object.values(toolCallsMap).length > 0 ? Object.values(toolCallsMap) : undefined);
+            callbacks.onFinish(fullText, Object.values(toolCallsMap).length > 0 ? Object.values(toolCallsMap) : undefined, lastUsage);
             return;
           }
           try {
             const json = JSON.parse(dataStr);
+            if (json.usage) lastUsage = json.usage;
             const delta = json.choices?.[0]?.delta;
             if (!delta) continue;
             if (delta.content) {
@@ -86,6 +88,8 @@ export const processChatStream = async (
           const dataStr = cleanedLine.slice(6);
           try {
             const json = JSON.parse(dataStr);
+            if (json.message?.usage) lastUsage = json.message.usage;
+            if (json.usage) lastUsage = json.usage; // message_delta contains usage
             if (json.type === 'content_block_delta') {
               if (json.delta?.type === 'text_delta' && json.delta.text) {
                 fullText += json.delta.text;
@@ -110,7 +114,7 @@ export const processChatStream = async (
     }
     
     const finalToolCalls = Object.values(toolCallsMap);
-    callbacks.onFinish(fullText, finalToolCalls.length > 0 ? finalToolCalls : undefined);
+    callbacks.onFinish(fullText, finalToolCalls.length > 0 ? finalToolCalls : undefined, lastUsage);
     
   } catch (error) {
     callbacks.onError(error);

@@ -16,14 +16,16 @@ import AppearanceEditor from './Config/AppearanceEditor'
 import PersonaManager from './Config/PersonaManager'
 import DebugConsole from './Config/DebugConsole'
 import StorageSettings from './Config/StorageSettings'
+import TtsSettings from './Config/TtsSettings'
 
-type SubView = 'main' | 'advanced' | 'gateway' | 'world' | 'prompt' | 'provider-edit' | 'directive-edit' | 'skills' | 'persona' | 'debug' | 'appearance' | 'storage'
+type SubView = 'main' | 'advanced' | 'gateway' | 'world' | 'prompt' | 'provider-edit' | 'directive-edit' | 'skills' | 'persona' | 'debug' | 'appearance' | 'storage' | 'tts'
 
 const MAIN_ITEMS = [
   { id: 'gateway', label: 'API 参数', icon: 'G', sub: 'API Gateway' },
   { id: 'persona', label: '身份管理', icon: 'U', sub: 'User Persona' },
   { id: 'world',   label: '世界设定', icon: 'W', sub: 'World Context' },
   { id: 'prompt',  label: 'Prompt 注入', icon: 'P', sub: 'Directives' },
+  { id: 'tts',     label: '语音合成', icon: 'V', sub: 'Voice Synthesis' },
   { id: 'skills',  label: '技能扩展', icon: 'S', sub: 'Extensions' },
 ]
 
@@ -179,6 +181,7 @@ const ConfigPanel: React.FC = () => {
                 {activeView === 'debug' && <DebugConsole />}
                 {activeView === 'appearance' && <AppearanceEditor />}
                 {activeView === 'storage' && <StorageSettings />}
+                {activeView === 'tts' && <TtsSettings />}
 
               </AnimatePresence>
             </div>

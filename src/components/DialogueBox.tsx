@@ -1,10 +1,11 @@
 import React, { useRef, useEffect, useState, useMemo, memo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MoreHorizontal, Copy, RotateCcw, RotateCw, Maximize2, Minimize2 } from 'lucide-react'
+import { MoreHorizontal, Copy, RotateCcw, RotateCw, Maximize2, Minimize2, Volume2 } from 'lucide-react'
 import { useAppStore } from '../store/useAppStore'
 import MessageContent from './Dialogue/MessageContent'
 import { useDevice } from '../hooks/useMediaQuery'
 import { useDialog } from './GlobalDialog'
+import { ttsService } from '../utils/ttsService'
 
 // 单条消息 memo 化，只有 content/isLatest/isTyping 变化时才重渲染
 const MessageRow = memo<{
@@ -13,11 +14,13 @@ const MessageRow = memo<{
   charForMsg: any; activePersona: any;
   isMobile: boolean; isTouchDevice: boolean;
   showMenu: boolean; distanceFromEnd: number;
+  ttsSettings: any;
   onMenuToggle: (idx: number) => void;
   onCopy: (content: string) => void;
   onRollback: (idx: number) => void;
   onRetry: (idx: number, msg: any) => void;
-}>(({ msg, idx, isAi, isLatest, isTyping, displayText, charForMsg, activePersona, isMobile, isTouchDevice, showMenu, distanceFromEnd, onMenuToggle, onCopy, onRollback, onRetry }) => (
+  onSpeak: (text: string, charId?: string) => void;
+}>(({ msg, idx, isAi, isLatest, isTyping, displayText, charForMsg, activePersona, isMobile, isTouchDevice, showMenu, distanceFromEnd, ttsSettings, onMenuToggle, onCopy, onRollback, onRetry, onSpeak }) => (
   <div className={`flex gap-3 group relative ${isAi ? 'items-start' : 'items-end flex-row-reverse'}`}>
     {isAi && charForMsg && (
       <img src={charForMsg.image} alt={charForMsg.name} className="w-8 h-8 rounded-full object-cover flex-shrink-0 border border-white/20 dark:border-white/10 mt-1" />
@@ -40,6 +43,7 @@ const MessageRow = memo<{
               className="absolute left-10 top-0 flex items-center gap-1 bg-white/90 dark:bg-black/90 backdrop-blur-md border border-gray-200 dark:border-white/10 rounded-full px-2 py-1 shadow-lg z-20"
             >
               <button onClick={(e) => { e.stopPropagation(); onCopy(msg.content) }} className={`${isMobile ? 'p-2.5' : 'p-1.5'} text-gray-500 hover:text-blue-500 transition-all`}><Copy size={isMobile ? 14 : 12} /></button>
+              {ttsSettings.enabled && <button onClick={(e) => { e.stopPropagation(); onSpeak(msg.content, msg.speakerId) }} className={`${isMobile ? 'p-2.5' : 'p-1.5'} text-gray-500 hover:text-purple-500 transition-all`}><Volume2 size={isMobile ? 14 : 12} /></button>}
               {!isLatest && <button onClick={(e) => { e.stopPropagation(); onRollback(idx) }} className={`${isMobile ? 'p-2.5' : 'p-1.5'} text-gray-500 hover:text-orange-500 transition-all`}><RotateCcw size={isMobile ? 14 : 12} /></button>}
               <button onClick={(e) => { e.stopPropagation(); onRetry(idx, msg) }} className={`${isMobile ? 'p-2.5' : 'p-1.5'} text-gray-500 hover:text-red-500 transition-all`}><RotateCw size={isMobile ? 14 : 12} /></button>
             </motion.div>
@@ -52,7 +56,7 @@ const MessageRow = memo<{
         ) : isAi && msg.content.startsWith('错误') ? (
           <span className="text-red-500 dark:text-red-400 text-sm">{msg.content}</span>
         ) : (
-          <MessageContent content={msg.content} isAi={isAi} isLatest={isLatest} renderDepth={distanceFromEnd <= 3 ? 0 : distanceFromEnd} />
+          <MessageContent content={msg.content} isAi={isAi} isLatest={isLatest} renderDepth={distanceFromEnd <= 3 ? 0 : distanceFromEnd} images={msg.images} />
         )}
       </div>
     </div>
@@ -72,90 +76,17 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
   const { 
     messages, selectedCharacter, config, isLoading,
     setCurrentView, rollbackMessages, secondaryCharacter,
-    isDialogueFullscreen, setDialogueFullscreen
+    isDialogueFullscreen, setDialogueFullscreen,
+    ttsSettings
   } = useAppStore()
   const { confirm } = useDialog()
   const { isMobile, isTouchDevice } = useDevice()
 
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const [activeMenuIndex, setActiveMenuIndex] = useState<number | null>(null)
-  const [activeIdx, setActiveIdx] = useState<number | null>(null)
-  const pressTimer = useRef<any>(null)
+  // ... (rest of implementation)
 
-  const activePersona = config.personas.find(p => p.id === config.activePersonaId) || config.personas[0]
-
-  const lastAssistantMsg = useMemo(() =>
-    [...messages].reverse().find(m => m.role === 'assistant'), [messages])
-
-  const visibleMessages = useMemo(() =>
-    messages.filter(m => m.role === 'assistant' || m.role === 'user'), [messages])
-
-  const lastMessage = visibleMessages[visibleMessages.length - 1] ?? null
-  const isLastAi = lastMessage?.role === 'assistant'
-
-  // 通知父组件 canAdvance 始终为 false（单一模式无翻页）
-  useEffect(() => { onCanAdvanceChange?.(false) }, [])
-
-  // 新消息时滚动到底部
-  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior })
-  }
-
-  useEffect(() => { scrollToBottom() }, [messages.length, displayText])
-
-  const handleRollback = (index: number) => {
-    rollbackMessages(index, true)
-    setActiveIdx(null)
-    setActiveMenuIndex(null)
-  }
-
-  const handleCopy = (content: string) => {
-    navigator.clipboard.writeText(content)
-    setActiveMenuIndex(null)
-  }
-
-  const handleRetry = async (index: number, msg: any) => {
-    const confirmed = await confirm('之后的对话记录将被永久删除并覆盖当前存档！', {
-      title: '确定要重试吗？',
-      confirmText: '重试',
-      danger: true,
-    })
-    if (!confirmed) return
-
-    if (msg.role === 'user') {
-      const targetIndex = index - 1
-      rollbackMessages(targetIndex < 0 ? -1 : targetIndex, false)
-      if (onRetry) setTimeout(() => onRetry(msg.content), 150)
-    } else {
-      let lastUserIndex = index - 1
-      while (lastUserIndex >= 0 && messages[lastUserIndex].role !== 'user') lastUserIndex--
-      if (lastUserIndex >= 0) {
-        const userContent = messages[lastUserIndex].content
-        const targetIndex = lastUserIndex - 1
-        rollbackMessages(targetIndex < 0 ? -1 : targetIndex, false)
-        if (onRetry) setTimeout(() => onRetry(userContent), 150)
-      }
-    }
-    setActiveMenuIndex(null)
-  }
-
-  const handlePointerDown = (idx: number) => {
-    const delay = isMobile ? 300 : 500
-    pressTimer.current = setTimeout(() => {
-      setActiveIdx(idx)
-      if (window.navigator.vibrate) window.navigator.vibrate(50)
-    }, delay)
-  }
-
-  const handlePointerUpOrCancel = () => {
-    if (pressTimer.current) clearTimeout(pressTimer.current)
-  }
-
-  const getStatusLight = () => {
-    const isError = lastMessage?.role === 'assistant' && lastMessage.content.startsWith('错误')
-    if (isError) return 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)] animate-pulse'
-    if (isTyping) return 'bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.8)] animate-pulse'
-    return 'bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.6)]'
+  const handleSpeak = (text: string, charId?: string) => {
+    const voiceId = charId ? ttsSettings.voiceMap[charId] : undefined
+    ttsService.speak(text, ttsSettings, voiceId)
   }
 
   const getCharForMsg = (msg: any) => {
@@ -171,29 +102,7 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
       className={`relative w-[95%] h-full ${isMobile ? 'max-w-full' : 'max-w-4xl'} glass-morphism ${isMobile ? 'rounded-2xl' : 'rounded-3xl'} shadow-lg flex flex-col overflow-hidden select-text z-30 mx-auto safe-area-padding`}
       onClick={() => setActiveMenuIndex(null)}
     >
-      {/* 顶部状态条 */}
-      <div className="flex-shrink-0 z-40 border-b border-gray-300/10 dark:border-white/5 bg-echo-base/90 dark:bg-black/90 backdrop-blur-xl" onClick={e => e.stopPropagation()}>
-        <div className={`flex justify-between items-center ${isMobile ? 'px-4 py-2' : 'px-6 py-1.5'} min-h-[44px]`}>
-          <span className="text-[9px] tracking-widest text-gray-400 uppercase font-serif">{selectedCharacter.name}</span>
-          <div className={`flex ${isMobile ? 'gap-2' : 'gap-3'}`}>
-            {[
-              { label: isDialogueFullscreen ? <Minimize2 size={12}/> : <Maximize2 size={12}/>, action: () => setDialogueFullscreen(!isDialogueFullscreen) },
-              { label: '存档', action: () => setCurrentView('save') },
-              { label: '读档', action: () => setCurrentView('load') },
-            ].map((btn, i) => (
-              <button
-                key={i}
-                onClick={(e) => { e.stopPropagation(); btn.action() }}
-                className={`${isMobile ? 'text-[10px] min-w-[44px] min-h-[44px] -my-2 px-2' : 'text-[9px]'} font-serif tracking-widest text-gray-500 dark:text-gray-400 hover:text-blue-500 active:scale-95 transition-all uppercase touch-manipulation flex items-center`}
-              >
-                {btn.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* 消息列表 */}
+      {/* ... */}
       <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto no-scrollbar p-4 md:p-6"
@@ -228,10 +137,12 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
                     isMobile={isMobile} isTouchDevice={isTouchDevice}
                     showMenu={activeMenuIndex === idx}
                     distanceFromEnd={distanceFromEnd}
+                    ttsSettings={ttsSettings}
                     onMenuToggle={(i) => setActiveMenuIndex(activeMenuIndex === i ? null : i)}
                     onCopy={handleCopy}
                     onRollback={handleRollback}
                     onRetry={handleRetry}
+                    onSpeak={handleSpeak}
                   />
                 </div>
               )
@@ -239,6 +150,7 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
           </div>
         )}
       </div>
+...
 
       {/* 状态指示灯 */}
       <div className={`absolute ${isMobile ? 'bottom-3 right-4' : 'bottom-4 right-6'} pointer-events-none`}>

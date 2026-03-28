@@ -35,6 +35,7 @@ interface MessageContentProps {
   isGreeting?: boolean;
   isLatest?: boolean;
   renderDepth?: number;
+  images?: string[];
 }
 
 const ThinkingBlock: React.FC<{ content: string }> = ({ content }) => {
@@ -61,7 +62,7 @@ const HtmlRenderer: React.FC<{
   return <IframeBlock key={i} html={html} charData={charData} />;
 };
 
-const MessageContent: React.FC<MessageContentProps> = React.memo(({ content, isAi, segmentIndex, isLatest = false, renderDepth = 3 }) => {
+const MessageContent: React.FC<MessageContentProps> = React.memo(({ content, isAi, segmentIndex, isLatest = false, renderDepth = 3, images }) => {
   const config = useAppStore(s => s.config);
   const selectedCharacter = useAppStore(s => s.selectedCharacter);
 
@@ -130,6 +131,13 @@ const MessageContent: React.FC<MessageContentProps> = React.memo(({ content, isA
 
   return (
     <>
+      {images && images.length > 0 && (
+        <div className="flex gap-2 flex-wrap mb-3">
+          {images.map((img, i) => (
+            <img key={i} src={img} alt="attachment" className="max-w-[200px] max-h-[200px] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 object-contain" />
+          ))}
+        </div>
+      )}
       {thinkingContent && <ThinkingBlock content={thinkingContent} />}
       <div className={`font-serif leading-relaxed ${isAi ? 'text-gray-700 dark:text-gray-300' : 'text-gray-500 dark:text-gray-500 tracking-wide text-right'} flex flex-col gap-2`} style={{ fontSize: 'var(--app-font-size, 1.125rem)' }}>
         {renderParts.map((part) => {

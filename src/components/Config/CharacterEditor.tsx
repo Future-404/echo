@@ -15,7 +15,8 @@ interface CharacterEditorProps {
 const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) => {
   const { 
     characters, updateCharacter, removeCharacter, config, saveSlots, deleteSaveSlot,
-    addPrivateWorldBookEntry, updatePrivateWorldBookEntry, removePrivateWorldBookEntry 
+    addPrivateWorldBookEntry, updatePrivateWorldBookEntry, removePrivateWorldBookEntry,
+    ttsSettings, updateTtsVoice
   } = useAppStore()
   const { confirm } = useDialog()
   
@@ -35,6 +36,9 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
   const [isParsersExpanded, setIsParsersExpanded] = React.useState(false);
 
   if (!char) return null
+
+  // 语音列表
+  const voices = ttsSettings.provider === 'browser' ? window.speechSynthesis.getVoices() : [];
 
   // 头像上传处理
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -220,6 +224,17 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
             />
           </div>
 
+          {/* 场景设定 (ST Scenario) */}
+          <div className="group text-left">
+            <label className="text-[9px] tracking-widest text-gray-300 uppercase mb-3 block italic underline decoration-gray-100 dark:decoration-gray-800 underline-offset-8">Neural Scenario // 场景设定</label>
+            <textarea 
+              value={char.scenario || ''} 
+              onChange={(e) => updateCharacter(charId, { scenario: e.target.value })}
+              placeholder="当前的故事背景、地点或发生的事件..."
+              className="w-full bg-white/30 dark:bg-white/5 border-0.5 border-gray-100 dark:border-gray-800 rounded-3xl p-6 text-sm text-gray-500 dark:text-gray-400 font-serif leading-relaxed focus:outline-none focus:border-gray-300 min-h-[100px] resize-none no-scrollbar"
+            />
+          </div>
+
           {/* Provider 绑定 */}
           <div className="group text-left">
             <label className="text-[9px] tracking-widest text-gray-300 uppercase mb-3 block italic underline decoration-gray-100 dark:decoration-gray-800 underline-offset-8">Provider Binding // 模型绑定</label>
@@ -234,6 +249,29 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
               ))}
             </select>
           </div>
+
+          {/* TTS 语音绑定 */}
+          {ttsSettings.enabled && (
+            <div className="group text-left">
+              <label className="text-[9px] tracking-widest text-gray-300 uppercase mb-3 block italic underline decoration-gray-100 dark:decoration-gray-800 underline-offset-8">Neural Voice // 语音设置</label>
+              <select
+                value={ttsSettings.voiceMap[charId] || ''}
+                onChange={(e) => updateTtsVoice(charId, e.target.value)}
+                className="w-full bg-white/30 dark:bg-white/5 border-0.5 border-gray-100 dark:border-gray-800 rounded-2xl px-4 py-3 text-xs text-gray-500 dark:text-gray-400 focus:outline-none focus:border-gray-300 bg-white dark:bg-[#0d0d0d]"
+              >
+                <option value="">默认语音</option>
+                {ttsSettings.provider === 'openai' ? (
+                  ['alloy', 'ash', 'coral', 'echo', 'fable', 'onyx', 'nova', 'sage', 'shimmer'].map(v => (
+                    <option key={v} value={v}>{v.toUpperCase()}</option>
+                  ))
+                ) : (
+                  voices.map(v => (
+                    <option key={v.name} value={v.name}>{v.name}</option>
+                  ))
+                )}
+              </select>
+            </div>
+          )}
 
           {/* 1. 公共书库绑定 */}
           <div className="space-y-6 pt-6 border-t-0.5 border-gray-100 dark:border-gray-800">
@@ -325,18 +363,64 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
 
                     <AnimatePresence>
                       {expandedPrivateId === entry.id && (
-                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="px-4 pb-4 border-t border-gray-100 dark:border-white/5 pt-4 space-y-3">
-                          <textarea 
-                            value={entry.content} 
-                            onChange={(e) => updatePrivateWorldBookEntry(entry.id, { content: e.target.value })}
-                            className="w-full bg-white dark:bg-black/20 border-0.5 border-gray-100 dark:border-white/10 rounded-xl px-3 py-2 text-[11px] font-serif min-h-[100px] focus:outline-none focus:border-orange-400/50 transition-colors resize-none no-scrollbar"
-                          />
-                          <input 
-                            placeholder="Label" 
-                            value={entry.comment || ''} 
-                            onChange={e => updatePrivateWorldBookEntry(entry.id, { comment: e.target.value })}
-                            className="bg-transparent text-[9px] italic text-gray-400 focus:outline-none w-full px-1"
-                          />
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="px-4 pb-4 border-t border-gray-100 dark:border-white/5 pt-4 space-y-4">
+                          <div className="space-y-2">
+                            <label className="text-[8px] uppercase tracking-widest text-gray-400 px-1">Content // 记忆内容</label>
+                            <textarea 
+                              value={entry.content} 
+                              onChange={(e) => updatePrivateWorldBookEntry(entry.id, { content: e.target.value })}
+                              className="w-full bg-white dark:bg-black/20 border-0.5 border-gray-100 dark:border-white/10 rounded-xl px-3 py-2 text-[11px] font-serif min-h-[100px] focus:outline-none focus:border-orange-400/50 transition-colors resize-none no-scrollbar"
+                            />
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                              <label className="text-[8px] uppercase tracking-widest text-gray-400 px-1">Label // 标签</label>
+                              <input 
+                                placeholder="Label" 
+                                value={entry.comment || ''} 
+                                onChange={e => updatePrivateWorldBookEntry(entry.id, { comment: e.target.value })}
+                                className="w-full bg-white dark:bg-black/20 border-0.5 border-gray-100 dark:border-white/10 rounded-xl px-3 py-2 text-[10px] focus:outline-none"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-[8px] uppercase tracking-widest text-gray-400 px-1">Order // 排序</label>
+                              <input 
+                                type="number"
+                                placeholder="Order" 
+                                value={entry.insertionOrder ?? 0} 
+                                onChange={e => updatePrivateWorldBookEntry(entry.id, { insertionOrder: parseInt(e.target.value) || 0 })}
+                                className="w-full bg-white dark:bg-black/20 border-0.5 border-gray-100 dark:border-white/10 rounded-xl px-3 py-2 text-[10px] focus:outline-none"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                              <label className="text-[8px] uppercase tracking-widest text-gray-400 px-1">Position // 注入位置</label>
+                              <select
+                                value={entry.position ?? 1}
+                                onChange={e => updatePrivateWorldBookEntry(entry.id, { position: parseInt(e.target.value) as any })}
+                                className="w-full bg-white dark:bg-black/20 border-0.5 border-gray-100 dark:border-white/10 rounded-xl px-3 py-2 text-[10px] focus:outline-none appearance-none"
+                              >
+                                <option value={4}>Top (最顶部)</option>
+                                <option value={0}>Before Char (描述前)</option>
+                                <option value={1}>After Char (描述后)</option>
+                                <option value={2}>@ Depth (指定深度)</option>
+                              </select>
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-[8px] uppercase tracking-widest text-gray-400 px-1">Depth // 注入深度</label>
+                              <input 
+                                type="number"
+                                disabled={entry.position !== 2}
+                                placeholder="Depth (only for @Depth)" 
+                                value={entry.depth ?? 4} 
+                                onChange={e => updatePrivateWorldBookEntry(entry.id, { depth: parseInt(e.target.value) || 0 })}
+                                className={`w-full bg-white dark:bg-black/20 border-0.5 border-gray-100 dark:border-white/10 rounded-xl px-3 py-2 text-[10px] focus:outline-none ${entry.position !== 2 ? 'opacity-30' : ''}`}
+                              />
+                            </div>
+                          </div>
                         </motion.div>
                       )}
                     </AnimatePresence>

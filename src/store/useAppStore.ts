@@ -15,7 +15,8 @@ export interface WorldBookEntry {
   comment?: string;
   insertionOrder?: number;
   constant?: boolean;
-  position?: 0 | 1; // 0=before_char, 1=after_char (ST 规范)
+  position?: 0 | 1 | 2 | 3 | 4; // ST: 0=before_char, 1=after_char, 2=before_an, 3=after_an, 4=top
+  depth?: number;             // 注入深度 (从对话末尾数)
   extensions?: Record<string, any>;
 }
 
@@ -49,12 +50,13 @@ export type CharacterCard = {
   image: string; 
   description: string; 
   systemPrompt: string; 
+  scenario?: string;      // ST: Scenario 场景设定
   postHistoryInstructions?: string;
   alternateGreetings?: string[];
   greeting?: string;
   attributes?: Record<string, any>;
   providerId?: string;
-  depthPrompt?: { content: string; depth: number; role: 'system' | 'user' | 'assistant' }; // ST depth_prompt
+  depthPrompt?: { content: string; depth: number; role: 'system' | 'user' | 'assistant' }; // ST depth_prompt (Author's Note)
   extensions?: {
     missions?: Mission[];
     directives?: Directive[];
@@ -76,6 +78,7 @@ export interface Message {
   tool_calls?: any[];
   isGreeting?: boolean;
   speakerId?: string; // 发言者 id：角色 id 或 'user' 或 'narrator'
+  images?: string[]; // Array of base64 image data URIs
 }
 
 export interface Provider { 
@@ -89,6 +92,8 @@ export interface Provider {
   contextWindow?: number;
   stream?: boolean;
   apiFormat?: 'openai' | 'anthropic' | 'gemini';
+  customHeaders?: string;
+  assistantPrefill?: string; // 引导语注入，追加为最后一条 assistant 消息
 }
 
 export interface Directive { id: string; title: string; content: string; enabled: boolean }
@@ -125,15 +130,35 @@ export interface SaveSlot {
   fragments: string[];
 }
 
+export interface TtsSettings {
+  enabled: boolean;
+  provider: 'edge' | 'openai' | 'browser' | 'elevenlabs';
+  autoSpeak: boolean;
+  voiceMap: Record<string, string>; // characterId -> voiceId
+  globalSettings: {
+    speed: number;
+    pitch: number;
+    apiKey?: string;
+    endpoint?: string;
+    openaiModel?: string;
+    elevenlabsModel?: string;
+  }
+}
+
 interface AppState extends ChatSlice, CharacterSlice, ConfigSlice, SaveSlice {
   isLoading: boolean; 
   isConfigOpen: boolean;
   isDialogueFullscreen: boolean;
   currentView: 'home' | 'main' | 'selection' | 'multi-selection' | 'save' | 'load' | 'help';
-  configSubView: 'main' | 'advanced' | 'gateway' | 'world' | 'prompt' | 'provider-edit' | 'directive-edit' | 'skills' | 'persona' | 'debug' | 'parsers' | 'appearance';
+  configSubView: 'main' | 'advanced' | 'gateway' | 'world' | 'prompt' | 'provider-edit' | 'directive-edit' | 'skills' | 'persona' | 'debug' | 'parsers' | 'appearance' | 'tts';
   lastInteraction: { x: number; y: number } | null; 
   isInteracting: boolean;
   debugLogs: DebugEntry[];
+
+  // TTS State
+  ttsSettings: TtsSettings;
+  updateTtsSettings: (updates: Partial<TtsSettings>) => void;
+  updateTtsVoice: (charId: string, voiceId: string) => void;
 
   // 三人聊天
   secondaryCharacter: CharacterCard | null;
@@ -146,6 +171,10 @@ interface AppState extends ChatSlice, CharacterSlice, ConfigSlice, SaveSlice {
   saveMultiGame: (slotId: string, name?: string) => void;
   loadMultiGame: (slotId: string) => void;
   deleteMultiSaveSlot: (slotId: string) => void;
+  
+  lastTokenCount: number;
+  maxContextTokens: number;
+  setTokenStats: (last: number, max: number) => void;
   
   _hasHydrated: boolean;
   setHasHydrated: (val: boolean) => void;
@@ -175,6 +204,18 @@ const INITIAL_CONFIG = {
   customBg: false,
 };
 
+const INITIAL_TTS: TtsSettings = {
+  enabled: false,
+  provider: 'browser',
+  autoSpeak: false,
+  voiceMap: {},
+  globalSettings: {
+    speed: 1.0,
+    pitch: 1.0,
+    openaiModel: 'tts-1',
+  }
+};
+
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
@@ -196,6 +237,15 @@ export const useAppStore = create<AppState>()(
       routerProviderId: '',
       multiCharMode: false,
       multiSaveSlots: [],
+
+      // TTS Implementation
+      ttsSettings: INITIAL_TTS,
+      updateTtsSettings: (updates) => set((s: any) => ({ ttsSettings: { ...s.ttsSettings, ...updates } })),
+      updateTtsVoice: (charId, voiceId) => set((s: any) => ({ ttsSettings: { ...s.ttsSettings, voiceMap: { ...s.ttsSettings.voiceMap, [charId]: voiceId } } })),
+
+      lastTokenCount: 0,
+      maxContextTokens: 0,
+      setTokenStats: (last, max) => set({ lastTokenCount: last, maxContextTokens: max }),
 
       setHasHydrated: (val) => set({ _hasHydrated: val }),
       setIsLoading: (loading) => set({ isLoading: loading }),
@@ -290,6 +340,7 @@ export const useAppStore = create<AppState>()(
           missions: state.missions, 
           fragments: state.fragments,
           currentAutoSlotId: state.currentAutoSlotId,
+          ttsSettings: state.ttsSettings,
         }),
     }
   )

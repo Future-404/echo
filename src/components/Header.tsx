@@ -5,8 +5,15 @@ import MusicPlayer from './MusicPlayer'
 import { Clock, MapPin, Cloud } from 'lucide-react'
 
 const Header: React.FC = () => {
-  const { isLoading, selectedCharacter, setIsConfigOpen, setCurrentView } = useAppStore()
+  const { 
+    isLoading, selectedCharacter, setIsConfigOpen, setCurrentView,
+    lastTokenCount, maxContextTokens 
+  } = useAppStore()
   const attrs = selectedCharacter.attributes || {}
+
+  // 计算 Token 百比分与颜色
+  const tokenUsagePercent = maxContextTokens > 0 ? (lastTokenCount / maxContextTokens) * 100 : 0
+  const tokenColorClass = tokenUsagePercent > 95 ? 'text-red-500' : tokenUsagePercent > 80 ? 'text-orange-400' : 'text-gray-400 dark:text-gray-500'
 
   return (
     <header className="sticky top-0 z-50 h-16 flex items-center justify-between px-6 md:px-10 pointer-events-auto bg-echo-base/60 dark:bg-black/60 backdrop-blur-md border-b border-black/5 dark:border-white/5">
@@ -29,7 +36,14 @@ const Header: React.FC = () => {
           </div>
 
           <div className="w-[1px] h-3 bg-gray-200 dark:bg-gray-800" />
-          <span className="text-[9px] md:text-[10px] tracking-[0.4em] text-gray-300 dark:text-gray-600 italic uppercase">{selectedCharacter.name}</span>
+          <div className="flex flex-col md:flex-row md:items-center md:gap-3">
+            <span className="text-[9px] md:text-[10px] tracking-[0.4em] text-gray-300 dark:text-gray-600 italic uppercase">{selectedCharacter.name}</span>
+            {lastTokenCount > 0 && (
+              <span className={`text-[7px] md:text-[8px] font-mono tracking-widest uppercase ${tokenColorClass} md:mt-0.5`}>
+                [ {lastTokenCount >= 1000 ? (lastTokenCount / 1000).toFixed(1) + 'k' : lastTokenCount} / {maxContextTokens >= 1000 ? (maxContextTokens / 1000).toFixed(0) + 'k' : maxContextTokens} ctx ]
+              </span>
+            )}
+          </div>
         </motion.div>
 
         {/* 通用环境信息自动识别展示 */}

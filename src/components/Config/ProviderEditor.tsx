@@ -107,6 +107,16 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
       </div>
 
       <div className="group">
+        <label className="text-[9px] tracking-wide text-gray-300 dark:text-gray-600 uppercase mb-3 block italic">Custom Headers // 自定义请求头 (JSON)</label>
+        <textarea 
+          value={provider.customHeaders || ''} 
+          onChange={(e) => updateProvider(id, { customHeaders: e.target.value })} 
+          placeholder='{ "HTTP-Referer": "https://echo.ai", "X-Title": "Echo" }' 
+          className="w-full bg-white/30 dark:bg-white/5 border-0.5 border-gray-100 dark:border-gray-800 rounded-xl p-4 text-[10px] text-gray-500 dark:text-gray-400 font-mono focus:outline-none focus:border-gray-300 min-h-[60px] resize-none no-scrollbar"
+        />
+      </div>
+
+      <div className="group">
         <div className="flex justify-between items-center mb-3">
             <label className="text-[9px] tracking-wide text-gray-300 dark:text-gray-600 uppercase italic">Model Identifier // 模型选择</label>
             <button 
@@ -220,16 +230,29 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
 
             <div className="group">
               <div className="flex justify-between items-center mb-2">
-                <label className="text-[9px] tracking-wide text-gray-300 dark:text-gray-600 uppercase italic">Context Window // 记忆轮数</label>
-                <span className="text-[10px] text-gray-500 font-mono">{provider.contextWindow ?? 10}</span>
+                <label className="text-[9px] tracking-wide text-gray-300 dark:text-gray-600 uppercase italic">Context Capacity (Tokens) // 上下文容量</label>
+                <span className="text-[10px] text-gray-500 font-mono">{provider.contextWindow ? (provider.contextWindow >= 1000 ? (provider.contextWindow / 1000).toFixed(0) + 'k' : provider.contextWindow) : '32k'}</span>
               </div>
               <input
                 type="range"
-                min="1" max="1000" step="1"
-                value={provider.contextWindow ?? 10}
+                min="4096" max="256000" step="4096"
+                value={provider.contextWindow || 32000}
                 onChange={(e) => updateProvider(id, { contextWindow: parseInt(e.target.value, 10) })}
                 className="w-full accent-gray-500"
               />
+              <p className="text-[7px] text-gray-400 mt-1 uppercase tracking-widest">限制发送给模型的最大 Token 总数（包含历史与设定）</p>
+            </div>
+
+            <div className="group">
+              <label className="text-[9px] tracking-wide text-gray-300 dark:text-gray-600 uppercase italic mb-2 block">Assistant Prefill // 引导语</label>
+              <input
+                type="text"
+                value={provider.assistantPrefill ?? ''}
+                onChange={(e) => updateProvider(id, { assistantPrefill: e.target.value || undefined })}
+                placeholder='例如：" 或 *我'
+                className="w-full bg-transparent border-b border-gray-200 dark:border-gray-800 py-1.5 text-sm text-gray-600 dark:text-gray-300 focus:outline-none focus:border-gray-400 transition-colors font-mono"
+              />
+              <p className="text-[7px] text-gray-400 mt-1 uppercase tracking-widest">注入为最后一条 assistant 消息，引导模型输出格式</p>
             </div>
           </div>
         </details>

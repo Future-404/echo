@@ -1,5 +1,6 @@
-import type { CharacterCard, UserPersona, Directive, Mission, WorldBook } from '../store/useAppStore';
+import type { CharacterCard, UserPersona, Directive, Mission, WorldBook, WorldBookEntry, Message } from '../store/useAppStore';
 import { getEnabledSkillPrompts } from '../skills';
+import { estimateTokens } from '../utils/tokenCounter';
 
 export interface PromptContext {
   character: CharacterCard;
@@ -9,7 +10,7 @@ export interface PromptContext {
   missions: Mission[];
   userName: string;
   enabledSkillIds?: string[];
-  recentMessages?: any[];
+  recentMessages: Message[];
   isMultiChar?: boolean;
   otherCharName?: string;
 }
@@ -19,12 +20,12 @@ export interface MacroOptions {
   currentQuest?: string;
   userDescription?: string;
   userBackground?: string;
-  userSurname?: string;   // {{user_surname}}
-  userNickname?: string;  // {{user_nickname}}
+  userSurname?: string;
+  userNickname?: string;
 }
 
 /**
- * 宏替换引擎：将文本中的 {{user}}, {{char}}, {{time}}, {{date}}, {{weekday}}, {{other}}, {{current_quest}}, {{description}}, {{background}}, {{user_surname}}, {{user_nickname}} 替换为实际内容
+ * 宏替换引擎
  */
 export const replaceMacros = (text: string, userName: string, charName: string, options: MacroOptions = {}): string => {
   if (!text) return '';
@@ -49,133 +50,172 @@ export const replaceMacros = (text: string, userName: string, charName: string, 
 };
 
 /**
- * 核心提示词引擎：将各模块数据组装为结构化的 System Prompt
- * 遵循极简主义与高保真还原
+ * 递归扫描并激活世界书条目 (1:1 复刻 ST 高级匹配算法)
  */
-export const buildSystemPrompt = (ctx: PromptContext): string => {
+export const scanActiveWorldInfo = (ctx: PromptContext): WorldBookEntry[] => {
+  const { character, worldBookLibrary, recentMessages } = ctx;
+  
+  const boundBookIds = character.extensions?.worldBookIds || [];
+  const allAvailableEntries = [
+    ...(worldBookLibrary || []).filter(book => boundBookIds.includes(book.id)).flatMap(b => b.entries || []),
+    ...(character.extensions?.worldBook || [])
+  ].filter(e => e.enabled);
+
+  const activatedEntries = new Map<string, WorldBookEntry>();
+  
+  // 1. 获取初始扫描文本 (最近的聊天记录)
+  const scanDepth = 3; 
+  const messageContext = recentMessages.slice(-scanDepth).map(m => m.content).join('\n').toLowerCase();
+
+  const performScan = (text: string): boolean => {
+    let newlyAdded = false;
+    for (const entry of allAvailableEntries) {
+      if (activatedEntries.has(entry.id)) continue;
+      
+      // 常驻条目直接激活
+      if (entry.constant || !entry.keys || entry.keys.length === 0) {
+        activatedEntries.set(entry.id, entry);
+        newlyAdded = true;
+        continue;
+      }
+
+      // 关键词匹配：支持 /regex/flags 格式或普通字符串
+      const matched = entry.keys.some(k => {
+        const trimmed = k.trim();
+        if (!trimmed) return false;
+        const reMatch = trimmed.match(/^\/(.+)\/([gimsuy]*)$/);
+        if (reMatch) {
+          try { return new RegExp(reMatch[1], reMatch[2]).test(text); } catch { return false; }
+        }
+        const lower = trimmed.toLowerCase();
+        return new RegExp(`\\b${lower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(text);
+      });
+
+      if (matched) {
+        activatedEntries.set(entry.id, entry);
+        newlyAdded = true;
+      }
+    }
+    return newlyAdded;
+  };
+
+  // 第一轮：基于消息内容扫描
+  performScan(messageContext);
+
+  // 递归扫描：基于已激活条目的内容扫描 (最大深度 2 层，即 A -> B -> C)
+  for (let i = 0; i < 2; i++) {
+    const currentActiveContent = Array.from(activatedEntries.values()).map(e => e.content).join('\n').toLowerCase();
+    if (!performScan(currentActiveContent)) break;
+  }
+
+  return Array.from(activatedEntries.values()).sort((a, b) => (a.insertionOrder ?? 0) - (b.insertionOrder ?? 0));
+};
+
+/**
+ * 构建符合 SillyTavern 逻辑的消息数组 (Token 驱动 + 权重裁剪)
+ */
+export const buildPromptMessages = (ctx: PromptContext, contextWindow: number = 32000): any[] => {
   const { 
-    character, persona, directives, worldBookLibrary, 
-    missions, userName, enabledSkillIds, recentMessages = [],
+    character, persona, directives, 
+    missions, userName, enabledSkillIds, recentMessages,
     isMultiChar, otherCharName,
   } = ctx;
 
   const actualUserName = persona?.name || userName || 'User';
   const charName = character.name;
-
-  // 准备宏替换上下文
-  const activeMainQuest = (missions || []).find(m => m.status === 'ACTIVE' && m.type === 'MAIN');
-  const macroOptions: MacroOptions = {
+  const fastReplace = (t: string) => replaceMacros(t, actualUserName, charName, {
     otherName: otherCharName,
-    currentQuest: activeMainQuest?.title,
+    currentQuest: (missions || []).find(m => m.status === 'ACTIVE' && m.type === 'MAIN')?.title,
     userDescription: persona?.description,
     userBackground: persona?.background,
     userSurname: persona?.surname,
     userNickname: persona?.nickname,
-  };
+  });
 
-  // 快捷调用函数
-  const fastReplace = (t: string) => replaceMacros(t, actualUserName, charName, macroOptions);
+  // 1. 递归扫描获取所有激活条目
+  const rawActiveEntries = scanActiveWorldInfo(ctx);
 
-  // 1. 提取最近对话作为匹配上下文
-  // scan_depth: 取所有绑定书中最大值，默认 3（V2 规范字段）
-  const boundBookIds = character.extensions?.worldBookIds || [];
-  const boundBooks = (worldBookLibrary || []).filter(book => boundBookIds.includes(book.id));
-  const scanDepth = boundBooks.reduce((max, b) => Math.max(max, b.scanDepth ?? 3), 3);
-
-  const contextText = recentMessages
-    .slice(-scanDepth)
-    .map(m => m.content)
-    .join(' ')
-    .toLowerCase();
-
-  const enabledDirectives = (directives || [])
-    .filter(d => d.enabled)
-    .map(d => `[Protocol: ${d.title}]\n${fastReplace(d.content)}`)
-    .join('\n\n');
-
-  const missionStatus = (missions || [])
-    .filter(m => m.status === 'ACTIVE')
-    .map(m => `- ${m.title}: ${fastReplace(m.description || '')} (${m.progress}%)`)
-    .join('\n');
-
-  // 2. 知识源处理
-  const libraryEntries = boundBooks
-    .flatMap(book => book.entries || [])
-    .filter(entry => {
-      if (!entry.enabled) return false;
-      if (entry.constant) return true;
-      if (!entry.keys || entry.keys.length === 0) return true;
-      return entry.keys.some(k => contextText.includes(k.toLowerCase().trim()));
-    })
-    .sort((a, b) => (a.insertionOrder ?? 0) - (b.insertionOrder ?? 0));
-
-  const privateEntries = (character.extensions?.worldBook || [])
-    .filter(entry => entry.enabled)
-    .sort((a, b) => (a.insertionOrder ?? 0) - (b.insertionOrder ?? 0));
-
-  // 按 position 分区：before_char(0) 注入在角色描述前，after_char(1) 注入在后
-  const allActive = [...libraryEntries, ...privateEntries];
-  const beforeCharEntries = allActive.filter(e => e.position === 0);
-  const afterCharEntries = allActive.filter(e => e.position !== 0);
-
-  const renderEntries = (entries: typeof allActive) =>
-    entries.map(entry => {
-      const label = entry.keys?.length ? ` [Knowledge: ${entry.keys.join(', ')}]` : '';
-      return `${label}\n${fastReplace(entry.content)}`;
-    }).join('\n\n');
-
-  const beforeCharContext = renderEntries(beforeCharEntries);
-  const afterCharContext = renderEntries(afterCharEntries);
-
-  const activeWorldContext = [beforeCharContext, afterCharContext].filter(Boolean).join('\n\n')
-    || 'A digital echo chamber where memories fragment and reform.';
-
-  const rawSkillPrompts = getEnabledSkillPrompts(enabledSkillIds);
-  const dynamicSkillPrompts = rawSkillPrompts 
-    ? fastReplace(rawSkillPrompts).replace(/\[角色名\]/g, charName)
-    : '';
-
-  const skillSection = dynamicSkillPrompts ? `\n\n  ### SKILL MODULES & DIRECTIVES\n  ${dynamicSkillPrompts}` : '';
-
+  // 2. 预估基础 Token 消耗 (System, Scenario, Persona)
+  const enabledDirectives = (directives || []).filter(d => d.enabled).map(d => `[Protocol: ${d.title}]\n${fastReplace(d.content)}`).join('\n\n');
   const currentAttributes = character.attributes || {};
-  const attributeContext = Object.keys(currentAttributes).length > 0
-    ? `\n### ACTIVE STATE SLOTS (STATEFUL TRACKING)\nCurrently tracked attributes for this session:\n${Object.entries(currentAttributes)
-        .map(([k, v]) => `- ${k}: ${v}`)
-        .join('\n')}`
-    : '';
+  const attributeContext = Object.keys(currentAttributes).length > 0 ? `\n### STATE\n${Object.entries(currentAttributes).map(([k, v]) => `- ${k}: ${v}`).join('\n')}` : '';
+  const skillPrompts = getEnabledSkillPrompts(enabledSkillIds);
+  const skillSection = skillPrompts ? `\n\n### MODULES\n${fastReplace(skillPrompts).replace(/\[角色名\]/g, charName)}` : '';
+  const missionStatus = (missions || []).filter(m => m.status === 'ACTIVE').map(m => `- ${m.title}: (${m.progress}%)`).join('\n');
 
-  // 3. system_prompt：支持 {{original}} 占位符（V2 规范）
-  const rawSystemPrompt = character.systemPrompt || '';
-  const systemPrompt = fastReplace(
-    rawSystemPrompt.includes('{{original}}')
-      ? rawSystemPrompt.replace(/\{\{original\}\}/gi, enabledDirectives)
-      : rawSystemPrompt
-  );
+  const systemBase = `### CORE IDENTITY\n${fastReplace(character.systemPrompt)}\n${character.scenario ? '\n### SCENARIO\n' + fastReplace(character.scenario) : ''}${attributeContext}${skillSection}\n\n### PARTNER: ${actualUserName}\n${fastReplace(persona?.background || '')}\n\n### OBJECTIVE\n${missionStatus || 'Narrative exploration.'}`.trim();
+  
+  const RESPONSE_RESERVE = 1024;
+  const baseTokens = estimateTokens(systemBase) + estimateTokens(enabledDirectives) + 100;
 
-  const multiCharSection = isMultiChar && otherCharName ? `
+  // 3. 基于权重裁剪世界书 (World Info Budgeting)
+  // 规则：世界书最多占用总预算的 35%，按 insertionOrder 优先级填入，常驻条目豁免裁剪
+  const WI_BUDGET = contextWindow * 0.35;
+  const budgetedEntries: WorldBookEntry[] = [];
+  let currentWiTokens = 0;
 
-  ### MULTI-CHARACTER SCENE RULES (IMMUTABLE)
-  This is a multi-character scene. You will see messages prefixed with [Name]: indicating different speakers.
-  - You are ONLY ${charName}. Never speak as ${otherCharName} or ${actualUserName}.
-  - Never generate a [${charName}]: prefix in your reply.
-  - Never generate lines starting with [${otherCharName}]: or [${actualUserName}]:
-  - If you feel the urge to write another character's dialogue, stop immediately.` : '';
+  for (const entry of rawActiveEntries) {
+    const tokens = estimateTokens(entry.content) + 10;
+    if (currentWiTokens + tokens > WI_BUDGET && !entry.constant) continue; // 预算满且非必需，则裁剪
+    currentWiTokens += tokens;
+    budgetedEntries.push(entry);
+  }
 
-  return `
-  ### CORE IDENTITY
-  ${beforeCharContext ? beforeCharContext + '\n\n' : ''}${systemPrompt}${afterCharContext ? '\n\n' + afterCharContext : ''}
-  ${attributeContext}${skillSection}
+  // 4. 组装 System Content
+  const topInjections = budgetedEntries.filter(e => e.position === 4).map(e => fastReplace(e.content)).join('\n\n');
+  const beforeInjections = budgetedEntries.filter(e => e.position === 0).map(e => fastReplace(e.content)).join('\n\n');
+  const afterInjections = budgetedEntries.filter(e => e.position === 1 || e.position === undefined).map(e => fastReplace(e.content)).join('\n\n');
 
-  ### USER PERSONA
-  You are interacting with: ${actualUserName}
-  Background: ${fastReplace(persona?.background || 'A silent observer.')}
-  ${(persona?.worldBook || []).filter(e => e.enabled).map(e => `[User Settings: ${e.comment || 'Private'}]\n${fastReplace(e.content)}`).join('\n\n') || ''}
-  Current Alias: ${userName}
+  const systemFinal = `${topInjections ? topInjections + '\n\n' : ''}${beforeInjections ? beforeInjections + '\n\n' : ''}${systemBase}${afterInjections ? '\n\n' + afterInjections : ''}\n\n### PROTOCOLS\n${enabledDirectives}`.trim();
 
-  ### OPERATIONAL PROTOCOLS
-  ${enabledDirectives}
+  // 5. 计算历史记录预算并加载
+  const depthInjections: { content: string, depth: number, role: string, tokens: number }[] = [];
+  budgetedEntries.filter(e => e.depth && e.depth > 0).forEach(e => {
+    const c = fastReplace(e.content);
+    depthInjections.push({ content: c, depth: e.depth!, role: 'system', tokens: estimateTokens(c) + 10 });
+  });
+  if (character.depthPrompt?.content) {
+    const c = fastReplace(character.depthPrompt.content);
+    depthInjections.push({ content: c, depth: character.depthPrompt.depth, role: character.depthPrompt.role || 'system', tokens: estimateTokens(c) + 10 });
+  }
 
-  ### CURRENT OBJECTIVE STATUS (READ BEFORE RESPONDING)
-  ${missionStatus || 'No active narrative objectives.'}${multiCharSection}
-  `.trim();
+  const postHistoryTokens = character.postHistoryInstructions ? estimateTokens(fastReplace(character.postHistoryInstructions)) + 20 : 0;
+  const totalFixedTokens = baseTokens + currentWiTokens + depthInjections.reduce((s, i) => s + i.tokens, 0) + postHistoryTokens;
+  const historyBudget = contextWindow - totalFixedTokens - RESPONSE_RESERVE;
+
+  const eligibleMessages: any[] = [];
+  let usedHistoryTokens = 0;
+  for (let i = recentMessages.length - 1; i >= 0; i--) {
+    const msg = recentMessages[i];
+    const t = estimateTokens(msg.content) + 10;
+    if (usedHistoryTokens + t > historyBudget) break;
+    usedHistoryTokens += t;
+    eligibleMessages.unshift({ 
+      role: msg.role as any, 
+      content: msg.content,
+      name: msg.role === 'user' ? actualUserName : (msg.speakerId === character.id ? charName : undefined),
+      images: msg.images
+    });
+  }
+
+  // 6. 最终合成
+  const result: any[] = [{ role: 'system', content: systemFinal }];
+  let finalHistory = [...eligibleMessages];
+  depthInjections.sort((a, b) => b.depth - a.depth);
+  depthInjections.forEach(inj => {
+    const idx = Math.max(0, finalHistory.length - inj.depth);
+    finalHistory.splice(idx, 0, { role: inj.role as any, content: `[Note: ${inj.content}]` });
+  });
+
+  result.push(...finalHistory);
+  if (character.postHistoryInstructions) {
+    result.push({ role: 'system', content: `[Directive: ${fastReplace(character.postHistoryInstructions)}]` });
+  }
+
+  return result;
+};
+
+export const buildSystemPrompt = (ctx: PromptContext): string => {
+  const msgs = buildPromptMessages(ctx);
+  return msgs.filter(m => m.role === 'system').map(m => m.content).join('\n\n');
 };
