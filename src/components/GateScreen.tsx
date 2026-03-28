@@ -26,24 +26,23 @@ export const GateScreen: React.FC<Props> = ({ onUnlock }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-[#050505] overflow-hidden">
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-transparent overflow-hidden">
       {/* 氛围背景层 - 与主菜单一致 */}
       <div className="absolute inset-0 z-0">
         <motion.div
           initial={{ scale: 1.1, opacity: 0 }}
-          animate={{ scale: 1, opacity: 0.4 }}
+          animate={{ scale: 1, opacity: 0.6 }}
           transition={{ duration: 3, ease: 'easeOut' }}
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat grayscale"
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{ backgroundImage: 'url(/bg.webp)' }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/80" />
-        <div className="absolute inset-0 backdrop-blur-[2px]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60" />
         
         {/* 动态扫光线 */}
         <motion.div 
           animate={{ y: ['-100%', '200%'] }}
           transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-          className="absolute inset-x-0 h-[50vh] bg-gradient-to-b from-transparent via-white/[0.03] to-transparent pointer-events-none"
+          className="absolute inset-x-0 h-[50vh] bg-gradient-to-b from-transparent via-white/[0.05] to-transparent pointer-events-none"
         />
       </div>
 
@@ -53,7 +52,7 @@ export const GateScreen: React.FC<Props> = ({ onUnlock }) => {
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         className="relative z-10 w-full max-w-[400px] px-6"
       >
-        <div className="glass-morphism rounded-[2.5rem] p-10 md:p-12 border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.5)] flex flex-col items-center text-center">
+        <div className="bg-black/60 border border-white/10 rounded-[2.5rem] p-10 md:p-12 shadow-[0_0_100px_rgba(0,0,0,0.5)] flex flex-col items-center text-center">
           
           {/* Logo 区域 */}
           <div className="mb-12">
@@ -68,7 +67,7 @@ export const GateScreen: React.FC<Props> = ({ onUnlock }) => {
               </h1>
               <div className="flex items-center gap-3 mt-4">
                 <div className="h-[1px] w-8 bg-gradient-to-r from-transparent to-white/20" />
-                <span className="text-[9px] tracking-[0.5em] text-white/30 uppercase font-sans">
+                <span className="text-[9px] tracking-[0.5em] text-white/50 uppercase font-sans">
                   System Authorization
                 </span>
                 <div className="h-[1px] w-8 bg-gradient-to-l from-transparent to-white/20" />
@@ -79,7 +78,7 @@ export const GateScreen: React.FC<Props> = ({ onUnlock }) => {
           {/* 表单区域 */}
           <div className="w-full space-y-6">
             <div className="relative group">
-              <div className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-blue-400 transition-colors">
+              <div className="absolute left-5 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-blue-400 transition-colors">
                 <Lock size={16} strokeWidth={1.5} />
               </div>
               <input
@@ -90,7 +89,7 @@ export const GateScreen: React.FC<Props> = ({ onUnlock }) => {
                 placeholder="AUTHENTICATION TOKEN"
                 autoFocus
                 disabled={loading}
-                className="w-full pl-12 pr-6 py-4 bg-white/[0.03] border-0.5 border-white/10 rounded-2xl text-white text-[11px] tracking-[0.2em] placeholder:text-white/10 focus:outline-none focus:border-blue-500/40 focus:bg-white/[0.05] transition-all"
+                className="w-full pl-12 pr-6 py-4 bg-black/40 border-0.5 border-white/20 rounded-2xl text-white text-[11px] font-bold tracking-[0.2em] placeholder:text-white/40 focus:outline-none focus:border-blue-500 focus:bg-black/60 transition-all"
               />
             </div>
 
