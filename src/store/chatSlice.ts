@@ -32,7 +32,7 @@ export const createChatSlice = (set: any, get: any): ChatSlice => ({
     set((state: any) => ({ messages: [...state.messages, msg] }));
     const state = get();
     if (state._autoSaveTimer) clearTimeout(state._autoSaveTimer);
-    const timer = setTimeout(() => get().autoSave(), 1000);
+    const timer = setTimeout(() => get().autoSave(), 1500); // 增加到 1.5s 防抖
     set({ _autoSaveTimer: timer });
   },
 

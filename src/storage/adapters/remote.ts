@@ -12,12 +12,20 @@ export function createRemoteAdapter(baseUrl: string, token: string): StorageAdap
 
   async function req(method: string, path: string, body?: unknown, retries = 2): Promise<Response> {
     try {
+      const isRaw = typeof body === 'string'
+      const finalHeaders = {
+        ...headers,
+        ...(isRaw ? { 'Content-Type': 'text/plain' } : {})
+      }
       const res = await fetch(`${base}${path}`, {
         method,
-        headers,
-        body: body !== undefined ? JSON.stringify(body) : undefined,
+        headers: finalHeaders,
+        body: isRaw ? body : (body !== undefined ? JSON.stringify(body) : undefined),
       })
-      if (!res.ok) throw new Error(`Storage API ${res.status}: ${path}`)
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({})) as any
+        throw new Error(`Storage API ${res.status}: ${path}${errData.message ? ` - ${errData.message}` : ''}`)
+      }
       return res
     } catch (err) {
       if (retries > 0) {
@@ -52,7 +60,7 @@ export function createRemoteAdapter(baseUrl: string, token: string): StorageAdap
       return data.value ?? null
     },
     setItem: (key, value) => enqueue(key, async () => {
-      await req('PUT', `/api/storage/${encodeURIComponent(key)}`, { value })
+      await req('PUT', `/api/storage/${encodeURIComponent(key)}`, value)
     }),
     removeItem: (key) => enqueue(key, async () => {
       await req('DELETE', `/api/storage/${encodeURIComponent(key)}`)

@@ -78,16 +78,24 @@ export default {
           return json({ value }, 200, origin)
         }
         if (req.method === 'PUT') {
-          const body = await parseBody<{ value: string }>(req)
-          if (!body || typeof body.value !== 'string') return json({ error: 'Invalid body' }, 400, origin)
+          const contentType = req.headers.get('content-type') || ''
+          let value: string
+
+          if (contentType.includes('application/json')) {
+            const body = await parseBody<{ value: string }>(req)
+            if (!body || typeof body.value !== 'string') return json({ error: 'Invalid body' }, 400, origin)
+            value = body.value
+          } else {
+            value = await req.text()
+          }
           
-          const sizeBytes = new TextEncoder().encode(body.value).length
+          const sizeBytes = new TextEncoder().encode(value).length
           if (sizeBytes > MAX_VALUE_BYTES) {
             return json({ error: `Value too large (${(sizeBytes / 1024 / 1024).toFixed(2)}MB, max 10MB)` }, 413, origin)
           }
 
           if (!env.ECHO_KV) return json({ error: 'Server misconfigured: ECHO_KV not bound' }, 500, origin)
-          await env.ECHO_KV.put(id, body.value)
+          await env.ECHO_KV.put(id, value)
           return json({ ok: true }, 200, origin)
         }
         if (req.method === 'DELETE') {
