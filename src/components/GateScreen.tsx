@@ -1,66 +1,163 @@
-import { useState } from 'react'
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Lock, ShieldCheck, Loader2, Github, Key, ChevronRight } from 'lucide-react';
 
-const REPO_URL = 'https://github.com/Future-404/echo'
-
-const GithubIcon = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-    <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
-  </svg>
-)
+const REPO_URL = 'https://github.com/Future-404/echo';
 
 interface Props {
-  onUnlock: (password: string) => Promise<void>
+  onUnlock: (password: string) => Promise<void>;
 }
 
-export const GateScreen = ({ onUnlock }: Props) => {
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+export const GateScreen: React.FC<Props> = ({ onUnlock }) => {
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
-    if (!password) return
-    setLoading(true)
-    setError('')
+    if (!password || loading) return;
+    setLoading(true);
+    setError('');
     try {
-      await onUnlock(password)
-    } catch {
-      setError('密碼錯誤')
-      setLoading(false)
+      await onUnlock(password);
+    } catch (err) {
+      setError('ACCESS DENIED: INVALID TOKEN');
+      setLoading(false);
     }
-  }
+  };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800">
-      <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 w-80 shadow-2xl border border-white/20 space-y-4">
-        <div className="text-center">
-          <div className="text-4xl mb-2">🔑</div>
-          <h2 className="text-xl font-bold text-white">Echo</h2>
-          <p className="text-xs text-gray-400 mt-1">輸入訪問密碼</p>
-        </div>
-        <input
-          type="password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-          placeholder="Password"
-          autoFocus
-          disabled={loading}
-          className="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white/30"
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-[#050505] overflow-hidden">
+      {/* 氛围背景层 - 与主菜单一致 */}
+      <div className="absolute inset-0 z-0">
+        <motion.div
+          initial={{ scale: 1.1, opacity: 0 }}
+          animate={{ scale: 1, opacity: 0.4 }}
+          transition={{ duration: 3, ease: 'easeOut' }}
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat grayscale"
+          style={{ backgroundImage: 'url(/bg.webp)' }}
         />
-        {error && <p className="text-red-400 text-xs text-center">{error}</p>}
-        <button
-          onClick={handleSubmit}
-          disabled={loading || !password}
-          className="w-full py-3 rounded-lg bg-white/20 hover:bg-white/30 disabled:opacity-30 text-white text-sm transition-colors"
-        >
-          {loading ? '驗證中…' : '進入'}
-        </button>
-        <a href={REPO_URL} target="_blank" rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 text-gray-500 hover:text-gray-300 transition-colors text-xs pt-1">
-          <GithubIcon />
-          <span className="tracking-widest uppercase">GitHub</span>
-        </a>
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/80" />
+        <div className="absolute inset-0 backdrop-blur-[2px]" />
+        
+        {/* 动态扫光线 */}
+        <motion.div 
+          animate={{ y: ['-100%', '200%'] }}
+          transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+          className="absolute inset-x-0 h-[50vh] bg-gradient-to-b from-transparent via-white/[0.03] to-transparent pointer-events-none"
+        />
+      </div>
+
+      <motion.div 
+        initial={{ opacity: 0, y: 20, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        className="relative z-10 w-full max-w-[400px] px-6"
+      >
+        <div className="glass-morphism rounded-[2.5rem] p-10 md:p-12 border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.5)] flex flex-col items-center text-center">
+          
+          {/* Logo 区域 */}
+          <div className="mb-12">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              className="flex flex-col items-center gap-2"
+            >
+              <h1 className="text-5xl font-light tracking-[0.3em] text-white leading-none">
+                ECHO
+              </h1>
+              <div className="flex items-center gap-3 mt-4">
+                <div className="h-[1px] w-8 bg-gradient-to-r from-transparent to-white/20" />
+                <span className="text-[9px] tracking-[0.5em] text-white/30 uppercase font-sans">
+                  System Authorization
+                </span>
+                <div className="h-[1px] w-8 bg-gradient-to-l from-transparent to-white/20" />
+              </div>
+            </motion.div>
+          </div>
+
+          {/* 表单区域 */}
+          <div className="w-full space-y-6">
+            <div className="relative group">
+              <div className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-blue-400 transition-colors">
+                <Lock size={16} strokeWidth={1.5} />
+              </div>
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                placeholder="AUTHENTICATION TOKEN"
+                autoFocus
+                disabled={loading}
+                className="w-full pl-12 pr-6 py-4 bg-white/[0.03] border-0.5 border-white/10 rounded-2xl text-white text-[11px] tracking-[0.2em] placeholder:text-white/10 focus:outline-none focus:border-blue-500/40 focus:bg-white/[0.05] transition-all"
+              />
+            </div>
+
+            <AnimatePresence mode="wait">
+              {error && (
+                <motion.p 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="text-rose-500/80 text-[10px] tracking-[0.15em] font-mono italic"
+                >
+                  {error}
+                </motion.p>
+              )}
+            </AnimatePresence>
+
+            <button
+              onClick={handleSubmit}
+              disabled={loading || !password}
+              className="w-full group relative overflow-hidden py-4 bg-white/90 hover:bg-white text-black rounded-2xl text-[11px] font-bold tracking-[0.4em] uppercase transition-all disabled:opacity-20 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(255,255,255,0.1)] active:scale-[0.98]"
+            >
+              <div className="relative z-10 flex items-center justify-center gap-2">
+                {loading ? (
+                  <Loader2 className="animate-spin" size={16} />
+                ) : (
+                  <>
+                    <span>Decrypt</span>
+                    <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
+              </div>
+            </button>
+          </div>
+
+          {/* 底部装饰 */}
+          <div className="mt-12 flex flex-col items-center gap-6">
+            <div className="flex items-center gap-4 opacity-20">
+              <ShieldCheck size={14} strokeWidth={1} className="text-white" />
+              <div className="w-[1px] h-3 bg-white/30" />
+              <span className="text-[8px] tracking-[0.3em] text-white uppercase font-mono">
+                SECURE ACCESS PORTAL
+              </span>
+            </div>
+
+            <a 
+              href={REPO_URL} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-white/20 hover:text-white/60 transition-all group"
+            >
+              <Github size={12} strokeWidth={1.5} className="group-hover:rotate-12 transition-transform" />
+              <span className="text-[8px] tracking-[0.3em] uppercase font-sans">Project Repository</span>
+            </a>
+          </div>
+        </div>
+
+        {/* 装饰性边角标 */}
+        <div className="absolute -top-4 -left-4 w-20 h-20 border-t border-l border-white/5 pointer-events-none" />
+        <div className="absolute -bottom-4 -right-4 w-20 h-20 border-b border-r border-white/5 pointer-events-none" />
+      </motion.div>
+
+      {/* 底部版权信息 */}
+      <div className="absolute bottom-8 left-0 right-0 text-center pointer-events-none">
+        <span className="text-[7px] tracking-[0.5em] text-white/10 uppercase italic">
+          &copy; 2026 ECHO PROJECT. VISUAL NOVEL RENDERER CORE.
+        </span>
       </div>
     </div>
-  )
-}
+  );
+};
