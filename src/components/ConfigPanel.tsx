@@ -15,8 +15,9 @@ import SkillArsenal from './Config/SkillArsenal'
 import AppearanceEditor from './Config/AppearanceEditor'
 import PersonaManager from './Config/PersonaManager'
 import DebugConsole from './Config/DebugConsole'
+import StorageSettings from './Config/StorageSettings'
 
-type SubView = 'main' | 'advanced' | 'gateway' | 'world' | 'prompt' | 'provider-edit' | 'directive-edit' | 'skills' | 'persona' | 'debug' | 'appearance'
+type SubView = 'main' | 'advanced' | 'gateway' | 'world' | 'prompt' | 'provider-edit' | 'directive-edit' | 'skills' | 'persona' | 'debug' | 'appearance' | 'storage'
 
 const MAIN_ITEMS = [
   { id: 'gateway', label: 'API 参数', icon: 'G', sub: 'API Gateway' },
@@ -28,6 +29,7 @@ const MAIN_ITEMS = [
 
 const ADVANCED_ITEMS = [
   { id: 'appearance', label: '视觉风格', icon: 'A', sub: 'Appearance' },
+  { id: 'storage',    label: '云端同步', icon: 'C', sub: 'Cloud Sync' },
   { id: 'debug',      label: '调试日志', icon: 'D', sub: 'Debug' },
 ]
 
@@ -176,6 +178,7 @@ const ConfigPanel: React.FC = () => {
                 {activeView === 'persona' && <PersonaManager />}
                 {activeView === 'debug' && <DebugConsole />}
                 {activeView === 'appearance' && <AppearanceEditor />}
+                {activeView === 'storage' && <StorageSettings />}
 
               </AnimatePresence>
             </div>

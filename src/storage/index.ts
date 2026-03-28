@@ -20,11 +20,10 @@ export function getStorageAdapter(): StorageAdapter {
   if (_adapter) return _adapter
 
   const token = getSavedToken()
-  if (token && API_BASE) {
-    // 有远端配置：本地优先 + R2 异步备份
+  // 只要有 token 就可以尝试同步。如果没有 API_BASE，则走相对路径 /api
+  if (token) {
     _adapter = createHybridAdapter(localAdapter, createRemoteAdapter(API_BASE, token))
   } else {
-    // 无远端配置：纯本地，R2 未配置时也能正常使用
     _adapter = localAdapter
   }
 
