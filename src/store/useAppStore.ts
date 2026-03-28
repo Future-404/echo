@@ -5,7 +5,7 @@ import { getStorageAdapter } from '../storage'
 import { createChatSlice, type ChatSlice } from './chatSlice'
 import { createCharacterSlice, type CharacterSlice } from './characterSlice'
 import { createConfigSlice, type ConfigSlice } from './configSlice'
-import { createSaveSlice, type SaveSlice } from './saveSlice'
+import { createSaveSlice, type SaveSlice, loadSlotsFromStorage, SAVE_KEY, MULTI_SAVE_KEY } from './saveSlice'
 
 export interface WorldBookEntry { 
   id: string; 
@@ -228,11 +228,13 @@ export const useAppStore = create<AppState>()(
           summary: lastMsg.slice(0, 50) + (lastMsg.length > 50 ? '...' : ''),
           missions: state.missions, fragments: state.fragments,
         }
-        set((s: any) => ({
-          multiSaveSlots: (s.multiSaveSlots || []).some((sl: SaveSlot) => sl.id === slotId)
+        set((s: any) => {
+          const slots = (s.multiSaveSlots || []).some((sl: SaveSlot) => sl.id === slotId)
             ? s.multiSaveSlots.map((sl: SaveSlot) => sl.id === slotId ? newSlot : sl)
             : [...(s.multiSaveSlots || []), newSlot]
-        }))
+          getStorageAdapter().setItem(MULTI_SAVE_KEY, JSON.stringify(slots))
+          return { multiSaveSlots: slots }
+        })
       },
 
       loadMultiGame: (slotId) => {
@@ -248,9 +250,11 @@ export const useAppStore = create<AppState>()(
         })
       },
 
-      deleteMultiSaveSlot: (slotId) => set((s: any) => ({
-        multiSaveSlots: (s.multiSaveSlots || []).filter((sl: SaveSlot) => sl.id !== slotId)
-      })),
+      deleteMultiSaveSlot: (slotId) => set((s: any) => {
+        const slots = (s.multiSaveSlots || []).filter((sl: SaveSlot) => sl.id !== slotId)
+        getStorageAdapter().setItem(MULTI_SAVE_KEY, JSON.stringify(slots))
+        return { multiSaveSlots: slots }
+      }),
     }),
     {
       name: 'echo-storage-v16',
@@ -261,7 +265,17 @@ export const useAppStore = create<AppState>()(
       })),
       onRehydrateStorage: () => (state, error) => {
         if (error) console.error('[echo] rehydrate failed:', error)
-        state?.setHasHydrated(true)
+        if (state) {
+          // 从独立 key 加载存档，不污染主 store JSON
+          Promise.all([
+            loadSlotsFromStorage(SAVE_KEY),
+            loadSlotsFromStorage(MULTI_SAVE_KEY),
+          ]).then(([saveSlots, multiSaveSlots]) => {
+            state.saveSlots = saveSlots
+            state.multiSaveSlots = multiSaveSlots
+            state.setHasHydrated(true)
+          })
+        }
       },
       partialize: (state) => ({
           config: state.config,
@@ -271,12 +285,10 @@ export const useAppStore = create<AppState>()(
           secondaryCharacter: state.secondaryCharacter ? (state.secondaryCharacter.id.startsWith('custom-') ? { ...state.secondaryCharacter, image: '' } : state.secondaryCharacter) : null,
           routerProviderId: state.routerProviderId,
           multiCharMode: state.multiCharMode,
-          multiSaveSlots: state.multiSaveSlots,
           messages: state.messages,
           isGreetingSession: state.isGreetingSession,
           missions: state.missions, 
           fragments: state.fragments,
-          saveSlots: state.saveSlots,
           currentAutoSlotId: state.currentAutoSlotId,
         }),
     }

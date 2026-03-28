@@ -74,7 +74,9 @@ export default {
       
       if (resource === 'storage' || resource === 'images') {
         if (!env.ECHO_R2) {
-          return json({ error: 'Cloud Storage (R2) not configured. This feature is optional for advanced users.' }, 501, origin)
+          // R2 未配置时静默降级：写操作返回成功，读操作返回空值
+          if (req.method === 'PUT' || req.method === 'DELETE') return json({ ok: true }, 200, origin)
+          return json({ [resource === 'images' ? 'base64' : 'value']: null }, 200, origin)
         }
         const r2Path = `${resource}/${id}`
 

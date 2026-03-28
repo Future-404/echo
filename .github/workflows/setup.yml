@@ -37,52 +37,6 @@ jobs:
             -H "Content-Type: application/json" \
             -d '{"name":"echo-storage"}' || true
 
-      - name: Create D1 database
-        id: d1
-        run: |
-          LIST=$(curl -s "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/d1/database" \
-            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}")
-          EXISTING=$(echo "$LIST" | jq -r '.result // [] | .[] | select(.name=="echo-db") | .uuid')
-          if [ -n "$EXISTING" ] && [ "$EXISTING" != "null" ]; then
-            echo "D1 database already exists: $EXISTING"
-            echo "id=$EXISTING" >> $GITHUB_OUTPUT
-          else
-            RESPONSE=$(curl -s -X POST \
-              "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/d1/database" \
-              -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
-              -H "Content-Type: application/json" \
-              -d '{"name":"echo-db"}')
-            D1_ID=$(echo "$RESPONSE" | jq -r '.result.uuid // empty')
-            if [ -z "$D1_ID" ]; then
-              echo "$RESPONSE"
-              echo "❌ Failed to create D1 database"
-              exit 1
-            fi
-            echo "id=$D1_ID" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Initialize D1 schema
-        run: |
-          SQL=$(cat echo-storage/cloudflare/schema.sql | tr -d '\n' | sed "s/'/\\\\'/g")
-          curl -s -X POST \
-            "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/d1/database/${{ steps.d1.outputs.id }}/query" \
-            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d "{\"sql\":\"CREATE TABLE IF NOT EXISTS images (id TEXT PRIMARY KEY, base64 TEXT NOT NULL);\"}"
-
-      - name: Update wrangler.toml with real IDs
-        run: |
-          sed -i "s/database_id = \".*\"/database_id = \"${{ steps.d1.outputs.id }}\"/" echo-storage/cloudflare/wrangler.toml
-          echo "Updated wrangler.toml:"
-          cat echo-storage/cloudflare/wrangler.toml
-
-      - name: Commit wrangler.toml
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add echo-storage/cloudflare/wrangler.toml
-          git diff --staged --quiet || git commit -m "chore: set KV and D1 IDs from setup workflow"
-          git push || true
 
       - name: Build frontend
         run: npm ci && npm run build
@@ -108,8 +62,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| 项目 | 值 |" >> $GITHUB_STEP_SUMMARY
           echo "|---|---|" >> $GITHUB_STEP_SUMMARY
-          echo "| R2 Bucket | \`echo-storage\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| D1 Database ID | \`${{ steps.d1.outputs.id }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| R2 Bucket | \`echo-storage\` (可选，未启用时数据仅存本地) |" >> $GITHUB_STEP_SUMMARY
           echo "| **AUTH_TOKEN（请保存）** | \`${{ steps.token.outputs.value }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### ⚠️ 必须手动操作（重要）" >> $GITHUB_STEP_SUMMARY
