@@ -10,31 +10,15 @@ export function createRemoteAdapter(baseUrl: string, token: string): StorageAdap
   // 写入队列：同一 key 的写入/删除串行化，防止乱序覆盖
   const writeQueues = new Map<string, Promise<void>>()
 
-  async function req(method: string, path: string, body?: unknown, retries = 2): Promise<Response> {
-    try {
-      const isRaw = typeof body === 'string'
-      const finalHeaders = {
-        ...headers,
-        ...(isRaw ? { 'Content-Type': 'text/plain' } : {})
-      }
-      const res = await fetch(`${base}${path}`, {
-        method,
-        headers: finalHeaders,
-        body: isRaw ? body : (body !== undefined ? JSON.stringify(body) : undefined),
-      })
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({})) as any
-        throw new Error(`Storage API ${res.status}: ${path}${errData.message ? ` - ${errData.message}` : ''}`)
-      }
-      return res
-    } catch (err) {
-      if (retries > 0) {
-        // 指数退避：300ms, 600ms
-        await new Promise(r => setTimeout(r, 300 * (3 - retries)))
-        return req(method, path, body, retries - 1)
-      }
-      throw err
-    }
+  async function req(method: string, path: string, body?: unknown): Promise<Response> {
+    const isRaw = typeof body === 'string'
+    const res = await fetch(`${base}${path}`, {
+      method,
+      headers: { ...headers, ...(isRaw ? { 'Content-Type': 'text/plain' } : {}) },
+      body: isRaw ? body : (body !== undefined ? JSON.stringify(body) : undefined),
+    })
+    if (!res.ok) throw new Error(`Storage ${res.status}: ${path}`)
+    return res
   }
 
   async function safeJson<T>(res: Response): Promise<T> {

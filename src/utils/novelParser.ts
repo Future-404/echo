@@ -18,9 +18,9 @@ export const parseStreamingNovelText = (
   let segmentCount = 0;
 
   // 從配置獲取標記符號（默認值）
-  const quotes = options?.dialogueQuotes || '""""';
-  const actionChars = options?.actionMarkers || '**';
-  const thoughtChars = options?.thoughtMarkers || '()（）';
+  const quotes = options?.dialogueQuotes || '""“”';
+  const actionChars = options?.actionMarkers || '**「」『』';
+  const thoughtChars = options?.thoughtMarkers || '()（）<>';
 
   // 1. 预处理：只提取 Markdown 风格的状态栏（不处理 HTML/XML 标签）
   const cardRegex = /\{\{([^}]+)\}\}|\{([^}]+)\}|\[([^\]]+)\]/g;

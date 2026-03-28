@@ -177,9 +177,9 @@ const AppearanceEditor: React.FC = () => {
             <label className="text-[9px] text-gray-500 dark:text-gray-400">对话引号</label>
             <input
               type="text"
-              value={config.dialogueQuotes || '""""'}
+              value={config.dialogueQuotes || '""“”'}
               onChange={(e) => useAppStore.getState().updateConfig({ dialogueQuotes: e.target.value })}
-              placeholder='""""'
+              placeholder='""“”'
               className="w-full mt-1 px-3 py-2 bg-gray-50 dark:bg-black/30 border-0.5 border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:border-blue-400"
             />
           </div>
@@ -187,9 +187,9 @@ const AppearanceEditor: React.FC = () => {
             <label className="text-[9px] text-gray-500 dark:text-gray-400">动作标记</label>
             <input
               type="text"
-              value={config.actionMarkers || '**'}
+              value={config.actionMarkers || '**「」『』'}
               onChange={(e) => useAppStore.getState().updateConfig({ actionMarkers: e.target.value })}
-              placeholder="**"
+              placeholder="**「」『』"
               className="w-full mt-1 px-3 py-2 bg-gray-50 dark:bg-black/30 border-0.5 border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:border-blue-400"
             />
           </div>
@@ -197,9 +197,9 @@ const AppearanceEditor: React.FC = () => {
             <label className="text-[9px] text-gray-500 dark:text-gray-400">心理标记</label>
             <input
               type="text"
-              value={config.thoughtMarkers || '()（）'}
+              value={config.thoughtMarkers || '()（）<>'}
               onChange={(e) => useAppStore.getState().updateConfig({ thoughtMarkers: e.target.value })}
-              placeholder="()（）"
+              placeholder="()（）<>"
               className="w-full mt-1 px-3 py-2 bg-gray-50 dark:bg-black/30 border-0.5 border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:border-blue-400"
             />
           </div>

@@ -11,7 +11,7 @@ export function createHybridAdapter(
   remote: StorageAdapter,
 ): StorageAdapter {
   function backup(fn: () => Promise<void>) {
-    fn().catch(err => console.warn('[echo] R2 backup failed:', err))
+    fn().catch(() => {}) // 后端可选，静默失败
   }
 
   return {

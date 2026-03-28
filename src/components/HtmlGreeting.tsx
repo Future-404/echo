@@ -13,10 +13,14 @@ export const HtmlGreeting: React.FC<HtmlGreetingProps> = ({ content, onEnter }) 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-black/95 overflow-y-auto"
+      className="fixed inset-0 z-[1001] bg-black/95 overflow-y-auto"
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+      onMouseUp={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
     >
-      <div className="min-h-screen flex items-center justify-center p-4 py-20">
-        <div className="max-w-4xl w-full">
+      <div className="min-h-screen flex items-center justify-center p-4 py-20 pointer-events-none">
+        <div className="max-w-4xl w-full pointer-events-auto">
           <div dangerouslySetInnerHTML={{ __html: content }} />
         </div>
       </div>
@@ -25,8 +29,8 @@ export const HtmlGreeting: React.FC<HtmlGreetingProps> = ({ content, onEnter }) 
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ delay: 0.5 }}
-        onClick={onEnter}
-        className="fixed bottom-8 right-8 w-14 h-14 rounded-full backdrop-blur-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110"
+        onClick={(e) => { e.stopPropagation(); onEnter(); }}
+        className="fixed bottom-8 right-8 w-14 h-14 rounded-full backdrop-blur-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 z-[1002]"
       >
         <MessageCircle size={24} strokeWidth={1.5} />
       </motion.button>

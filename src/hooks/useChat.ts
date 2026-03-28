@@ -11,6 +11,7 @@ import { extractAndSyncTags, applyCharacterRegexScripts } from '../utils/tagPars
 import { routerSchema, parseRouterResult } from '../skills/router/schema'
 import { buildRouterPrompt } from '../skills/router/prompt'
 import type { RouterAction } from '../skills/router/schema'
+import { iframeBus } from '../utils/iframeBus'
 
 const cleanJson = (str: string) => {
   let cleaned = str.trim();
@@ -120,7 +121,7 @@ export const useChat = () => {
         ...(stopSeqs.length > 0 && { stop: stopSeqs }),
         stream: isStreaming,
         temperature: provider.temperature ?? 0.7,
-        top_p: provider.topP ?? 1,
+        ...(provider.topP != null && provider.topP !== 1.0 && { top_p: provider.topP }),
       }
     } else if (format === 'anthropic') {
       fetchUrl = `${provider.endpoint.replace(/\/chat\/completions$/, '')}/messages`
@@ -316,6 +317,12 @@ export const useChat = () => {
       setIsTyping(false)
     }
   }, [addMessage, config, isTyping, messages, selectedCharacter, secondaryCharacter, multiCharMode, missions, setIsTyping, activePersona, addDebugLog, requestChar, requestRouter])
+
+  // 注册 iframe triggerSlash 的消息处理
+  useEffect(() => {
+    iframeBus.setHandler((text) => sendMessage(text))
+    return () => iframeBus.setHandler(null)
+  }, [sendMessage])
 
   return { displayText, sendMessage, isTyping, skipGreeting, activeSpeakerId }
 }

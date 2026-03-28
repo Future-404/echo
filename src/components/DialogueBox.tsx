@@ -1,10 +1,63 @@
-import React, { useRef, useEffect, useState, useMemo } from 'react'
+import React, { useRef, useEffect, useState, useMemo, memo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MoreHorizontal, Copy, RotateCcw, RotateCw, Maximize2, Minimize2 } from 'lucide-react'
 import { useAppStore } from '../store/useAppStore'
 import MessageContent from './Dialogue/MessageContent'
 import { useDevice } from '../hooks/useMediaQuery'
 import { useDialog } from './GlobalDialog'
+
+// 单条消息 memo 化，只有 content/isLatest/isTyping 变化时才重渲染
+const MessageRow = memo<{
+  msg: any; idx: number; isAi: boolean; isLatest: boolean;
+  isTyping: boolean; displayText: string;
+  charForMsg: any; activePersona: any;
+  isMobile: boolean; isTouchDevice: boolean;
+  showMenu: boolean; distanceFromEnd: number;
+  onMenuToggle: (idx: number) => void;
+  onCopy: (content: string) => void;
+  onRollback: (idx: number) => void;
+  onRetry: (idx: number, msg: any) => void;
+}>(({ msg, idx, isAi, isLatest, isTyping, displayText, charForMsg, activePersona, isMobile, isTouchDevice, showMenu, distanceFromEnd, onMenuToggle, onCopy, onRollback, onRetry }) => (
+  <div className={`flex gap-3 group relative ${isAi ? 'items-start' : 'items-end flex-row-reverse'}`}>
+    {isAi && charForMsg && (
+      <img src={charForMsg.image} alt={charForMsg.name} className="w-8 h-8 rounded-full object-cover flex-shrink-0 border border-white/20 dark:border-white/10 mt-1" />
+    )}
+    <div className={`flex flex-col gap-1 ${isAi ? 'items-start' : 'items-end'} flex-1 min-w-0`}>
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] tracking-widest text-gray-500 dark:text-white/40 uppercase font-serif">
+          {isAi ? (charForMsg?.name ?? '') : (activePersona?.name || 'You')}
+        </span>
+        <button
+          onClick={(e) => { e.stopPropagation(); onMenuToggle(idx) }}
+          className={`${isMobile ? 'p-2 min-w-[44px] min-h-[44px]' : 'p-1'} text-gray-400 ${isTouchDevice ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} hover:text-black dark:hover:text-white transition-all touch-manipulation`}
+        >
+          <MoreHorizontal size={isMobile ? 16 : 14} />
+        </button>
+        <AnimatePresence>
+          {showMenu && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
+              className="absolute left-10 top-0 flex items-center gap-1 bg-white/90 dark:bg-black/90 backdrop-blur-md border border-gray-200 dark:border-white/10 rounded-full px-2 py-1 shadow-lg z-20"
+            >
+              <button onClick={(e) => { e.stopPropagation(); onCopy(msg.content) }} className={`${isMobile ? 'p-2.5' : 'p-1.5'} text-gray-500 hover:text-blue-500 transition-all`}><Copy size={isMobile ? 14 : 12} /></button>
+              {!isLatest && <button onClick={(e) => { e.stopPropagation(); onRollback(idx) }} className={`${isMobile ? 'p-2.5' : 'p-1.5'} text-gray-500 hover:text-orange-500 transition-all`}><RotateCcw size={isMobile ? 14 : 12} /></button>}
+              <button onClick={(e) => { e.stopPropagation(); onRetry(idx, msg) }} className={`${isMobile ? 'p-2.5' : 'p-1.5'} text-gray-500 hover:text-red-500 transition-all`}><RotateCw size={isMobile ? 14 : 12} /></button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+      <div className={`${isAi ? '' : 'text-right'}`}>
+        {isAi && isLatest && isTyping ? (
+          <div className="font-serif leading-relaxed text-gray-700 dark:text-gray-300 whitespace-pre-wrap" style={{ fontSize: 'var(--app-font-size, 1.125rem)' }}>{displayText}</div>
+        ) : isAi && msg.content.startsWith('错误') ? (
+          <span className="text-red-500 dark:text-red-400 text-sm">{msg.content}</span>
+        ) : (
+          <MessageContent content={msg.content} isAi={isAi} isLatest={isLatest} renderDepth={distanceFromEnd <= 3 ? 0 : distanceFromEnd} />
+        )}
+      </div>
+    </div>
+  </div>
+));
 
 interface DialogueBoxProps {
   displayText: string
@@ -157,77 +210,29 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
               if (msg.role === 'system' || msg.role === 'tool') return null
               const isAi = msg.role === 'assistant'
               const isLatest = idx === messages.length - 1
-              const showMenu = activeMenuIndex === idx
+              const distanceFromEnd = messages.length - 1 - idx
               const charForMsg = isAi ? getCharForMsg(msg) : null
 
               return (
                 <div
                   key={idx}
-                  className={`flex gap-3 group relative ${isAi ? 'items-start' : 'items-end flex-row-reverse'}`}
                   onPointerDown={() => handlePointerDown(idx)}
                   onPointerUp={handlePointerUpOrCancel}
                   onPointerCancel={handlePointerUpOrCancel}
                   onPointerLeave={handlePointerUpOrCancel}
                 >
-                  {/* 头像 */}
-                  {isAi && charForMsg && (
-                    <img
-                      src={charForMsg.image}
-                      alt={charForMsg.name}
-                      className="w-8 h-8 rounded-full object-cover flex-shrink-0 border border-white/20 dark:border-white/10 mt-1"
-                    />
-                  )}
-
-                  <div className={`flex flex-col gap-1 ${isAi ? 'items-start' : 'items-end'} flex-1 min-w-0`}>
-                    {/* 名字 + 操作按钮 */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] tracking-widest text-gray-500 dark:text-white/40 uppercase font-serif">
-                        {isAi ? (charForMsg?.name ?? selectedCharacter.name) : (activePersona?.name || 'You')}
-                      </span>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setActiveMenuIndex(showMenu ? null : idx) }}
-                        className={`${isMobile ? 'p-2 min-w-[44px] min-h-[44px]' : 'p-1'} text-gray-400 ${isTouchDevice ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} hover:text-black dark:hover:text-white transition-all touch-manipulation`}
-                      >
-                        <MoreHorizontal size={isMobile ? 16 : 14} />
-                      </button>
-
-                      <AnimatePresence>
-                        {showMenu && (
-                          <motion.div
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            className="absolute left-10 top-0 flex items-center gap-1 bg-white/90 dark:bg-black/90 backdrop-blur-md border border-gray-200 dark:border-white/10 rounded-full px-2 py-1 shadow-lg z-20"
-                          >
-                            <button onClick={(e) => { e.stopPropagation(); handleCopy(msg.content) }} className={`${isMobile ? 'p-2.5' : 'p-1.5'} text-gray-500 hover:text-blue-500 transition-all`} title="复制">
-                              <Copy size={isMobile ? 14 : 12} />
-                            </button>
-                            {!isLatest && (
-                              <button onClick={(e) => { e.stopPropagation(); handleRollback(idx) }} className={`${isMobile ? 'p-2.5' : 'p-1.5'} text-gray-500 hover:text-orange-500 transition-all`} title="回溯">
-                                <RotateCcw size={isMobile ? 14 : 12} />
-                              </button>
-                            )}
-                            <button onClick={(e) => { e.stopPropagation(); handleRetry(idx, msg) }} className={`${isMobile ? 'p-2.5' : 'p-1.5'} text-gray-500 hover:text-red-500 transition-all`} title="重试">
-                              <RotateCw size={isMobile ? 14 : 12} />
-                            </button>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-
-                    {/* 消息内容 */}
-                    <div className={`${isAi ? '' : 'text-right'}`}>
-                      {isAi && isLatest && isTyping ? (
-                        <div className="font-serif leading-relaxed text-gray-700 dark:text-gray-300 whitespace-pre-wrap" style={{ fontSize: 'var(--app-font-size, 1.125rem)' }}>
-                          {displayText}
-                        </div>
-                      ) : isAi && msg.content.startsWith('错误') ? (
-                        <span className="text-red-500 dark:text-red-400 text-sm">{msg.content}</span>
-                      ) : (
-                        <MessageContent content={msg.content} isAi={isAi} isGreeting={idx === 0 && isAi} isLatest={isLatest} />
-                      )}
-                    </div>
-                  </div>
+                  <MessageRow
+                    msg={msg} idx={idx} isAi={isAi} isLatest={isLatest}
+                    isTyping={isTyping} displayText={displayText}
+                    charForMsg={charForMsg} activePersona={activePersona}
+                    isMobile={isMobile} isTouchDevice={isTouchDevice}
+                    showMenu={activeMenuIndex === idx}
+                    distanceFromEnd={distanceFromEnd}
+                    onMenuToggle={(i) => setActiveMenuIndex(activeMenuIndex === i ? null : i)}
+                    onCopy={handleCopy}
+                    onRollback={handleRollback}
+                    onRetry={handleRetry}
+                  />
                 </div>
               )
             })}

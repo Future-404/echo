@@ -22,11 +22,19 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
   const char = characters.find(c => c.id === charId)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  if (!char) return null
-
+  // 1. 公共书库绑定逻辑
   const library = config.worldBookLibrary || []
-  const boundBookIds = char.extensions?.worldBookIds || []
-  const privateEntries = char.extensions?.worldBook || []
+  const boundBookIds = char?.extensions?.worldBookIds || []
+  const privateEntries = char?.extensions?.worldBook || []
+
+  // 2. 私人记忆编辑逻辑
+  const [isAddingPrivate, setIsAddingPrivate] = useState(false)
+  const [expandedPrivateId, setExpandedPrivateId] = useState<string | null>(null)
+  const [newKeys, setNewKeys] = useState('')
+  const [newContent, setNewContent] = useState('')
+  const [isParsersExpanded, setIsParsersExpanded] = React.useState(false);
+
+  if (!char) return null
 
   // 头像上传处理
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -122,12 +130,6 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
     })
   }
 
-  // 2. 私人记忆编辑逻辑
-  const [isAddingPrivate, setIsAddingPrivate] = useState(false)
-  const [expandedPrivateId, setExpandedPrivateId] = useState<string | null>(null)
-  const [newKeys, setNewKeys] = useState('')
-  const [newContent, setNewContent] = useState('')
-
   const handleAddPrivate = () => {
     if (!newContent.trim()) return
     const entry: WorldBookEntry = {
@@ -142,8 +144,6 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
     setNewContent('')
     setIsAddingPrivate(false)
   }
-
-  const [isParsersExpanded, setIsParsersExpanded] = React.useState(false);
 
   return (
     <motion.div 
@@ -406,11 +406,32 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
             const msg = relatedSlots.length > 0
               ? `确定要删除此角色吗？同时将删除 ${relatedSlots.length} 个相关存档，此操作不可撤销。`
               : '确定要删除此角色吗？此操作不可撤销。'
-            const ok = await confirm(msg, { confirmText: 'Purge', danger: true })
+            
+            const ok = await confirm(msg, { 
+              title: 'Final Authorization Required',
+              confirmText: 'Confirm Delete', 
+              danger: true 
+            })
             if (!ok) return
-            relatedSlots.forEach(s => deleteSaveSlot(s.id))
-            removeCharacter(charId)
-            onClose()
+
+            // 如果有存档，进行第二次“终极确认”
+            if (relatedSlots.length > 0) {
+              const finalOk = await confirm(
+                `警告：检测到 ${relatedSlots.length} 条关联聊天记录。删除角色后，这些记忆将永久消失，无法通过任何手段找回。你确定要抹除这一切吗？`,
+                { 
+                  title: 'ULTIMATE PURGE CONFIRMATION',
+                  confirmText: 'YES, ERASE EVERYTHING',
+                  danger: true 
+                }
+              )
+              if (!finalOk) return
+            }
+
+            onClose() // 先关闭界面
+            setTimeout(() => {
+              relatedSlots.forEach(s => deleteSaveSlot(s.id))
+              removeCharacter(charId)
+            }, 50) 
           }} className="flex-1 py-3 md:py-4 flex items-center justify-center gap-2 border-0.5 border-red-100 dark:border-red-900/30 text-red-300 rounded-full text-[10px] tracking-widest uppercase hover:bg-red-50 transition-all"><Trash2 size={14} /> Purge</button>
           <button onClick={onClose} className="flex-[2] py-3 md:py-4 bg-white dark:bg-gray-900 border-0.5 border-gray-200 dark:border-gray-800 rounded-full text-[10px] tracking-widest uppercase text-gray-400 hover:text-gray-600 transition-all flex items-center justify-center gap-2 shadow-sm"><Check size={14} /> Commit Sync</button>
         </footer>

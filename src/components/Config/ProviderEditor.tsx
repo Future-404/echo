@@ -199,33 +199,40 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
           />
         </div>
 
-        <div className="group">
-          <div className="flex justify-between items-center mb-2">
-            <label className="text-[9px] tracking-wide text-gray-300 dark:text-gray-600 uppercase italic">Top P // 核采样</label>
-            <span className="text-[10px] text-gray-500 font-mono">{provider.topP ?? 1.0}</span>
-          </div>
-          <input 
-            type="range" 
-            min="0" max="1" step="0.1" 
-            value={provider.topP ?? 1.0} 
-            onChange={(e) => updateProvider(id, { topP: parseFloat(e.target.value) })}
-            className="w-full accent-gray-500"
-          />
-        </div>
+        <details className="group">
+          <summary className="text-[9px] tracking-wide text-gray-500 dark:text-gray-600 uppercase italic cursor-pointer select-none list-none flex items-center gap-1">
+            <span>▶</span><span>高级参数</span>
+          </summary>
+          <div className="mt-3 space-y-4 pl-2 border-l border-white/10">
+            <div className="group">
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-[9px] tracking-wide text-gray-300 dark:text-gray-600 uppercase italic">Top P // 核采样</label>
+                <span className="text-[10px] text-gray-500 font-mono">{provider.topP ?? 1.0}</span>
+              </div>
+              <input 
+                type="range" 
+                min="0" max="1" step="0.1" 
+                value={provider.topP ?? 1.0} 
+                onChange={(e) => updateProvider(id, { topP: parseFloat(e.target.value) })}
+                className="w-full accent-gray-500"
+              />
+            </div>
 
-        <div className="group">
-          <div className="flex justify-between items-center mb-2">
-            <label className="text-[9px] tracking-wide text-gray-300 dark:text-gray-600 uppercase italic">Context Window // 记忆轮数</label>
-            <span className="text-[10px] text-gray-500 font-mono">{provider.contextWindow ?? 10}</span>
+            <div className="group">
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-[9px] tracking-wide text-gray-300 dark:text-gray-600 uppercase italic">Context Window // 记忆轮数</label>
+                <span className="text-[10px] text-gray-500 font-mono">{provider.contextWindow ?? 10}</span>
+              </div>
+              <input
+                type="range"
+                min="1" max="1000" step="1"
+                value={provider.contextWindow ?? 10}
+                onChange={(e) => updateProvider(id, { contextWindow: parseInt(e.target.value, 10) })}
+                className="w-full accent-gray-500"
+              />
+            </div>
           </div>
-          <input
-            type="range"
-            min="1" max="1000" step="1"
-            value={provider.contextWindow ?? 10}
-            onChange={(e) => updateProvider(id, { contextWindow: parseInt(e.target.value, 10) })}
-            className="w-full accent-gray-500"
-          />
-        </div>
+        </details>
 
       </div>
 

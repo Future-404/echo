@@ -38,7 +38,7 @@ const App: React.FC = () => {
   const { 
     isLoading, setIsLoading, currentView, syncImagesFromDb, _hasHydrated, 
     multiCharMode, selectedCharacter, secondaryCharacter,
-    isDialogueFullscreen, config
+    isDialogueFullscreen, config, messages
   } = useAppStore()
   const setSelectedCharacter = useAppStore(s => s.setSelectedCharacter)
   
@@ -81,18 +81,24 @@ const App: React.FC = () => {
   const [isWaitingForClick, setIsWaitingForClick] = React.useState(false)
   const [showGreetingPicker, setShowGreetingPicker] = React.useState(false)
   
-  // HTML 開場白檢測
+  // HTML 開場白檢測 - 更嚴格的判定，避免誤觸
   const firstMessage = useAppStore(s => s.messages[0])
-  const isHtmlGreeting = firstMessage?.role === 'assistant' && 
-    firstMessage.content.trim().startsWith('<') && 
-    firstMessage.content.includes('</div>')
+  const isHtmlGreeting = React.useMemo(() => {
+    if (!firstMessage || firstMessage.role !== 'assistant') return false
+    const content = firstMessage.content.trim()
+    // 判定条件：包含完整的 DOCTYPE，或者以 <html> 开头，或者内容较长且包含明显的布局容器
+    return content.toLowerCase().includes('<!doctype html') || 
+           content.toLowerCase().startsWith('<html') ||
+           (content.length > 500 && content.includes('<div') && content.includes('</div>'))
+  }, [firstMessage])
+  
   const [showHtmlGreeting, setShowHtmlGreeting] = React.useState(isHtmlGreeting)
   
   React.useEffect(() => {
-    if (isHtmlGreeting && firstMessage) {
+    if (isHtmlGreeting && firstMessage && messages.length === 1) {
       setShowHtmlGreeting(true)
     }
-  }, [isHtmlGreeting, firstMessage])
+  }, [isHtmlGreeting, firstMessage, messages.length])
 
   // 判断是否应该渲染游戏主界面
   const isGameView = currentView === 'main'
