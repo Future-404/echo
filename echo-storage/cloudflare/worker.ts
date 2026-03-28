@@ -39,9 +39,11 @@ export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url)
 
-    // 非 /api 路径交给 Workers Assets（前端静态文件）
+    // 非 /api 路径由 Workers Assets 自动处理（run_worker_first = ["/api/*"]）
+    // 理论上不会到达这里，但作为 fallback
     if (!url.pathname.startsWith('/api')) {
-      return env.ASSETS.fetch(req)
+      if (env.ASSETS) return env.ASSETS.fetch(req)
+      return new Response('Not Found', { status: 404 })
     }
 
     const origin = env.ALLOWED_ORIGIN || '*'
