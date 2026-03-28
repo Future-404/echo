@@ -35,7 +35,7 @@ export function resetStorageAdapter() {
 }
 
 export function initStorage(): 'ready' | 'need-auth' {
-  return 'ready'
+  return getSavedToken() ? 'ready' : 'need-auth'
 }
 
 // GateScreen 验证成功后调用

@@ -11,8 +11,24 @@ registerSW({ immediate: true })
 
 const root = ReactDOM.createRoot(document.getElementById('root')!)
 
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-)
+function renderApp() {
+  flushSync(() => {
+    root.render(<React.StrictMode><App /></React.StrictMode>)
+  })
+}
+
+if (initStorage() === 'ready') {
+  renderApp()
+} else {
+  root.render(
+    <React.StrictMode>
+      <GateScreen onUnlock={async (password) => {
+        await authenticateWithPassword(password)
+        // 登录后强制 rehydrate store
+        const { useAppStore } = await import('./store/useAppStore')
+        await useAppStore.persist.rehydrate()
+        renderApp()
+      }} />
+    </React.StrictMode>
+  )
+}
