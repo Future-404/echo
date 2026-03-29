@@ -48,8 +48,48 @@ export const createChatSlice = (set: any, get: any): ChatSlice => ({
   rollbackMessages: (index, shouldBranch = false) => {
     const state = get();
     if (state._autoSaveTimer) clearTimeout(state._autoSaveTimer);
-    set((s: any) => ({ 
-      messages: index < 0 ? [] : s.messages.slice(0, index + 1),
+    const truncated: Message[] = index < 0 ? [] : state.messages.slice(0, index + 1);
+
+    // 从角色卡初始 missions 出发，重放截断范围内的所有 tool_call
+    const baseMissions: Mission[] = state.selectedCharacter.extensions?.missions || [];
+    let replayedMissions = baseMissions.map((m: Mission) => ({ ...m }));
+    for (const msg of truncated) {
+      if (msg.role !== 'assistant' || !msg.tool_calls?.length) continue;
+      for (const tc of msg.tool_calls) {
+        if (tc.function?.name !== 'manage_quest_state') continue;
+        try {
+          const args = JSON.parse(tc.function.arguments);
+          const { action, quest_id, quest_type, title, description, progress_delta } = args;
+          if (action === 'CREATE') {
+            const exists = replayedMissions.some(m => m.id === quest_id);
+            if (exists) {
+              replayedMissions = replayedMissions.map(m => m.id !== quest_id ? m : {
+                ...m, description: description || m.description,
+                progress: Math.min(100, Math.max(0, m.progress + (progress_delta || 0))),
+                status: Math.min(100, m.progress + (progress_delta || 0)) >= 100 ? 'COMPLETED' : 'ACTIVE'
+              });
+            } else {
+              const p = Math.min(100, Math.max(0, progress_delta || 0));
+              replayedMissions.push({ id: quest_id, title: title || '新任务', description, type: quest_type || (quest_id.startsWith('main_') ? 'MAIN' : 'SIDE'), progress: p, status: p >= 100 ? 'COMPLETED' : 'ACTIVE' });
+            }
+          } else if (action === 'UPDATE') {
+            replayedMissions = replayedMissions.map(m => m.id !== quest_id ? m : {
+              ...m, description: description || m.description,
+              progress: Math.min(100, Math.max(0, m.progress + (progress_delta || 0))),
+              status: Math.min(100, m.progress + (progress_delta || 0)) >= 100 ? 'COMPLETED' : 'ACTIVE'
+            });
+          } else if (action === 'RESOLVE') {
+            replayedMissions = replayedMissions.map(m => m.id !== quest_id ? m : { ...m, progress: 100, status: 'COMPLETED' });
+          } else if (action === 'FAIL') {
+            replayedMissions = replayedMissions.map(m => m.id !== quest_id ? m : { ...m, status: 'FAILED' });
+          }
+        } catch { /* malformed args, skip */ }
+      }
+    }
+
+    set((s: any) => ({
+      messages: truncated,
+      missions: replayedMissions,
       isTyping: false,
       currentAutoSlotId: shouldBranch ? null : s.currentAutoSlotId,
       _autoSaveTimer: null

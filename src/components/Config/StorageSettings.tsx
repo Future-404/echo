@@ -1,14 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { authenticateWithPassword, getSavedToken, resetStorageAdapter } from '../../storage';
-import { Cloud, CloudOff, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Cloud, CloudOff, Loader2, CheckCircle2, AlertCircle, ShieldCheck, ShieldAlert } from 'lucide-react';
 
 const StorageSettings: React.FC = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [isPersistent, setIsPersistent] = useState<boolean | null>(null);
   const { setHasHydrated } = useAppStore();
+
+  useEffect(() => {
+    if (navigator.storage?.persisted) {
+      navigator.storage.persisted().then(setIsPersistent)
+    }
+  }, []);
 
   const currentToken = getSavedToken();
 
@@ -74,6 +81,24 @@ const StorageSettings: React.FC = () => {
               <p className="text-[10px] text-gray-400 mt-0.5">数据仅存储在当前浏览器中</p>
             </div>
           </div>
+
+          {isPersistent !== null && (
+            <div className={`p-4 rounded-2xl flex items-center gap-3 ${isPersistent ? 'bg-green-500/5 border border-green-500/10' : 'bg-amber-500/5 border border-amber-500/10'}`}>
+              {isPersistent
+                ? <ShieldCheck size={16} className="text-green-500 shrink-0" />
+                : <ShieldAlert size={16} className="text-amber-500 shrink-0" />}
+              <div>
+                <p className={`text-[10px] font-bold uppercase tracking-widest ${isPersistent ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                  {isPersistent ? '持久化存储已授权' : '持久化存储未授权'}
+                </p>
+                <p className="text-[9px] text-gray-400 mt-0.5 leading-relaxed">
+                  {isPersistent
+                    ? '浏览器不会在磁盘不足时自动清理本地数据'
+                    : '磁盘空间不足时浏览器可能自动清除本地存档，建议开启云端同步'}
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-4">
             <div className="space-y-2">

@@ -5,8 +5,13 @@ import { Trash2 } from 'lucide-react';
 import { useDialog } from './GlobalDialog';
 
 const LoadScreen: React.FC = () => {
-  const { saveSlots, loadGame, deleteSaveSlot, setCurrentView } = useAppStore();
+  const { saveSlots, loadGame, deleteSaveSlot, setCurrentView, characters } = useAppStore();
   const { confirm } = useDialog();
+
+  const getCharacterName = (charId: string) => {
+    const char = characters.find(c => c.id === charId);
+    return char?.name || '未知角色';
+  };
   
   // 自动存档位 (最近 10 个)
   const autoSlots = saveSlots
@@ -57,8 +62,11 @@ const LoadScreen: React.FC = () => {
                 className="flex-shrink-0 w-64 p-5 rounded-xl border border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 transition-all cursor-pointer relative group"
                 onClick={() => handleLoad(slot.id)}
               >
-                <div className="flex justify-between items-center mb-3">
-                  <span className="text-xs font-serif text-blue-400/90">{slot.name || '自动片段'}</span>
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[9px] font-mono text-blue-400/60 uppercase tracking-widest">{getCharacterName(slot.characterId)}</span>
+                    <span className="text-xs font-serif text-blue-400/90 line-clamp-1">{slot.name || '自动片段'}</span>
+                  </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[9px] text-white/30 font-mono">
                       {new Date(slot.timestamp).toLocaleTimeString()}
@@ -103,7 +111,10 @@ const LoadScreen: React.FC = () => {
                 onClick={() => handleLoad(slot.id)}
               >
                 <div className="flex justify-between items-start mb-4">
-                  <span className="text-xl font-serif text-white/90 group-hover:text-white transition-colors">{slot.name || `存档 ${index + 1}`}</span>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] font-mono text-white/30 uppercase tracking-widest">{getCharacterName(slot.characterId)}</span>
+                    <span className="text-xl font-serif text-white/90 group-hover:text-white transition-colors">{slot.name || `存档 ${index + 1}`}</span>
+                  </div>
                   <div className="flex items-center gap-2 relative z-10" onClick={e => e.stopPropagation()}>
                     <span className="text-xs text-white/40 font-mono">
                       {new Date(slot.timestamp).toLocaleString()}

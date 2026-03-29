@@ -1,67 +1,89 @@
 import React, { useRef, useEffect, useState, useMemo, memo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MoreHorizontal, Copy, RotateCcw, RotateCw, Maximize2, Minimize2, Volume2 } from 'lucide-react'
+import { MoreHorizontal, Copy, RotateCw, Maximize2, Minimize2, Volume2, GitBranch, User as UserIcon } from 'lucide-react'
 import { useAppStore } from '../store/useAppStore'
 import MessageContent from './Dialogue/MessageContent'
 import { useDevice } from '../hooks/useMediaQuery'
 import { useDialog } from './GlobalDialog'
 import { ttsService } from '../utils/ttsService'
+import { imageDb } from '../utils/imageDb'
 
-// 单条消息 memo 化，只有 content/isLatest/isTyping 变化时才重渲染
+// 对等的消息行组件
 const MessageRow = memo<{
   msg: any; idx: number; isAi: boolean; isLatest: boolean;
   isTyping: boolean; displayText: string;
   charForMsg: any; activePersona: any;
+  userAvatarUrl: string | null;
   isMobile: boolean; isTouchDevice: boolean;
   showMenu: boolean; distanceFromEnd: number;
   ttsSettings: any;
   onMenuToggle: (idx: number) => void;
   onCopy: (content: string) => void;
-  onRollback: (idx: number) => void;
   onRetry: (idx: number, msg: any) => void;
   onSpeak: (text: string, charId?: string) => void;
-}>(({ msg, idx, isAi, isLatest, isTyping, displayText, charForMsg, activePersona, isMobile, isTouchDevice, showMenu, distanceFromEnd, ttsSettings, onMenuToggle, onCopy, onRollback, onRetry, onSpeak }) => (
-  <div className={`flex gap-3 group relative ${isAi ? 'items-start' : 'items-end flex-row-reverse'}`}>
-    {isAi && charForMsg && (
-      <img src={charForMsg.image} alt={charForMsg.name} className="w-8 h-8 rounded-full object-cover flex-shrink-0 border border-white/20 dark:border-white/10 mt-1" />
-    )}
-    <div className={`flex flex-col gap-1 ${isAi ? 'items-start' : 'items-end'} flex-1 min-w-0`}>
-      <div className="flex items-center gap-2">
-        <span className="text-[10px] tracking-widest text-gray-500 dark:text-white/40 uppercase font-serif">
-          {isAi ? (charForMsg?.name ?? '') : (activePersona?.name || 'You')}
-        </span>
-        <button
-          onClick={(e) => { e.stopPropagation(); onMenuToggle(idx) }}
-          className={`${isMobile ? 'p-2 min-w-[44px] min-h-[44px]' : 'p-1'} text-gray-400 ${isTouchDevice ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} hover:text-black dark:hover:text-white transition-all touch-manipulation`}
-        >
-          <MoreHorizontal size={isMobile ? 16 : 14} />
-        </button>
-        <AnimatePresence>
-          {showMenu && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
-              className="absolute left-10 top-0 flex items-center gap-1 bg-white/90 dark:bg-black/90 backdrop-blur-md border border-gray-200 dark:border-white/10 rounded-full px-2 py-1 shadow-lg z-20"
-            >
-              <button onClick={(e) => { e.stopPropagation(); onCopy(msg.content) }} className={`${isMobile ? 'p-2.5' : 'p-1.5'} text-gray-500 hover:text-blue-500 transition-all`}><Copy size={isMobile ? 14 : 12} /></button>
-              {ttsSettings.enabled && <button onClick={(e) => { e.stopPropagation(); onSpeak(msg.content, msg.speakerId) }} className={`${isMobile ? 'p-2.5' : 'p-1.5'} text-gray-500 hover:text-purple-500 transition-all`}><Volume2 size={isMobile ? 14 : 12} /></button>}
-              {!isLatest && <button onClick={(e) => { e.stopPropagation(); onRollback(idx) }} className={`${isMobile ? 'p-2.5' : 'p-1.5'} text-gray-500 hover:text-orange-500 transition-all`}><RotateCcw size={isMobile ? 14 : 12} /></button>}
-              <button onClick={(e) => { e.stopPropagation(); onRetry(idx, msg) }} className={`${isMobile ? 'p-2.5' : 'p-1.5'} text-gray-500 hover:text-red-500 transition-all`}><RotateCw size={isMobile ? 14 : 12} /></button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-      <div className={`${isAi ? '' : 'text-right'}`}>
-        {isAi && isLatest && isTyping ? (
-          <div className="font-serif leading-relaxed text-gray-700 dark:text-gray-300 whitespace-pre-wrap" style={{ fontSize: 'var(--app-font-size, 1.125rem)' }}>{displayText}</div>
-        ) : isAi && msg.content.startsWith('错误') ? (
-          <span className="text-red-500 dark:text-red-400 text-sm">{msg.content}</span>
+  onBranch: (idx: number) => void;
+}>(({ msg, idx, isAi, isLatest, isTyping, displayText, charForMsg, activePersona, userAvatarUrl, isMobile, isTouchDevice, showMenu, distanceFromEnd, ttsSettings, onMenuToggle, onCopy, onRetry, onSpeak, onBranch }) => {
+  const avatar = isAi ? charForMsg?.image : userAvatarUrl;
+  const name = isAi ? (charForMsg?.name ?? '') : (activePersona?.name || 'You');
+
+  return (
+    <div className={`flex gap-2 group relative w-full ${isAi ? 'flex-row' : 'flex-row-reverse'}`}>
+      {/* 头像部分 - 左右对等 */}
+      <div className="flex-shrink-0 mt-1">
+        {avatar ? (
+          <img src={avatar} alt={name} className="w-9 h-9 rounded-full object-cover border border-black/10 dark:border-white/10 shadow-sm" />
         ) : (
-          <MessageContent content={msg.content} isAi={isAi} isLatest={isLatest} renderDepth={distanceFromEnd <= 3 ? 0 : distanceFromEnd} images={msg.images} />
+          <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-white/5 flex items-center justify-center border border-black/5 dark:border-white/5">
+            <UserIcon size={16} className="text-gray-400" />
+          </div>
         )}
       </div>
+
+      {/* 内容区域 - 左右对等留白 */}
+      <div className={`flex flex-col gap-1 flex-1 min-w-0 ${isAi ? 'items-start' : 'items-end'}`}>
+        <div className={`flex items-center gap-2 ${isAi ? 'flex-row' : 'flex-row-reverse'}`}>
+          <span className="text-[10px] tracking-widest text-gray-500 dark:text-white/40 uppercase font-serif">
+            {name}
+          </span>
+          <button
+            onClick={(e) => { e.stopPropagation(); onMenuToggle(idx) }}
+            className={`${isMobile ? 'p-2 min-w-[44px] min-h-[44px]' : 'p-1'} text-gray-400 ${isTouchDevice ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} hover:text-black dark:hover:text-white transition-all touch-manipulation`}
+          >
+            <MoreHorizontal size={isMobile ? 16 : 14} />
+          </button>
+          
+          <AnimatePresence>
+            {showMenu && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, x: isAi ? -10 : 10 }} 
+                animate={{ opacity: 1, scale: 1, x: 0 }} 
+                exit={{ opacity: 0, scale: 0.9 }}
+                className={`absolute top-0 flex items-center gap-1 bg-white/95 dark:bg-black/95 backdrop-blur-md border border-gray-200 dark:border-white/10 rounded-full px-2 py-1 shadow-lg z-20 ${isAi ? 'left-10' : 'right-10'}`}
+              >
+                <button onClick={(e) => { e.stopPropagation(); onCopy(msg.content) }} title="复制内容" className={`${isMobile ? 'p-2.5' : 'p-1.5'} text-gray-500 hover:text-blue-500 transition-all`}><Copy size={isMobile ? 14 : 12} /></button>
+                {ttsSettings.enabled && <button onClick={(e) => { e.stopPropagation(); onSpeak(msg.content, msg.speakerId) }} title="播放语音" className={`${isMobile ? 'p-2.5' : 'p-1.5'} text-gray-500 hover:text-purple-500 transition-all`}><Volume2 size={isMobile ? 14 : 12} /></button>}
+                {!isLatest && <button onClick={(e) => { e.stopPropagation(); onBranch(idx) }} title="存档并跳转到此" className={`${isMobile ? 'p-2.5' : 'p-1.5'} text-gray-500 hover:text-emerald-500 transition-all`}><GitBranch size={isMobile ? 14 : 12} /></button>}
+                <button onClick={(e) => { e.stopPropagation(); onRetry(idx, msg) }} title="重试/修改" className={`${isMobile ? 'p-2.5' : 'p-1.5'} text-gray-500 hover:text-red-500 transition-all`}><RotateCw size={isMobile ? 14 : 12} /></button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        <div className={`max-w-full`}>
+          {isAi && isLatest && isTyping ? (
+            <div className="font-serif leading-relaxed text-gray-700 dark:text-gray-300 whitespace-pre-wrap text-left" style={{ fontSize: 'var(--app-font-size, 1.125rem)' }}>{displayText}</div>
+          ) : isAi && msg.content.startsWith('错误') ? (
+            <span className="text-red-500 dark:text-red-400 text-sm text-left block w-full">{msg.content}</span>
+          ) : (
+            <MessageContent content={msg.content} isAi={isAi} isLatest={isLatest} renderDepth={distanceFromEnd <= 3 ? 0 : distanceFromEnd} images={msg.images} />
+          )}
+        </div>
+      </div>
+      {/* 对侧占位，与头像等宽，保持左右对称留白 */}
+      <div className="flex-shrink-0 w-9" />
     </div>
-  </div>
-));
+  );
+});
 
 interface DialogueBoxProps {
   displayText: string
@@ -77,16 +99,128 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
     messages, selectedCharacter, config, isLoading,
     setCurrentView, rollbackMessages, secondaryCharacter,
     isDialogueFullscreen, setDialogueFullscreen,
-    ttsSettings
+    ttsSettings, branchGame
   } = useAppStore()
-  const { confirm } = useDialog()
+  const { confirm, prompt } = useDialog()
   const { isMobile, isTouchDevice } = useDevice()
 
-  // ... (rest of implementation)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [activeMenuIndex, setActiveMenuIndex] = useState<number | null>(null)
+  const [activeIdx, setActiveIdx] = useState<number | null>(null)
+  const pressTimer = useRef<any>(null)
+  const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null)
+
+  const activePersona = config.personas?.find(p => p.id === config.activePersonaId) || config.personas?.[0]
+
+  // 使用系统原生的 imageDb 加载 Persona 头像
+  useEffect(() => {
+    if (!activePersona?.avatarId) { setUserAvatarUrl(null); return }
+    imageDb.get(activePersona.avatarId).then(url => setUserAvatarUrl(url))
+  }, [activePersona?.id, activePersona?.avatarId])
+
+  // 过滤掉没有内容且是工具调用的消息，保持对话框纯净
+  const visibleMessages = useMemo(() =>
+    messages.filter(m => {
+      const isSystem = m.role === 'system'
+      const isTool = m.role === 'tool'
+      const isPureToolCall = m.role === 'assistant' && m.tool_calls && !m.content?.trim()
+      return !isSystem && !isTool && !isPureToolCall
+    }), [messages])
+
+  const lastMessage = visibleMessages[visibleMessages.length - 1] ?? null
+
+  useEffect(() => { onCanAdvanceChange?.(false) }, [])
+
+  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior })
+  }
+
+  useEffect(() => { scrollToBottom() }, [messages.length, displayText])
+
+  const handleBranch = async (index: number) => {
+    const branchName = await prompt('请输入分支存档的名称', {
+      title: '创建分支存档',
+      defaultValue: `分支 - ${new Date().toLocaleString()}`,
+      placeholder: '例如：尝试不同路线',
+    })
+    if (branchName === null) return
+    const truncatedMessages = messages.slice(0, index + 1)
+    branchGame(truncatedMessages, branchName)
+    rollbackMessages(index, true)
+    useAppStore.getState().addFragment(`已跳转至分支：${branchName}`)
+    setActiveMenuIndex(null)
+  }
+
+  const handleCopy = (content: string) => {
+    const textToCopy = content.trim();
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(textToCopy)
+        .then(() => useAppStore.getState().addFragment('已复制到剪贴板'))
+        .catch(() => fallbackCopy(textToCopy));
+    } else {
+      fallbackCopy(textToCopy);
+    }
+    setActiveMenuIndex(null)
+  }
+
+  const fallbackCopy = (text: string) => {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.left = "-9999px";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+      document.execCommand('copy');
+      useAppStore.getState().addFragment('已复制到剪贴板');
+    } catch (err) {}
+    document.body.removeChild(textArea);
+  }
+
+  const handleRetry = async (index: number, msg: any) => {
+    const confirmed = await confirm('之后的对话记录将被永久删除并覆盖当前存档！', {
+      title: '确定要重试吗？',
+      confirmText: '重试',
+      danger: true,
+    })
+    if (!confirmed) return
+    if (msg.role === 'user') {
+      const targetIndex = index - 1
+      rollbackMessages(targetIndex < 0 ? -1 : targetIndex, false)
+      if (onRetry) setTimeout(() => onRetry(msg.content), 150)
+    } else {
+      let lastUserIndex = index - 1
+      while (lastUserIndex >= 0 && messages[lastUserIndex].role !== 'user') lastUserIndex--
+      if (lastUserIndex >= 0) {
+        const userContent = messages[lastUserIndex].content
+        const targetIndex = lastUserIndex - 1
+        rollbackMessages(targetIndex < 0 ? -1 : targetIndex, false)
+        if (onRetry) setTimeout(() => onRetry(userContent), 150)
+      }
+    }
+    setActiveMenuIndex(null)
+  }
+
+  const handlePointerDown = (idx: number) => {
+    pressTimer.current = setTimeout(() => {
+      setActiveIdx(idx)
+      if (window.navigator.vibrate) window.navigator.vibrate(50)
+    }, isMobile ? 300 : 500)
+  }
+
+  const handlePointerUpOrCancel = () => { if (pressTimer.current) clearTimeout(pressTimer.current) }
 
   const handleSpeak = (text: string, charId?: string) => {
     const voiceId = charId ? ttsSettings.voiceMap[charId] : undefined
     ttsService.speak(text, ttsSettings, voiceId)
+  }
+
+  const getStatusLight = () => {
+    const isError = lastMessage?.role === 'assistant' && lastMessage.content.startsWith('错误')
+    if (isError) return 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)] animate-pulse'
+    if (isTyping) return 'bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.8)] animate-pulse'
+    return 'bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.6)]'
   }
 
   const getCharForMsg = (msg: any) => {
@@ -102,10 +236,32 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
       className={`relative w-[95%] h-full ${isMobile ? 'max-w-full' : 'max-w-4xl'} glass-morphism ${isMobile ? 'rounded-2xl' : 'rounded-3xl'} shadow-lg flex flex-col overflow-hidden select-text z-30 mx-auto safe-area-padding`}
       onClick={() => setActiveMenuIndex(null)}
     >
-      {/* ... */}
+      {/* 恢复原来的状态条布局 */}
+      <div className="flex-shrink-0 z-40 border-b border-gray-300/10 dark:border-white/5 bg-echo-base/90 dark:bg-black/90 backdrop-blur-xl" onClick={e => e.stopPropagation()}>
+        <div className={`flex justify-between items-center ${isMobile ? 'px-4 py-2' : 'px-6 py-1.5'} min-h-[44px]`}>
+          <span className="text-[9px] tracking-widest text-gray-400 uppercase font-serif">{selectedCharacter.name}</span>
+          <div className={`flex ${isMobile ? 'gap-2' : 'gap-3'}`}>
+            {[
+              { label: isDialogueFullscreen ? <Minimize2 size={12}/> : <Maximize2 size={12}/>, action: () => setDialogueFullscreen(!isDialogueFullscreen) },
+              { label: '存档', action: () => setCurrentView('save') },
+              { label: '读档', action: () => setCurrentView('load') },
+            ].map((btn, i) => (
+              <button
+                key={i}
+                onClick={(e) => { e.stopPropagation(); btn.action() }}
+                className={`${isMobile ? 'text-[10px] min-w-[44px] min-h-[44px] -my-2 px-2' : 'text-[9px]'} font-serif tracking-widest text-gray-500 dark:text-gray-400 hover:text-blue-500 active:scale-95 transition-all uppercase touch-manipulation flex items-center`}
+              >
+                {btn.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* 消息列表 - 优化留白平衡 */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto no-scrollbar p-4 md:p-6"
+        className="flex-1 overflow-y-auto no-scrollbar px-2 py-4 md:px-4"
         onClick={e => e.stopPropagation()}
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
@@ -114,12 +270,11 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
             " 我是 {selectedCharacter.name}，很高兴见到你。 "
           </div>
         ) : (
-          <div className="space-y-6 pb-4">
-            {messages.map((msg, idx) => {
-              if (msg.role === 'system' || msg.role === 'tool') return null
+          <div className="space-y-8 pb-4">
+            {visibleMessages.map((msg, idx) => {
               const isAi = msg.role === 'assistant'
-              const isLatest = idx === messages.length - 1
-              const distanceFromEnd = messages.length - 1 - idx
+              const isLatest = idx === visibleMessages.length - 1
+              const distanceFromEnd = visibleMessages.length - 1 - idx
               const charForMsg = isAi ? getCharForMsg(msg) : null
 
               return (
@@ -134,15 +289,16 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
                     msg={msg} idx={idx} isAi={isAi} isLatest={isLatest}
                     isTyping={isTyping} displayText={displayText}
                     charForMsg={charForMsg} activePersona={activePersona}
+                    userAvatarUrl={userAvatarUrl}
                     isMobile={isMobile} isTouchDevice={isTouchDevice}
                     showMenu={activeMenuIndex === idx}
                     distanceFromEnd={distanceFromEnd}
                     ttsSettings={ttsSettings}
                     onMenuToggle={(i) => setActiveMenuIndex(activeMenuIndex === i ? null : i)}
                     onCopy={handleCopy}
-                    onRollback={handleRollback}
                     onRetry={handleRetry}
                     onSpeak={handleSpeak}
+                    onBranch={handleBranch}
                   />
                 </div>
               )
@@ -150,9 +306,7 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
           </div>
         )}
       </div>
-...
 
-      {/* 状态指示灯 */}
       <div className={`absolute ${isMobile ? 'bottom-3 right-4' : 'bottom-4 right-6'} pointer-events-none`}>
         <div className={`${isMobile ? 'w-2 h-2' : 'w-1.5 h-1.5'} rounded-full transition-all duration-500 ${getStatusLight()}`} />
       </div>

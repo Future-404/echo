@@ -203,8 +203,8 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
             />
           </div>
 
-          {/* 开场白 - 恢复此功能 */}
-          <div className="group text-left">
+          {/* 开场白 */}
+          <div className="group text-left space-y-3">
             <label className="text-[9px] tracking-widest text-gray-300 uppercase mb-3 block italic underline decoration-gray-100 dark:decoration-gray-800 underline-offset-8">Neural Greeting // 开场白</label>
             <textarea 
               value={char.greeting || ''} 
@@ -212,6 +212,42 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
               placeholder="AI 的第一句话..."
               className="w-full bg-white/30 dark:bg-white/5 border-0.5 border-gray-100 dark:border-gray-800 rounded-3xl p-6 text-sm text-gray-500 dark:text-gray-400 font-serif leading-relaxed focus:outline-none focus:border-gray-300 min-h-[100px] resize-none no-scrollbar"
             />
+
+            {/* 备选开场白 */}
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-[8px] tracking-widest text-gray-300 uppercase italic">Alternate Greetings // 备选开场白</span>
+                <button
+                  onClick={() => updateCharacter(charId, { alternateGreetings: [...(char.alternateGreetings || []), ''] })}
+                  className="p-1 rounded-full bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 text-gray-400 hover:text-black dark:hover:text-white transition-all"
+                >
+                  <Plus size={12} />
+                </button>
+              </div>
+              {(char.alternateGreetings || []).map((g, i) => (
+                <div key={i} className="flex gap-2 items-start">
+                  <textarea
+                    value={g}
+                    onChange={(e) => {
+                      const next = [...(char.alternateGreetings || [])]
+                      next[i] = e.target.value
+                      updateCharacter(charId, { alternateGreetings: next })
+                    }}
+                    placeholder={`备选 ${i + 1}...`}
+                    className="flex-1 bg-white/30 dark:bg-white/5 border-0.5 border-gray-100 dark:border-gray-800 rounded-2xl px-4 py-3 text-xs text-gray-500 dark:text-gray-400 font-serif leading-relaxed focus:outline-none focus:border-gray-300 min-h-[80px] resize-none no-scrollbar"
+                  />
+                  <button
+                    onClick={() => {
+                      const next = (char.alternateGreetings || []).filter((_, j) => j !== i)
+                      updateCharacter(charId, { alternateGreetings: next.length ? next : undefined })
+                    }}
+                    className="mt-2 p-1.5 text-gray-300 hover:text-red-400 transition-colors"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* 人格设定 */}

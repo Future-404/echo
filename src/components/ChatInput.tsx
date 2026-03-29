@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAppStore } from '../store/useAppStore'
-import { imageDb } from '../utils/imageDb'
 import { Image as ImageIcon, X } from 'lucide-react'
 
 interface ChatInputProps {
@@ -12,18 +11,9 @@ interface ChatInputProps {
 const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
   const { isLoading, config } = useAppStore()
   const [userInput, setUserInput] = useState('')
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [attachedImages, setAttachedImages] = useState<string[]>([])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-
-  const activePersona = config.personas?.find(p => p.id === config.activePersonaId) || config.personas?.[0]
-
-  // 加载 persona 头像
-  useEffect(() => {
-    if (!activePersona?.avatarId) { setAvatarUrl(null); return }
-    imageDb.get(activePersona.avatarId).then(url => setAvatarUrl(url))
-  }, [activePersona?.id, activePersona?.avatarId])
 
   useEffect(() => {
     const textarea = textareaRef.current
@@ -103,16 +93,6 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
       </AnimatePresence>
 
       <div className="flex items-start gap-3 px-6 md:px-10">
-        <div className="shrink-0 mt-1.5 flex items-center gap-2">
-          {avatarUrl ? (
-            <img src={avatarUrl} alt={activePersona?.name} className="w-6 h-6 rounded-full object-cover border-0.5 border-gray-200 dark:border-white/10 opacity-70" />
-          ) : (
-            <span className="text-gray-300 dark:text-gray-600 text-[10px] font-serif italic tracking-widest uppercase">
-              {activePersona?.name || 'User'} //
-            </span>
-          )}
-        </div>
-
         <div className="flex-1 relative group flex items-end">
           <input 
             type="file" 

@@ -1,13 +1,32 @@
 import React, { useState, useMemo, useRef } from 'react'
+import { marked } from 'marked'
 import { parseStreamingNovelText } from '../../utils/novelParser'
 import { StatusBar } from '../StatusBars'
 import { useAppStore } from '../../store/useAppStore'
 import { applyCharacterRegexScripts } from '../../utils/tagParser'
 import { IframeBlock } from './IframeBlock'
 
-// 用 DOMParser 提取顶层 HTML 块（排除完整文档结构）
-const SKIP_TAGS = new Set(['html', 'head', 'body', 'script', 'style', 'meta', 'link', 'title'])
+// Markdown 渲染
+const MD_RE = /^#{1,6} |^\s*[-*+] |\*\*|__|^\s*\d+\. |^---$/m
+function renderMd(text: string): string | null {
+  if (!MD_RE.test(text)) return null
+  return marked.parse(text, { async: false }) as string
+}
+const SKIP_TAGS = new Set(['html', 'head', 'body', 'script', 'meta', 'link', 'title'])
+// 检测是否为混合内容（HTML 标签与普通文本交织）
+const HTML_TAG_RE = /<[a-z][a-z0-9-]*[\s>/]/i
+function isMixedHtml(text: string): boolean {
+  if (!HTML_TAG_RE.test(text)) return false;
+  // 去掉所有成对标签后，若还有非空文本，说明是混合内容
+  const stripped = text.replace(/<[^>]+>/g, '').trim();
+  return stripped.length > 0;
+}
+
 function extractHtmlBlocks(text: string): { remaining: string; blocks: string[] } {
+  // 混合内容（HTML + 文本交织）整体作为一个 HTML 块送进 iframe
+  if (isMixedHtml(text)) {
+    return { remaining: '', blocks: [text] };
+  }
   const blocks: string[] = [];
   const remaining = text.replace(/<([a-z][a-z0-9-]*)[\s>][\s\S]*?<\/\1>/gi, (match, tag) => {
     if (SKIP_TAGS.has(tag.toLowerCase())) return match;
@@ -99,6 +118,12 @@ const MessageContent: React.FC<MessageContentProps> = React.memo(({ content, isA
       .replace(/<\/?[A-Za-z][A-Za-z0-9-]*(\s[^>]*)?>/g, '')
       .trim();
 
+    // 6. 整段含 Markdown 语法时，直接渲染为 HTML block，跳过 novel 解析
+    const mdHtml = renderMd(cleaned)
+    if (mdHtml) {
+      return { thinkingContent, parts: [], htmlBlocks: [...htmlBlocks, mdHtml], codeBlocks }
+    }
+
     const parts = parseStreamingNovelText(cleaned, {
       dialogueQuotes: config.dialogueQuotes,
       actionMarkers: config.actionMarkers,
@@ -116,9 +141,12 @@ const MessageContent: React.FC<MessageContentProps> = React.memo(({ content, isA
 
   const htmlBlocksEl = htmlBlocks.length > 0 && (
     <div className="mt-2 space-y-2">
-      {htmlBlocks.map((html, i) => (
-        <HtmlRenderer key={i} html={html} i={i} shouldRender={shouldRenderIframe} charData={charData} />
-      ))}
+      {htmlBlocks.map((html, i) => {
+        const isMdHtml = /^<(h[1-6]|p|ul|ol|hr)[\s>]/i.test(html.trim()) && !html.includes('<script')
+        return isMdHtml
+          ? <div key={i} className="md-body w-full text-left leading-relaxed" dangerouslySetInnerHTML={{ __html: html }} />
+          : <HtmlRenderer key={i} html={html} i={i} shouldRender={shouldRenderIframe} charData={charData} />
+      })}
     </div>
   );
   const codeBlocksEl = codeBlocks.length > 0 && (
@@ -132,28 +160,28 @@ const MessageContent: React.FC<MessageContentProps> = React.memo(({ content, isA
   return (
     <>
       {images && images.length > 0 && (
-        <div className="flex gap-2 flex-wrap mb-3">
+        <div className={`flex gap-2 flex-wrap mb-3 ${isAi ? 'justify-start' : 'justify-end'}`}>
           {images.map((img, i) => (
             <img key={i} src={img} alt="attachment" className="max-w-[200px] max-h-[200px] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 object-contain" />
           ))}
         </div>
       )}
       {thinkingContent && <ThinkingBlock content={thinkingContent} />}
-      <div className={`font-serif leading-relaxed ${isAi ? 'text-gray-700 dark:text-gray-300' : 'text-gray-500 dark:text-gray-500 tracking-wide text-right'} flex flex-col gap-2`} style={{ fontSize: 'var(--app-font-size, 1.125rem)' }}>
+      <div className={`font-serif leading-relaxed ${isAi ? 'text-gray-700 dark:text-gray-300 items-start' : 'text-gray-500 dark:text-gray-500 tracking-wide items-end'} flex flex-col gap-2`} style={{ fontSize: 'var(--app-font-size, 1.125rem)' }}>
         {renderParts.map((part) => {
           switch (part.type) {
             case 'narration':
               return <span key={part.id} className="opacity-90 whitespace-pre-wrap block w-full text-center py-2 font-sans" style={{ fontSize: '0.8em', color: 'var(--dialogue-text-narration)' }}>{part.content}</span>;
             case 'dialogue':
-              return <span key={part.id} className="font-bold whitespace-pre-wrap drop-shadow-sm" style={{ color: 'var(--dialogue-text-dialogue)' }}>"{part.content}"</span>;
+              return <span key={part.id} className={`font-bold whitespace-pre-wrap drop-shadow-sm ${isAi ? 'text-left' : 'text-right'}`} style={{ color: 'var(--dialogue-text-dialogue)' }}>"{part.content}"</span>;
             case 'thought':
-              return <span key={part.id} className="opacity-80 italic block mb-1 whitespace-pre-wrap font-serif" style={{ fontSize: '0.85em', color: 'var(--dialogue-text-thought)' }}>({part.content})</span>;
+              return <span key={part.id} className={`opacity-80 italic block mb-1 whitespace-pre-wrap font-serif ${isAi ? 'text-left' : 'text-right'}`} style={{ fontSize: '0.85em', color: 'var(--dialogue-text-thought)' }}>({part.content})</span>;
             case 'action':
               return <span key={part.id} className="italic whitespace-pre-wrap block w-full text-center py-2 font-serif" style={{ fontSize: '0.85em', color: 'var(--dialogue-text-action)' }}>{part.content}</span>;
             case 'card':
               return <StatusBar key={part.id} type={part.content} content={part.content} metadata={part.metadata} />;
             default:
-              return <span key={part.id}>{part.content}</span>;
+              return <span key={part.id} className={isAi ? 'text-left' : 'text-right'}>{part.content}</span>;
           }
         })}
       </div>

@@ -37,9 +37,14 @@ const ECHO_API = '<script>' +
   window.getVariable=function(k){return req('ECHO_GET',{key:k});};
   window.setVariable=function(k,v){var attrs={};attrs[k]=v;return req('ECHO_SET',{attrs:attrs});};
   window.triggerSlash=function(cmd){
-    var m=cmd.match(/\\/send\\s+([\\s\\S]+?)(?:\\|\\/trigger)?$/);
-    if(m)parent.postMessage({type:'ECHO_SEND',id:_id,text:m[1].trim()},'*');
+    var m=cmd.match(/\\/send\\s+([\\s\\S]+?)(?:\\s*\\|\\s*\\/trigger)?$/);
+    if(!m)return;
+    var t=m[1].trim();
+    if((t.startsWith('"')&&t.endsWith('"'))||(t.startsWith("'")&&t.endsWith("'")))t=t.slice(1,-1);
+    parent.postMessage({type:'ECHO_SEND',id:_id,text:t},'*');
   };
+  window.getCurrentMessageId=function(){return -1;};
+  window.setChatMessage=function(){return Promise.resolve();};
   window.toastr={
     info:function(msg){parent.postMessage({type:'ECHO_TOAST',id:_id,level:'info',msg:msg},'*');},
     success:function(msg){parent.postMessage({type:'ECHO_TOAST',id:_id,level:'success',msg:msg},'*');},

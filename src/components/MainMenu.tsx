@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
+import { getDisplayVersion } from '../version';
 
 const REPO_URL = 'https://github.com/Future-404/echo'
 
@@ -158,8 +159,8 @@ const MainMenu: React.FC = () => {
             <span className="text-white/50 font-mono tracking-widest">616353694</span>
           </div>
           <div className="flex items-center gap-4">
-            <div className="text-[8px] tracking-[0.2em] text-white/10 uppercase">
-              &copy; 2026 ECHO PROJECT. ALL RIGHTS RESERVED. v1.0.4-BETA
+            <div className="text-[8px] tracking-[0.2em] text-white/30 uppercase">
+              &copy; 2026 ECHO PROJECT. ALL RIGHTS RESERVED. {getDisplayVersion()}
             </div>
             <a href={REPO_URL} target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-1.5 text-white/20 hover:text-white/60 transition-colors">

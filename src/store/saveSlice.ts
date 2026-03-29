@@ -21,6 +21,7 @@ export async function loadSlotsFromStorage(key: string): Promise<SaveSlot[]> {
 export interface SaveSlice {
   saveSlots: SaveSlot[];
   saveGame: (slotId: string, name?: string) => void;
+  branchGame: (messages: any[], name: string) => string; // 返回新 slotId
   renameSaveSlot: (slotId: string, newName: string) => void;
   loadGame: (slotId: string) => void;
   deleteSaveSlot: (slotId: string) => void;
@@ -31,26 +32,32 @@ export const createSaveSlice = (set: any, get: any): SaveSlice => ({
   saveSlots: [],
 
   saveGame: (slotId, name) => {
+    // ... (unchanged)
+  },
+
+  branchGame: (messages, name) => {
     const state = get()
-    const lastMsg = state.messages.length > 0 ? state.messages[state.messages.length - 1].content : '新游戏'
-    const existing = (state.saveSlots || []).find((s: SaveSlot) => s.id === slotId)
+    const slotId = 'branch_' + Date.now()
+    const lastMsg = messages.length > 0 ? messages[messages.length - 1].content : '分支起点'
+    
     const newSlot: SaveSlot = {
       id: slotId,
-      name: name || existing?.name,
+      name: name || `分支 - ${new Date().toLocaleString()}`,
       timestamp: Date.now(),
       characterId: state.selectedCharacter.id,
-      messages: state.messages,
+      messages: messages,
       summary: lastMsg.slice(0, 50) + (lastMsg.length > 50 ? '...' : ''),
       missions: state.missions,
       fragments: state.fragments,
     }
+
     set((s: any) => {
-      const slots = (s.saveSlots || []).some((sl: SaveSlot) => sl.id === slotId)
-        ? s.saveSlots.map((sl: SaveSlot) => sl.id === slotId ? newSlot : sl)
-        : [...(s.saveSlots || []), newSlot]
+      const slots = [...(s.saveSlots || []), newSlot]
       persistSlots(SAVE_KEY, slots)
       return { saveSlots: slots }
     })
+    
+    return slotId
   },
 
   renameSaveSlot: (slotId, newName) => {

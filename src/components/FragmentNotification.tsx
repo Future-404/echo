@@ -15,7 +15,7 @@ const FragmentNotification: React.FC = () => {
       
       const timer = setTimeout(() => {
         setActiveFragment(null)
-      }, 5000) // 显示5秒后自动消失
+      }, 800) // 显示 800ms 后自动消失
       
       return () => clearTimeout(timer)
     }

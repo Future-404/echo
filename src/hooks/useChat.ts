@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { useAppStore } from '../store/useAppStore'
 import type { Message } from '../store/useAppStore'
 import { getEnabledSkills, executeSkill } from '../skills'
-import { buildSystemPrompt } from '../logic/promptEngine'
+import { buildSystemPrompt, buildPromptMessages } from '../logic/promptEngine'
 import { buildContextForChar, buildStopSequences } from '../logic/multiChar'
 import { replaceMacros } from '../logic/promptEngine'
 import { processChatStream } from '../utils/streamProcessor'
@@ -74,6 +74,14 @@ export const useChat = () => {
     const contextWindow = provider.contextWindow ?? 10
     const enabledTools = getEnabledSkills(config.enabledSkillIds)
 
+    // 预处理引导语 (Assistant Prefill)
+    const rawPrefill = provider.assistantPrefill?.trim()
+    const actualUserName = activePersona?.name || config.userName || 'User'
+    const prefill = rawPrefill ? replaceMacros(rawPrefill, actualUserName, char.name, {
+      otherName: secondaryCharacter ? (charId === selectedCharacter.id ? secondaryCharacter.name : selectedCharacter.name) : undefined,
+      currentQuest: (missions || []).find(m => m.status === 'ACTIVE' && m.type === 'MAIN')?.title,
+    }) : undefined
+
     // 组装完整的 API 消息数组 (ST 1:1 复刻逻辑)
     const apiMessages = buildPromptMessages({
       character: char,
@@ -124,7 +132,6 @@ export const useChat = () => {
         return { role: m.role, content: m.content }
       })
 
-      const prefill = provider.assistantPrefill?.trim()
       fetchBody = {
         model: provider.model,
         messages: prefill ? [...mappedMessages, { role: 'assistant', content: prefill }] : mappedMessages,
@@ -204,6 +211,13 @@ export const useChat = () => {
         }
       })
 
+      if (prefill) {
+        contents.push({
+          role: 'model',
+          parts: [{ text: prefill }]
+        })
+      }
+
       fetchBody = {
         contents,
         system_instruction: { parts: [{ text: systemMsg }] },
@@ -241,7 +255,7 @@ export const useChat = () => {
       const transformed = applyCharacterRegexScripts(fullText, char, 1)
 
       if (toolCalls?.length) {
-        const assistantMsg: Message = { role: 'assistant', content: transformed || '*…*', tool_calls: toolCalls, speakerId: charId }
+        const assistantMsg: Message = { role: 'assistant', content: transformed, tool_calls: toolCalls, speakerId: charId }
         addMessage(assistantMsg)
         const toolResults: Message[] = []
         for (const tc of toolCalls) {

@@ -20,6 +20,7 @@ import FragmentNotification from './components/FragmentNotification'
 import Header from './components/Header'
 import DialogueBox from './components/DialogueBox'
 import ChatInput from './components/ChatInput'
+import { MissionPanel } from './components/Dialogue/MissionPanel'
 import CharacterAvatar from './components/CharacterAvatar'
 import MultiCharAvatar from './components/MultiCharAvatar'
 import { HtmlGreeting } from './components/HtmlGreeting'
@@ -38,7 +39,7 @@ const App: React.FC = () => {
   const { 
     isLoading, setIsLoading, currentView, syncImagesFromDb, _hasHydrated, 
     multiCharMode, selectedCharacter, secondaryCharacter,
-    isDialogueFullscreen, config, messages
+    isDialogueFullscreen, config, messages, missions
   } = useAppStore()
   const setSelectedCharacter = useAppStore(s => s.setSelectedCharacter)
   
@@ -158,6 +159,10 @@ const App: React.FC = () => {
             }}
           >
             <Header />
+            <MissionPanel
+              missions={missions}
+              isQuestSkillEnabled={(config.enabledSkillIds || []).includes('manage_quest_state')}
+            />
             <FragmentNotification key="fragments" />
             
             {/* 对话框区域 */}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, ShieldCheck, Loader2, Github, Key, ChevronRight } from 'lucide-react';
+import { getDisplayVersion } from '../version';
 
 const REPO_URL = 'https://github.com/Future-404/echo';
 
@@ -126,11 +127,11 @@ export const GateScreen: React.FC<Props> = ({ onUnlock }) => {
 
           {/* 底部装饰 */}
           <div className="mt-12 flex flex-col items-center gap-6">
-            <div className="flex items-center gap-4 opacity-20">
-              <ShieldCheck size={14} strokeWidth={1} className="text-white" />
-              <div className="w-[1px] h-3 bg-white/30" />
-              <span className="text-[8px] tracking-[0.3em] text-white uppercase font-mono">
-                SECURE ACCESS PORTAL
+            <div className="flex items-center gap-4 opacity-40">
+              <ShieldCheck size={14} strokeWidth={1.5} className="text-white" />
+              <div className="w-[1px] h-3 bg-white/40" />
+              <span className="text-[8px] tracking-[0.2em] text-white uppercase font-mono">
+                CORE // {getDisplayVersion()}
               </span>
             </div>
 
@@ -138,23 +139,24 @@ export const GateScreen: React.FC<Props> = ({ onUnlock }) => {
               href={REPO_URL} 
               target="_blank" 
               rel="noopener noreferrer"
-              className="flex items-center gap-2 text-white/20 hover:text-white/60 transition-all group"
+              className="flex items-center gap-2 text-white/30 hover:text-white/60 transition-all group"
             >
               <Github size={12} strokeWidth={1.5} className="group-hover:rotate-12 transition-transform" />
-              <span className="text-[8px] tracking-[0.3em] uppercase font-sans">Project Repository</span>
+              <span className="text-[8px] tracking-[0.2em] uppercase font-sans">GitHub Repository</span>
             </a>
           </div>
         </div>
 
         {/* 装饰性边角标 */}
-        <div className="absolute -top-4 -left-4 w-20 h-20 border-t border-l border-white/5 pointer-events-none" />
-        <div className="absolute -bottom-4 -right-4 w-20 h-20 border-b border-r border-white/5 pointer-events-none" />
+        <div className="absolute -top-4 -left-4 w-20 h-20 border-t border-l border-white/10 pointer-events-none" />
+        <div className="absolute -bottom-4 -right-4 w-20 h-20 border-b border-r border-white/10 pointer-events-none" />
       </motion.div>
 
       {/* 底部版权信息 */}
-      <div className="absolute bottom-8 left-0 right-0 text-center pointer-events-none">
-        <span className="text-[7px] tracking-[0.5em] text-white/10 uppercase italic">
-          &copy; 2026 ECHO PROJECT. VISUAL NOVEL RENDERER CORE.
+      <div className="absolute bottom-8 left-0 right-0 text-center pointer-events-none flex flex-col items-center gap-2">
+        <div className="h-[1px] w-12 bg-white/20 mb-1" />
+        <span className="text-[8px] tracking-[0.6em] text-white/40 uppercase">
+          &copy; 2026 ECHO PROJECT. ADVANCED NEURAL RENDERER.
         </span>
       </div>
     </div>
