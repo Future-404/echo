@@ -121,16 +121,14 @@ export const useChat = () => {
     if (format === 'openai') {
       const mappedMessages = apiMessages.map(m => {
         if (m.images && m.images.length > 0) {
-          return {
-            role: m.role,
-            content: [
-              { type: 'text', text: m.content },
-              ...m.images.map((img: string) => ({ type: 'image_url', image_url: { url: img } }))
-            ]
+          const content: any[] = m.images.map((img: string) => ({ type: 'image_url', image_url: { url: img } }));
+          if (m.content?.trim()) {
+            content.unshift({ type: 'text', text: m.content });
           }
+          return { role: m.role, name: m.name, content };
         }
-        return { role: m.role, content: m.content }
-      })
+        return { role: m.role, name: m.name, content: m.content };
+      });
 
       fetchBody = {
         model: provider.model,
@@ -141,37 +139,32 @@ export const useChat = () => {
         ...(isStreaming && { stream_options: { "include_usage": true } }),
         temperature: provider.temperature ?? 0.7,
         ...(provider.topP != null && provider.topP !== 1.0 && { top_p: provider.topP }),
-      }
+      };
     } else if (format === 'anthropic') {
-      fetchUrl = `${provider.endpoint.replace(/\/chat\/completions$/, '')}/messages`
-      fetchHeaders = { 'Content-Type': 'application/json', 'x-api-key': provider.apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }
+      fetchUrl = `${provider.endpoint.replace(/\/chat\/completions$/, '')}/messages`;
+      fetchHeaders = { 'Content-Type': 'application/json', 'x-api-key': provider.apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' };
       
-      const systemMsg = apiMessages.find(m => m.role === 'system')?.content || ''
+      const systemMsg = apiMessages.find(m => m.role === 'system')?.content || '';
       const nonSystemMsgs = apiMessages.filter(m => m.role !== 'system').map(m => {
         if (m.images && m.images.length > 0) {
-          return {
-            role: m.role === 'assistant' ? 'assistant' : 'user',
-            content: [
-              ...m.images.map((img: string) => {
-                const match = img.match(/^data:(image\/\w+);base64,(.*)$/)
-                return {
-                  type: 'image',
-                  source: {
-                    type: 'base64',
-                    media_type: match ? match[1] : 'image/jpeg',
-                    data: match ? match[2] : img
-                  }
-                }
-              }),
-              { type: 'text', text: m.content }
-            ]
+          const content: any[] = m.images.map((img: string) => {
+            const match = img.match(/^data:(image\/\w+);base64,(.*)$/);
+            return {
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: match ? match[1] : 'image/jpeg',
+                data: match ? match[2] : img
+              }
+            };
+          });
+          if (m.content?.trim()) {
+            content.push({ type: 'text', text: m.content });
           }
+          return { role: m.role === 'assistant' ? 'assistant' : 'user', content };
         }
-        return {
-          role: m.role === 'assistant' ? 'assistant' : 'user',
-          content: m.content
-        }
-      })
+        return { role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content };
+      });
 
       fetchBody = {
         model: provider.model,
@@ -181,35 +174,30 @@ export const useChat = () => {
         ...(stopSeqs.length > 0 && { stop_sequences: stopSeqs }),
         stream: isStreaming,
         temperature: provider.temperature ?? 0.7,
-      }
+      };
     } else if (format === 'gemini') {
-      // Gemini 原生接口支持
-      const isStreamSuffix = isStreaming ? 'streamGenerateContent?alt=sse&' : 'generateContent?'
-      fetchUrl = `${provider.endpoint.replace(/\/chat\/completions$/, '')}/models/${provider.model}:${isStreamSuffix}key=${provider.apiKey}`
-      fetchHeaders = { 'Content-Type': 'application/json' }
+      const isStreamSuffix = isStreaming ? 'streamGenerateContent?alt=sse&' : 'generateContent?';
+      fetchUrl = `${provider.endpoint.replace(/\/chat\/completions$/, '')}/models/${provider.model}:${isStreamSuffix}key=${provider.apiKey}`;
+      fetchHeaders = { 'Content-Type': 'application/json' };
       
-      const systemMsg = apiMessages.find(m => m.role === 'system')?.content || ''
+      const systemMsg = apiMessages.find(m => m.role === 'system')?.content || '';
       const contents = apiMessages.filter(m => m.role !== 'system').map(m => {
-        const parts: any[] = []
+        const parts: any[] = [];
         if (m.images && m.images.length > 0) {
           m.images.forEach((img: string) => {
-            const match = img.match(/^data:(image\/\w+);base64,(.*)$/)
+            const match = img.match(/^data:(image\/\w+);base64,(.*)$/);
             if (match) {
               parts.push({
-                inlineData: {
-                  mimeType: match[1],
-                  data: match[2]
-                }
-              })
+                inlineData: { mimeType: match[1], data: match[2] }
+              });
             }
-          })
+          });
         }
-        parts.push({ text: m.content })
-        return {
-          role: m.role === 'assistant' ? 'model' : 'user',
-          parts
+        if (m.content?.trim() || parts.length === 0) {
+          parts.push({ text: m.content || " " });
         }
-      })
+        return { role: m.role === 'assistant' ? 'model' : 'user', parts };
+      });
 
       if (prefill) {
         contents.push({
@@ -343,6 +331,7 @@ export const useChat = () => {
   const requestRouter = useCallback(async (
     userContent: string,
     currentMessages: Message[],
+    images?: string[],
   ): Promise<RouterAction[]> => {
     const routerProvider = config.providers.find(p => p.id === routerProviderId) || config.providers.find(p => p.id === config.activeProviderId) || config.providers[0]
     if (!routerProvider?.apiKey || !secondaryCharacter) {
@@ -351,20 +340,24 @@ export const useChat = () => {
     }
 
     const systemPrompt = buildRouterPrompt(selectedCharacter.name, secondaryCharacter.name, activePersona?.name || 'User')
-    const recentCtx = currentMessages.slice(-6).map(m => {
+    // 排除最后一条（即当前用户发送的）消息，因为它会被手动加在末尾
+    const historyMsgs = currentMessages.slice(0, -1);
+    const recentCtx = historyMsgs.slice(-6).map(m => {
       const name = m.speakerId === selectedCharacter.id ? selectedCharacter.name
         : m.speakerId === secondaryCharacter.id ? secondaryCharacter.name
         : activePersona?.name || 'User'
-      return { role: m.role as any, content: `[${name}]: ${m.content}` }
+      const imageTag = m.images?.length ? ` [Attached ${m.images.length} images]` : ''
+      return { role: m.role as any, content: `[${name}]: ${m.content}${imageTag}` }
     })
 
     const fetchUrl = `${routerProvider.endpoint}/chat/completions`
+    const imageTag = (images?.length || 0) > 0 ? ` [Attached ${images?.length} images]` : ''
     const fetchBody = {
       model: routerProvider.model,
       messages: [
         { role: 'system', content: systemPrompt },
         ...recentCtx,
-        { role: 'user', content: `[${activePersona?.name || 'User'}]: ${userContent}` }
+        { role: 'user', content: `[${activePersona?.name || 'User'}]: ${userContent}${imageTag}` }
       ],
       tools: [routerSchema],
       tool_choice: { type: 'function', function: { name: 'route_response' } },
@@ -417,7 +410,7 @@ export const useChat = () => {
         setActiveSpeakerId(undefined)
         let actions: RouterAction[]
         try {
-          actions = await requestRouter(content, currentMessages)
+          actions = await requestRouter(content, currentMessages, images)
         } catch (routerErr: any) {
           addMessage({ role: 'assistant', content: `错误（Router）: ${routerErr.message}。请重试。` })
           setIsTyping(false)

@@ -16,14 +16,14 @@ const Header: React.FC = () => {
   const tokenColorClass = tokenUsagePercent > 95 ? 'text-red-500' : tokenUsagePercent > 80 ? 'text-orange-400' : 'text-gray-400 dark:text-gray-500'
 
   return (
-    <header className="sticky top-0 z-50 h-16 flex items-center justify-between px-6 md:px-10 pointer-events-auto bg-echo-base/60 dark:bg-black/60 backdrop-blur-md border-b border-black/5 dark:border-white/5">
+    <header className="sticky top-0 z-50 min-h-16 safe-area-top flex items-center justify-between px-6 md:px-10 pointer-events-auto bg-echo-base/60 dark:bg-black/60 backdrop-blur-md border-b border-black/5 dark:border-white/5">
       <div className="flex items-center gap-6">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: isLoading ? 0 : 1 }} className="flex items-center gap-4">
           {/* 隐藏式返回主菜单按钮 */}
           <div className="relative group">
             <button
               onClick={() => setCurrentView('home')}
-              className="text-[9px] md:text-[10px] tracking-[0.4em] text-gray-400 dark:text-gray-500 uppercase hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-300 pointer-events-auto"
+              className="text-[9px] md:text-[10px] tracking-[0.4em] text-gray-400 dark:text-gray-500 uppercase hover:text-gray-700 dark:hover:text-gray-400 transition-colors duration-300 pointer-events-auto"
             >
               ECHO
             </button>
@@ -37,7 +37,7 @@ const Header: React.FC = () => {
 
           <div className="w-[1px] h-3 bg-gray-200 dark:bg-gray-800" />
           <div className="flex flex-col md:flex-row md:items-center md:gap-3">
-            <span className="text-[9px] md:text-[10px] tracking-[0.4em] text-gray-300 dark:text-gray-600 italic uppercase">{selectedCharacter.name}</span>
+            <span className="text-[9px] md:text-[10px] tracking-[0.4em] text-gray-400 dark:text-gray-600 italic uppercase">{selectedCharacter.name}</span>
             {lastTokenCount > 0 && (
               <span className={`text-[7px] md:text-[8px] font-mono tracking-widest uppercase ${tokenColorClass} md:mt-0.5`}>
                 [ {lastTokenCount >= 1000 ? (lastTokenCount / 1000).toFixed(1) + 'k' : lastTokenCount} / {maxContextTokens >= 1000 ? (maxContextTokens / 1000).toFixed(0) + 'k' : maxContextTokens} ctx ]

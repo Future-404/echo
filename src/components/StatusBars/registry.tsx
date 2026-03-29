@@ -2,7 +2,6 @@ import React from 'react';
 import { DataLinkBar } from './renderers/DataLinkBar';
 import { LegacyCSVBar } from './renderers/LegacyCSVBar';
 import { StatusContainerBar } from './renderers/StatusContainerBar';
-import { HtmlBar } from './renderers/HtmlBar';
 import { IframeBar } from './renderers/IframeBar';
 import type { StatusBarProps } from './types';
 

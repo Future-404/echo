@@ -37,7 +37,7 @@ const LoadScreen: React.FC = () => {
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 md:p-8 bg-black/80 backdrop-blur-md pointer-events-auto"
     >
-      <div className="w-full max-w-5xl flex justify-between items-center mb-8">
+      <div className="w-full max-w-5xl flex justify-between items-center mb-8 safe-area-top">
         <h2 className="text-3xl md:text-4xl font-serif text-white tracking-widest">读取记忆</h2>
         <button 
           onClick={() => setCurrentView('home')} // 回到主界面

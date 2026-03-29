@@ -57,19 +57,14 @@ export const createConfigSlice = (set: any, get: any, INITIAL_CONFIG: ConfigSlic
 
   updateFontFamily: (font) => {
     set((state: any) => ({ config: { ...state.config, fontFamily: font } }));
-    document.documentElement.style.setProperty('--app-font', font);
   },
 
   updateFontSize: (size) => {
     set((state: any) => ({ config: { ...state.config, fontSize: size } }));
-    document.documentElement.style.setProperty('--app-font-size', `${size}px`);
   },
 
   updateCustomCss: (css) => {
     set((state: any) => ({ config: { ...state.config, customCss: css } }));
-    let el = document.getElementById('user-custom-css');
-    if (!el) { el = document.createElement('style'); el.id = 'user-custom-css'; document.head.appendChild(el); }
-    el.textContent = css;
   },
 
   updateCustomBg: (hasImage) => set((state: any) => ({ config: { ...state.config, customBg: hasImage } })),

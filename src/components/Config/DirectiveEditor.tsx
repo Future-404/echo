@@ -21,7 +21,7 @@ const DirectiveEditor: React.FC<DirectiveEditorProps> = ({ id, onClose }) => {
       className="p-8 h-full flex flex-col space-y-8"
     >
       <div className="group">
-        <label className="text-[9px] tracking-wide text-gray-300 dark:text-gray-600 uppercase mb-3 block italic underline decoration-gray-100 dark:decoration-gray-800 underline-offset-8">Directive Title</label>
+        <label className="text-[9px] tracking-wide text-gray-400 dark:text-gray-600 uppercase mb-3 block italic underline decoration-gray-100 dark:decoration-gray-800 underline-offset-8">Directive Title</label>
         <input 
           type="text" 
           value={directive.title} 
@@ -30,7 +30,7 @@ const DirectiveEditor: React.FC<DirectiveEditorProps> = ({ id, onClose }) => {
         />
       </div>
       <div className="flex-1 flex flex-col min-h-[300px]">
-        <label className="text-[9px] tracking-wide text-gray-300 dark:text-gray-600 uppercase mb-3 block italic">Instruction Content</label>
+        <label className="text-[9px] tracking-wide text-gray-400 dark:text-gray-600 uppercase mb-3 block italic">Instruction Content</label>
         <textarea 
           value={directive.content} 
           onChange={(e) => updateDirective(id, { content: e.target.value })} 

@@ -121,7 +121,7 @@ const PersonaManager: React.FC = () => {
       <div className="flex justify-between items-center px-4">
         <div className="flex flex-col">
             <label className="text-xs font-serif tracking-widest text-gray-500 dark:text-gray-400 font-medium">用户身份管理</label>
-            <span className="text-[7px] text-gray-300 dark:text-gray-600 uppercase tracking-[0.2em] mt-0.5">User Persona Archive</span>
+            <span className="text-[7px] text-gray-400 dark:text-gray-600 uppercase tracking-[0.2em] mt-0.5">User Persona Archive</span>
         </div>
         <div className="flex gap-3">
           <input type="file" ref={fileInputRef} onChange={handleImport} accept=".json,.txt" className="hidden" />
@@ -153,11 +153,11 @@ const PersonaManager: React.FC = () => {
                     {p.name}
                     {config.activePersonaId === p.id && <Check size={10} className="text-green-400" />}
                   </h4>
-                  <p className="text-[8px] text-gray-300 dark:text-gray-500 uppercase mt-1 italic tracking-widest">{p.description}</p>
+                  <p className="text-[8px] text-gray-400 dark:text-gray-500 uppercase mt-1 italic tracking-widest">{p.description}</p>
                 </div>
               </div>
               <div className="flex gap-2">
-                <button onClick={() => setEditingId(editingId === p.id ? null : p.id)} className="text-gray-300 dark:text-gray-600 hover:text-gray-500"><Edit3 size={14} strokeWidth={1} /></button>
+                <button onClick={() => setEditingId(editingId === p.id ? null : p.id)} className="text-gray-400 dark:text-gray-600 hover:text-gray-500"><Edit3 size={14} strokeWidth={1} /></button>
                 {personas.length > 1 && (
                   <button onClick={() => removePersona(p.id)} className="text-gray-200 dark:text-gray-800 hover:text-red-300"><Trash2 size={14} strokeWidth={1} /></button>
                 )}
@@ -171,27 +171,27 @@ const PersonaManager: React.FC = () => {
                   className="space-y-6 overflow-hidden pt-4 border-t border-gray-100 dark:border-white/5"
                 >
                   <div className="group">
-                    <label className="text-[8px] tracking-widest text-gray-300 dark:text-gray-600 uppercase mb-2 block font-medium">名称 / Name</label>
+                    <label className="text-[8px] tracking-widest text-gray-400 dark:text-gray-600 uppercase mb-2 block font-medium">名称 / Name</label>
                     <input type="text" value={p.name} onChange={(e) => updatePersona(p.id, { name: e.target.value })} className="w-full bg-transparent border-b-0.5 border-gray-200 dark:border-gray-800 py-1 text-sm text-gray-600 dark:text-gray-300 focus:outline-none" />
                   </div>
                     <div className="flex gap-4">
                       <div className="group flex-1">
-                        <label className="text-[8px] tracking-widest text-gray-300 dark:text-gray-600 uppercase mb-2 block font-medium">姓氏 {'{{user_surname}}'}</label>
+                        <label className="text-[8px] tracking-widest text-gray-400 dark:text-gray-600 uppercase mb-2 block font-medium">姓氏 {'{{user_surname}}'}</label>
                         <input type="text" value={p.surname || ''} onChange={(e) => updatePersona(p.id, { surname: e.target.value })} placeholder="如：金" className="w-full bg-transparent border-b-0.5 border-gray-200 dark:border-gray-800 py-1 text-sm text-gray-600 dark:text-gray-300 focus:outline-none" />
                       </div>
                       <div className="group flex-1">
-                        <label className="text-[8px] tracking-widest text-gray-300 dark:text-gray-600 uppercase mb-2 block font-medium">昵称 {'{{user_nickname}}'}</label>
+                        <label className="text-[8px] tracking-widest text-gray-400 dark:text-gray-600 uppercase mb-2 block font-medium">昵称 {'{{user_nickname}}'}</label>
                         <input type="text" value={p.nickname || ''} onChange={(e) => updatePersona(p.id, { nickname: e.target.value })} placeholder="如：小金" className="w-full bg-transparent border-b-0.5 border-gray-200 dark:border-gray-800 py-1 text-sm text-gray-600 dark:text-gray-300 focus:outline-none" />
                       </div>
                     </div>
                   <div className="group">
-                    <label className="text-[8px] tracking-widest text-gray-300 dark:text-gray-600 uppercase mb-2 block font-medium">头像 / Avatar</label>
+                    <label className="text-[8px] tracking-widest text-gray-400 dark:text-gray-600 uppercase mb-2 block font-medium">头像 / Avatar</label>
                     <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleAvatarUpload(p.id, e)} />
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-50 dark:bg-gray-900 border-0.5 border-gray-200 dark:border-gray-700 flex items-center justify-center">
                         {avatarUrls[p.id]
                           ? <img src={avatarUrls[p.id]} alt={p.name} className="w-full h-full object-cover" />
-                          : <User size={18} strokeWidth={1} className="text-gray-300" />
+                          : <User size={18} strokeWidth={1} className="text-gray-400" />
                         }
                       </div>
                       <button
@@ -213,11 +213,11 @@ const PersonaManager: React.FC = () => {
                     </div>
                   </div>
                   <div className="group">
-                    <label className="text-[8px] tracking-widest text-gray-300 dark:text-gray-600 uppercase mb-2 block font-medium">标语 / Tagline</label>
+                    <label className="text-[8px] tracking-widest text-gray-400 dark:text-gray-600 uppercase mb-2 block font-medium">标语 / Tagline</label>
                     <input type="text" value={p.description} onChange={(e) => updatePersona(p.id, { description: e.target.value })} className="w-full bg-transparent border-b-0.5 border-gray-200 dark:border-gray-800 py-1 text-sm text-gray-600 dark:text-gray-300 focus:outline-none" />
                   </div>
                   <div className="group">
-                    <label className="text-[8px] tracking-widest text-gray-300 dark:text-gray-600 uppercase mb-2 block font-medium">用户背景设定 / Context</label>
+                    <label className="text-[8px] tracking-widest text-gray-400 dark:text-gray-600 uppercase mb-2 block font-medium">用户背景设定 / Context</label>
                     <textarea value={p.background} onChange={(e) => updatePersona(p.id, { background: e.target.value })} placeholder="告诉 AI 在这个世界里你扮演着什么样的角色..." className="w-full bg-white/30 dark:bg-black/20 border-0.5 border-gray-100 dark:border-gray-800 rounded-2xl p-4 text-xs text-gray-500 dark:text-gray-400 font-serif leading-relaxed focus:outline-none min-h-[100px] resize-none no-scrollbar" />
                   </div>
 
@@ -256,7 +256,7 @@ const PersonaManager: React.FC = () => {
                               </button>
                               <span className="text-[10px] font-serif font-bold text-gray-700 dark:text-gray-200 truncate">{entry.comment || entry.content.slice(0, 30)}</span>
                             </div>
-                            <button onClick={() => removePersonaWorldBookEntry(p.id, entry.id)} className="p-1 text-gray-300 hover:text-red-400 opacity-0 group-hover/item:opacity-100 transition-all">
+                            <button onClick={() => removePersonaWorldBookEntry(p.id, entry.id)} className="p-1 text-gray-400 hover:text-red-400 opacity-0 group-hover/item:opacity-100 transition-all">
                               <Trash2 size={12} />
                             </button>
                           </div>

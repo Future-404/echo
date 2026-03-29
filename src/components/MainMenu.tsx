@@ -97,7 +97,7 @@ const MainMenu: React.FC = () => {
       </div>
 
       {/* 左侧菜单区域 */}
-      <div className="relative z-20 w-full md:w-[45%] h-full flex flex-col justify-center px-12 md:px-24">
+      <div className="relative z-20 w-full md:w-[45%] h-full flex flex-col justify-center px-12 md:px-24 safe-area-top">
         {/* 标题 */}
         <motion.div 
           initial={{ x: -50, opacity: 0 }}

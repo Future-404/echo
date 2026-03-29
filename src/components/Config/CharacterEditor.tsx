@@ -159,14 +159,14 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
     >
       <motion.div 
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg bg-echo-white dark:bg-[#0d0d0d] rounded-[2.5rem] md:rounded-[3rem] border-0.5 border-echo-border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] md:max-h-[85vh]"
+        className="w-full max-w-lg bg-echo-white dark:bg-[#0d0d0d] rounded-[2.5rem] md:rounded-[3rem] border-0.5 border-echo-border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] md:max-h-[85vh] safe-area-top"
       >
         <header className="p-6 md:p-8 pb-4 flex justify-between items-center border-b-0.5 border-gray-100 dark:border-gray-800">
           <div className="flex flex-col text-left">
             <h2 className="text-[10px] tracking-[0.6em] text-gray-400 uppercase">Core // Identifier</h2>
-            <p className="text-[8px] text-gray-300 uppercase mt-1 italic">Rewrite Neural Pattern</p>
+            <p className="text-[8px] text-gray-400 uppercase mt-1 italic">Rewrite Neural Pattern</p>
           </div>
-          <button onClick={onClose} className="text-gray-300 hover:text-gray-500 transition-colors">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-500 transition-colors">
             <X size={20} strokeWidth={1} />
           </button>
         </header>
@@ -194,7 +194,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
 
           {/* 角色名 */}
           <div className="group text-left">
-            <label className="text-[9px] tracking-widest text-gray-300 uppercase mb-3 block italic">Identifier Name // 角色名</label>
+            <label className="text-[9px] tracking-widest text-gray-400 uppercase mb-3 block italic">Identifier Name // 角色名</label>
             <input 
               type="text" 
               value={char.name} 
@@ -205,7 +205,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
 
           {/* 开场白 */}
           <div className="group text-left space-y-3">
-            <label className="text-[9px] tracking-widest text-gray-300 uppercase mb-3 block italic underline decoration-gray-100 dark:decoration-gray-800 underline-offset-8">Neural Greeting // 开场白</label>
+            <label className="text-[9px] tracking-widest text-gray-400 uppercase mb-3 block italic underline decoration-gray-100 dark:decoration-gray-800 underline-offset-8">Neural Greeting // 开场白</label>
             <textarea 
               value={char.greeting || ''} 
               onChange={(e) => updateCharacter(charId, { greeting: e.target.value })}
@@ -216,7 +216,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
             {/* 备选开场白 */}
             <div className="space-y-2 pt-1">
               <div className="flex items-center justify-between px-1">
-                <span className="text-[8px] tracking-widest text-gray-300 uppercase italic">Alternate Greetings // 备选开场白</span>
+                <span className="text-[8px] tracking-widest text-gray-400 uppercase italic">Alternate Greetings // 备选开场白</span>
                 <button
                   onClick={() => updateCharacter(charId, { alternateGreetings: [...(char.alternateGreetings || []), ''] })}
                   className="p-1 rounded-full bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 text-gray-400 hover:text-black dark:hover:text-white transition-all"
@@ -241,7 +241,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
                       const next = (char.alternateGreetings || []).filter((_, j) => j !== i)
                       updateCharacter(charId, { alternateGreetings: next.length ? next : undefined })
                     }}
-                    className="mt-2 p-1.5 text-gray-300 hover:text-red-400 transition-colors"
+                    className="mt-2 p-1.5 text-gray-400 hover:text-red-400 transition-colors"
                   >
                     <Trash2 size={12} />
                   </button>
@@ -252,7 +252,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
 
           {/* 人格设定 */}
           <div className="group text-left">
-            <label className="text-[9px] tracking-widest text-gray-300 uppercase mb-3 block italic underline decoration-gray-100 dark:decoration-gray-800 underline-offset-8">Neural Personality // 人格设定</label>
+            <label className="text-[9px] tracking-widest text-gray-400 uppercase mb-3 block italic underline decoration-gray-100 dark:decoration-gray-800 underline-offset-8">Neural Personality // 人格设定</label>
             <textarea 
               value={char.systemPrompt} 
               onChange={(e) => updateCharacter(charId, { systemPrompt: e.target.value })}
@@ -262,7 +262,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
 
           {/* 场景设定 (ST Scenario) */}
           <div className="group text-left">
-            <label className="text-[9px] tracking-widest text-gray-300 uppercase mb-3 block italic underline decoration-gray-100 dark:decoration-gray-800 underline-offset-8">Neural Scenario // 场景设定</label>
+            <label className="text-[9px] tracking-widest text-gray-400 uppercase mb-3 block italic underline decoration-gray-100 dark:decoration-gray-800 underline-offset-8">Neural Scenario // 场景设定</label>
             <textarea 
               value={char.scenario || ''} 
               onChange={(e) => updateCharacter(charId, { scenario: e.target.value })}
@@ -273,7 +273,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
 
           {/* Provider 绑定 */}
           <div className="group text-left">
-            <label className="text-[9px] tracking-widest text-gray-300 uppercase mb-3 block italic underline decoration-gray-100 dark:decoration-gray-800 underline-offset-8">Provider Binding // 模型绑定</label>
+            <label className="text-[9px] tracking-widest text-gray-400 uppercase mb-3 block italic underline decoration-gray-100 dark:decoration-gray-800 underline-offset-8">Provider Binding // 模型绑定</label>
             <select
               value={char.providerId || ''}
               onChange={(e) => updateCharacter(charId, { providerId: e.target.value || undefined })}
@@ -289,7 +289,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
           {/* TTS 语音绑定 */}
           {ttsSettings.enabled && (
             <div className="group text-left">
-              <label className="text-[9px] tracking-widest text-gray-300 uppercase mb-3 block italic underline decoration-gray-100 dark:decoration-gray-800 underline-offset-8">Neural Voice // 语音设置</label>
+              <label className="text-[9px] tracking-widest text-gray-400 uppercase mb-3 block italic underline decoration-gray-100 dark:decoration-gray-800 underline-offset-8">Neural Voice // 语音设置</label>
               <select
                 value={ttsSettings.voiceMap[charId] || ''}
                 onChange={(e) => updateTtsVoice(charId, e.target.value)}
@@ -318,7 +318,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
             </div>
             <div className="grid grid-cols-1 gap-2">
               {library.length === 0 ? (
-                <p className="text-[9px] text-gray-300 italic text-center py-4 opacity-50">书库暂无书籍可绑定</p>
+                <p className="text-[9px] text-gray-400 italic text-center py-4 opacity-50">书库暂无书籍可绑定</p>
               ) : (
                 library.map((book) => {
                   const isBound = boundBookIds.includes(book.id)
@@ -361,7 +361,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
 
             <div className="space-y-2">
               {privateEntries.length === 0 ? (
-                <p className="text-[9px] text-gray-300 italic text-center py-4 opacity-50">暂无私人记忆碎片</p>
+                <p className="text-[9px] text-gray-400 italic text-center py-4 opacity-50">暂无私人记忆碎片</p>
               ) : (
                 privateEntries.map((entry) => (
                   <div key={entry.id} className="bg-white/50 dark:bg-white/5 border-0.5 border-gray-100 dark:border-white/5 rounded-2xl overflow-hidden transition-all group">
@@ -387,10 +387,10 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
                         </button>
 
                         <div className="flex items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-all">
-                          <button onClick={() => removePrivateWorldBookEntry(entry.id)} className="p-1.5 text-gray-300 hover:text-red-400 transition-colors">
+                          <button onClick={() => removePrivateWorldBookEntry(entry.id)} className="p-1.5 text-gray-400 hover:text-red-400 transition-colors">
                             <Trash2 size={12} />
                           </button>
-                          <button onClick={() => setExpandedPrivateId(expandedPrivateId === entry.id ? null : entry.id)} className="p-1.5 text-gray-300">
+                          <button onClick={() => setExpandedPrivateId(expandedPrivateId === entry.id ? null : entry.id)} className="p-1.5 text-gray-400">
                             {expandedPrivateId === entry.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                           </button>
                         </div>
@@ -472,7 +472,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
               <label className="text-[10px] tracking-widest text-gray-400 uppercase italic flex items-center gap-2 group-hover:text-blue-400 transition-colors">
                 <Settings2 size={12} /> Advanced // 解析规则
               </label>
-              <div className="text-[8px] font-mono text-gray-300 uppercase tracking-widest">{isParsersExpanded ? 'Collapse' : 'Expand'}</div>
+              <div className="text-[8px] font-mono text-gray-400 uppercase tracking-widest">{isParsersExpanded ? 'Collapse' : 'Expand'}</div>
             </div>
             <AnimatePresence>
               {isParsersExpanded && (

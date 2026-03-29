@@ -187,13 +187,19 @@ export const buildPromptMessages = (ctx: PromptContext, contextWindow: number = 
   let usedHistoryTokens = 0;
   for (let i = recentMessages.length - 1; i >= 0; i--) {
     const msg = recentMessages[i];
-    const t = estimateTokens(msg.content) + 10;
+    // 基础文字消耗
+    let t = estimateTokens(msg.content) + 10;
+    // 图片消耗估算：每个图片大致按 200 token 计算
+    if (msg.images?.length) t += msg.images.length * 200;
+
     if (usedHistoryTokens + t > historyBudget) break;
     usedHistoryTokens += t;
+
+    const charForMsg = msg.speakerId === character.id ? character : (isMultiChar && otherCharName ? { name: otherCharName } : undefined);
     eligibleMessages.unshift({ 
       role: msg.role as any, 
       content: msg.content,
-      name: msg.role === 'user' ? actualUserName : (msg.speakerId === character.id ? charName : undefined),
+      name: msg.role === 'user' ? actualUserName : (charForMsg?.name || undefined),
       images: msg.images
     });
   }

@@ -60,7 +60,7 @@ const TagTemplateEditor: React.FC = () => {
       </AnimatePresence>
 
       {templates.length === 0 && !isAdding && (
-        <p className="text-[9px] text-gray-300 italic text-center py-3 opacity-50">暂无正则脚本</p>
+        <p className="text-[9px] text-gray-400 italic text-center py-3 opacity-50">暂无正则脚本</p>
       )}
 
       <div className="space-y-2">
@@ -73,8 +73,8 @@ const TagTemplateEditor: React.FC = () => {
               </button>
               <span className="text-[11px] font-serif font-bold text-gray-700 dark:text-gray-200 flex-1 truncate">{tpl.name}</span>
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                <button onClick={() => remove(tpl.id)} className="p-1 text-gray-300 hover:text-red-400 transition-colors"><Trash2 size={11} /></button>
-                <button onClick={() => setExpandedId(expandedId === tpl.id ? null : tpl.id)} className="p-1 text-gray-300">
+                <button onClick={() => remove(tpl.id)} className="p-1 text-gray-400 hover:text-red-400 transition-colors"><Trash2 size={11} /></button>
+                <button onClick={() => setExpandedId(expandedId === tpl.id ? null : tpl.id)} className="p-1 text-gray-400">
                   {expandedId === tpl.id ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                 </button>
               </div>
@@ -85,17 +85,17 @@ const TagTemplateEditor: React.FC = () => {
                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
                   className="px-4 pb-4 pt-2 border-t border-gray-100 dark:border-white/5 space-y-3">
                   <div>
-                    <label className="text-[8px] uppercase tracking-widest text-gray-300 mb-1 block">查找正则</label>
+                    <label className="text-[8px] uppercase tracking-widest text-gray-400 mb-1 block">查找正则</label>
                     <input value={tpl.originalRegex || ''} onChange={e => update(tpl.id, { originalRegex: e.target.value })}
                       className="w-full bg-white dark:bg-black/20 border-0.5 border-gray-100 dark:border-white/10 rounded-xl px-3 py-2 text-[10px] font-mono focus:outline-none focus:border-purple-400/50 transition-colors" />
                   </div>
                   <div>
-                    <label className="text-[8px] uppercase tracking-widest text-gray-300 mb-1 block">替换为（留空 = 删除）</label>
+                    <label className="text-[8px] uppercase tracking-widest text-gray-400 mb-1 block">替换为（留空 = 删除）</label>
                     <input value={tpl.replaceString ?? ''} onChange={e => update(tpl.id, { replaceString: e.target.value })}
                       className="w-full bg-white dark:bg-black/20 border-0.5 border-gray-100 dark:border-white/10 rounded-xl px-3 py-2 text-[10px] font-mono focus:outline-none focus:border-purple-400/50 transition-colors" />
                   </div>
                   <div>
-                    <label className="text-[8px] uppercase tracking-widest text-gray-300 mb-1 block">执行层级</label>
+                    <label className="text-[8px] uppercase tracking-widest text-gray-400 mb-1 block">执行层级</label>
                     <div className="flex gap-2">
                       {([1, 2] as const).map(p => {
                         const active = (tpl.placement ?? [1, 2]).includes(p)

@@ -20,28 +20,63 @@ export const parseStreamingNovelText = (
   // 從配置獲取標記符號（默認值）
   const quotes = options?.dialogueQuotes || '""“”';
   const actionChars = options?.actionMarkers || '**「」『』';
-  const thoughtChars = options?.thoughtMarkers || '()（）<>';
+  const thoughtChars = options?.thoughtMarkers || '()（）'; // 移除 <>，防止与 AI 的 XML 标签冲突
 
-  // 1. 预处理：只提取 Markdown 风格的状态栏（不处理 HTML/XML 标签）
-  const cardRegex = /\{\{([^}]+)\}\}|\{([^}]+)\}|\[([^\]]+)\]/g;
+  // 1. 预处理：提取 Markdown 风格卡片或结构化容器
+  // 支持 {{...}}, {...}, [[...]], [...]
+  const cardRegex = /\{\{([\s\S]+?)\}\}|\{([\s\S]+?)\}|\[\[([\s\S]+?)\]\]|\[([\s\S]+?)\]/g;
 
   // 用有序数组保留卡片及其在文本中的位置
   const cardSlots: { placeholder: string; segment: TextSegment }[] = [];
   let cardIdx = 0;
 
-  const textWithPlaceholders = rawText.replace(cardRegex, (match, p1, p2, p3) => {
+  const textWithPlaceholders = rawText.replace(cardRegex, (match, p1, p2, p3, p4) => {
+    const content = (p1 || p2 || p3 || p4 || "").trim();
+    
+    // 识别分隔符：优先使用 |
+    let type = "";
+    let body = "";
+    
+    const pipeIdx = content.indexOf('|');
+    if (pipeIdx > 0) {
+      type = content.substring(0, pipeIdx).trim();
+      body = content.substring(pipeIdx + 1).trim();
+    } else {
+      // 尝试换行符分隔
+      const nlIdx = content.indexOf('\n');
+      if (nlIdx > 0) {
+        type = content.substring(0, nlIdx).trim();
+        body = content.substring(nlIdx + 1).trim();
+      } else {
+        // 尝试首个空格分隔
+        const spIdx = content.indexOf(' ');
+        if (spIdx > 0) {
+          type = content.substring(0, spIdx).trim();
+          body = content.substring(spIdx + 1).trim();
+        } else {
+          type = content;
+          body = "";
+        }
+      }
+    }
+
+    // 验证 type 是否有效（防止误触简单的 Json 或 变量注入）
+    const validTypes = ['status-container', 'status', 'card', 'characterCard', 'html', 'details', '状态栏'];
+    const isKnownType = validTypes.some(t => type.toLowerCase().includes(t.toLowerCase()));
+    
+    if (!isKnownType) {
+      // 如果不是已知类型，且看起来不像一个干净的标识符，则忽略
+      if (type.length > 30 || type.includes(' ') || !type.match(/^[\w\u4e00-\u9fa5-]+$/)) {
+        return match;
+      }
+    }
+
     const placeholder = `\x00CARD${cardIdx}\x00`;
-    const content = p1 || p2 || p3;
-    
-    // 只處理包含 | 的 Markdown 狀態欄
-    if (!content?.includes('|')) return match;
-    
-    const metaParts = content.split('|');
     const seg: TextSegment = {
       id: `seg_card_${cardIdx}`,
       type: 'card',
-      content: metaParts[0],
-      metadata: metaParts.slice(1)
+      content: type,
+      metadata: { rawBody: body, fullMatch: match }
     };
 
     cardSlots.push({ placeholder, segment: seg });

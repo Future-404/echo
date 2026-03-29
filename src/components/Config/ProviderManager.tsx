@@ -22,7 +22,7 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ onEdit, onAdd }) => {
       <div className="flex justify-between items-center px-4">
         <div className="flex flex-col">
             <label className="text-xs font-serif tracking-widest text-gray-500 dark:text-gray-400 font-medium">LLM API 参数</label>
-            <span className="text-[7px] text-gray-300 dark:text-gray-600 uppercase tracking-[0.2em] mt-0.5">API Gateway</span>
+            <span className="text-[7px] text-gray-400 dark:text-gray-600 uppercase tracking-[0.2em] mt-0.5">API Gateway</span>
         </div>
         <div className="flex gap-2">
           <button onClick={onAdd} className="text-gray-400 hover:text-gray-600 transition-colors">
@@ -42,12 +42,12 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ onEdit, onAdd }) => {
                 {p.name}
                 {config.activeProviderId === p.id && <Check size={10} className="text-green-400" />}
               </h4>
-              <p className="text-[8px] text-gray-300 dark:text-gray-500 uppercase mt-1 tracking-widest">
+              <p className="text-[8px] text-gray-400 dark:text-gray-500 uppercase mt-1 tracking-widest">
                 {p.model || '未设定模型'} // ACTIVE NODE
               </p>
             </div>
             <div className="flex gap-2">
-              <button onClick={() => onEdit(p.id)} className="text-gray-300 dark:text-gray-600 hover:text-gray-500 transition-colors">
+              <button onClick={() => onEdit(p.id)} className="text-gray-400 dark:text-gray-600 hover:text-gray-500 transition-colors">
                 <Edit3 size={14} strokeWidth={1} />
               </button>
               {providers.length > 1 && (

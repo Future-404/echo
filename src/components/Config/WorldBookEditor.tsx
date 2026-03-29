@@ -115,7 +115,7 @@ const WorldBookEditor: React.FC = () => {
             <label className="text-xs font-serif tracking-widest text-gray-500 dark:text-gray-400 font-medium flex items-center gap-2">
               <Book size={14} /> 世界书库 // Library
             </label>
-            <span className="text-[7px] text-gray-300 dark:text-gray-600 uppercase tracking-[0.2em] mt-0.5">Manage your lore collections</span>
+            <span className="text-[7px] text-gray-400 dark:text-gray-600 uppercase tracking-[0.2em] mt-0.5">Manage your lore collections</span>
           </div>
           <div className="flex gap-2">
             <input 
@@ -144,7 +144,7 @@ const WorldBookEditor: React.FC = () => {
 
         <div className="flex-1 overflow-y-auto space-y-3 pr-2 no-scrollbar">
           {library.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-gray-300 dark:text-gray-700 opacity-50 space-y-2">
+            <div className="h-full flex flex-col items-center justify-center text-gray-400 dark:text-gray-700 opacity-50 space-y-2">
               <Book size={32} strokeWidth={0.5} />
               <p className="text-[10px] uppercase tracking-widest">Library is empty</p>
             </div>
@@ -166,7 +166,7 @@ const WorldBookEditor: React.FC = () => {
                 </div>
                 <button 
                   onClick={(e) => { e.stopPropagation(); removeWorldBook(book.id); }}
-                  className="p-2 text-gray-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                  className="p-2 text-gray-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
                 >
                   <Trash2 size={14} />
                 </button>
@@ -238,11 +238,11 @@ const WorldBookEditor: React.FC = () => {
               <div className="flex items-center gap-2">
                 <button 
                   onClick={(e) => { e.stopPropagation(); removeWorldBookEntry(selectedBookId, entry.id); }}
-                  className="p-1.5 text-gray-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                  className="p-1.5 text-gray-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
                 >
                   <Trash2 size={12} />
                 </button>
-                {expandedEntryId === entry.id ? <ChevronUp size={14} className="text-gray-300" /> : <ChevronDown size={14} className="text-gray-300" />}
+                {expandedEntryId === entry.id ? <ChevronUp size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />}
               </div>
             </div>
 

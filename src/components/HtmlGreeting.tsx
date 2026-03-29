@@ -1,6 +1,7 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { MessageCircle } from 'lucide-react'
+import DOMPurify from 'dompurify'
 
 interface HtmlGreetingProps {
   content: string
@@ -8,6 +9,11 @@ interface HtmlGreetingProps {
 }
 
 export const HtmlGreeting: React.FC<HtmlGreetingProps> = ({ content, onEnter }) => {
+  const cleanHtml = useMemo(() => DOMPurify.sanitize(content, {
+    USE_PROFILES: { html: true },
+    ADD_ATTR: ['target'] // Allow links to open in new tabs if specified
+  }), [content])
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -21,7 +27,7 @@ export const HtmlGreeting: React.FC<HtmlGreetingProps> = ({ content, onEnter }) 
     >
       <div className="min-h-screen flex items-center justify-center p-4 py-20 pointer-events-none">
         <div className="max-w-4xl w-full pointer-events-auto">
-          <div dangerouslySetInnerHTML={{ __html: content }} />
+          <div dangerouslySetInnerHTML={{ __html: cleanHtml }} />
         </div>
       </div>
         

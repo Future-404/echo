@@ -1,9 +1,15 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Database } from 'lucide-react';
 import type { StatusBarProps } from '../types';
 
 export const LegacyCSVBar: React.FC<StatusBarProps> = ({ type, metadata }) => {
-  const values = Array.isArray(metadata) ? metadata : [];
+  const values = useMemo(() => {
+    if (Array.isArray(metadata)) return metadata;
+    if (typeof metadata === 'object' && metadata?.rawBody) {
+      return metadata.rawBody.split('|').map((s: string) => s.trim()).filter(Boolean);
+    }
+    return [];
+  }, [metadata]);
 
   return (
     <div className="inline-flex items-center gap-3 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-xl px-4 py-2 my-1 shadow-sm">

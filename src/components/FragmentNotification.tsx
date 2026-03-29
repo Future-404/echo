@@ -46,7 +46,7 @@ const FragmentNotification: React.FC = () => {
               “ {activeFragment} ”
             </p>
             
-            <div className="text-[7px] text-gray-300 dark:text-gray-600 tracking-widest uppercase mt-1">
+            <div className="text-[7px] text-gray-400 dark:text-gray-600 tracking-widest uppercase mt-1">
               Synchronized to Archive
             </div>
           </motion.div>

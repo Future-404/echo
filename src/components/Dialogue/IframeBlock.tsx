@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, memo } from 'react'
+import React, { useState, useEffect, useRef, memo, useMemo } from 'react'
 import { useAppStore } from '../../store/useAppStore'
 import { iframeBus } from '../../utils/iframeBus'
 
@@ -105,7 +105,6 @@ let _id = 0
 
 export const IframeBlock = memo<IframeBlockProps>(({ html, charData }) => {
   const id = useRef(`ib${_id++}`).current
-  const [src, setSrc] = useState('')
   const [height, setHeight] = useState(120)
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
@@ -116,12 +115,7 @@ export const IframeBlock = memo<IframeBlockProps>(({ html, charData }) => {
   useEffect(() => { selectedCharacterRef.current = selectedCharacter }, [selectedCharacter])
   useEffect(() => { updateAttributesRef.current = updateAttributes }, [updateAttributes])
 
-  useEffect(() => {
-    const blob = new Blob([buildHtml(html, id, charData)], { type: 'text/html' })
-    const url = URL.createObjectURL(blob)
-    setSrc(url)
-    return () => URL.revokeObjectURL(url)
-  }, [html, charData, id])
+  const srcDoc = useMemo(() => buildHtml(html, id, charData), [html, id, charData])
 
   useEffect(() => {
     const reply = (reqId: string, value?: any) =>
@@ -142,7 +136,17 @@ export const IframeBlock = memo<IframeBlockProps>(({ html, charData }) => {
           reply(d.reqId, char.attributes?.[d.key] ?? null)
           break
         case 'ECHO_SET':
-          if (d.attrs) { updateAttributesRef.current(char.id, d.attrs); reply(d.reqId) }
+          if (d.attrs && typeof d.attrs === 'object') { 
+            // 基础类型校验，防止恶意对象注入
+            const safeAttrs = Object.fromEntries(
+              Object.entries(d.attrs).map(([k, v]) => [
+                String(k),
+                typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean' ? v : String(v)
+              ])
+            );
+            updateAttributesRef.current(char.id, safeAttrs); 
+            reply(d.reqId);
+          }
           break
         case 'ECHO_SEND':
           if (d.text) iframeBus.emit(d.text)
@@ -156,12 +160,10 @@ export const IframeBlock = memo<IframeBlockProps>(({ html, charData }) => {
     return () => window.removeEventListener('message', handler)
   }, [id])
 
-  if (!src) return null
-
   return (
     <iframe
       ref={iframeRef}
-      src={src}
+      srcDoc={srcDoc}
       sandbox="allow-scripts"
       className="w-full border-0 block transition-[height] duration-200"
       style={{ height }}

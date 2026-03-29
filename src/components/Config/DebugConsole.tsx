@@ -21,7 +21,7 @@ const DebugConsole: React.FC = () => {
           <label className="text-xs font-serif tracking-widest text-gray-500 dark:text-gray-400 font-medium flex items-center gap-2">
             <Terminal size={14} /> 调试控制台
           </label>
-          <span className="text-[7px] text-gray-300 dark:text-gray-600 uppercase tracking-[0.2em] mt-0.5">Real-time API Monitor</span>
+          <span className="text-[7px] text-gray-400 dark:text-gray-600 uppercase tracking-[0.2em] mt-0.5">Real-time API Monitor</span>
         </div>
         <button 
           onClick={clearDebugLogs}
@@ -34,7 +34,7 @@ const DebugConsole: React.FC = () => {
 
       <div className="flex-1 overflow-y-auto space-y-3 pr-2 no-scrollbar">
         {debugLogs.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-gray-300 dark:text-gray-700 opacity-50 space-y-2">
+          <div className="h-full flex flex-col items-center justify-center text-gray-400 dark:text-gray-700 opacity-50 space-y-2">
             <Terminal size={32} strokeWidth={0.5} />
             <p className="text-[10px] uppercase tracking-widest">Waiting for neural signals...</p>
           </div>

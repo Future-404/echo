@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react'
 import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 import { parseStreamingNovelText } from '../../utils/novelParser'
 import { StatusBar } from '../StatusBars'
 import { useAppStore } from '../../store/useAppStore'
@@ -142,9 +143,13 @@ const MessageContent: React.FC<MessageContentProps> = React.memo(({ content, isA
   const htmlBlocksEl = htmlBlocks.length > 0 && (
     <div className="mt-2 space-y-2">
       {htmlBlocks.map((html, i) => {
-        const isMdHtml = /^<(h[1-6]|p|ul|ol|hr)[\s>]/i.test(html.trim()) && !html.includes('<script')
-        return isMdHtml
-          ? <div key={i} className="md-body w-full text-left leading-relaxed" dangerouslySetInnerHTML={{ __html: html }} />
+        // 使用 DOMPurify 进行严格清理，并检测是否包含会被清理掉的潜在交互/恶意元素
+        const cleanHtml = DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
+        // 如果原始内容包含较多复杂标签（如 button, input, style）被净化掉，说明它可能是一个需要 Iframe 渲染的组件，而非纯文本 Markdown
+        const isSimpleMdHtml = /^<(h[1-6]|p|ul|ol|li|hr|strong|em|b|i|br|span|div)[\s>]/i.test(html.trim()) && cleanHtml.length > (html.length * 0.5);
+
+        return isSimpleMdHtml
+          ? <div key={i} className="md-body w-full text-left leading-relaxed" dangerouslySetInnerHTML={{ __html: cleanHtml }} />
           : <HtmlRenderer key={i} html={html} i={i} shouldRender={shouldRenderIframe} charData={charData} />
       })}
     </div>

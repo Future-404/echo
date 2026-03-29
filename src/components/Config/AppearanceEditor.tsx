@@ -106,7 +106,7 @@ const AppearanceEditor: React.FC = () => {
           onChange={(e) => updateFontSize(parseInt(e.target.value))}
           className="w-full h-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
         />
-        <div className="flex justify-between text-[8px] text-gray-300 dark:text-gray-600 tracking-tighter">
+        <div className="flex justify-between text-[8px] text-gray-400 dark:text-gray-600 tracking-tighter">
           <span>MIN (12px)</span>
           <span>MAX (24px)</span>
         </div>
@@ -122,7 +122,7 @@ const AppearanceEditor: React.FC = () => {
             <span className={`text-lg ${FONTS.find(f => f.id === currentFont)?.class}`}>永</span>
             <div className="text-left">
               <p className="text-sm font-serif text-gray-600 dark:text-gray-300">{FONTS.find(f => f.id === currentFont)?.name ?? currentFont}</p>
-              <p className="text-[8px] text-gray-300 dark:text-gray-600 uppercase tracking-widest">Font Family</p>
+              <p className="text-[8px] text-gray-400 dark:text-gray-600 uppercase tracking-widest">Font Family</p>
             </div>
           </div>
           <motion.span animate={{ rotate: fontOpen ? 180 : 0 }} transition={{ duration: 0.2 }} className="text-gray-400 text-[10px]">▾</motion.span>
@@ -148,10 +148,10 @@ const AppearanceEditor: React.FC = () => {
                         : 'bg-transparent border-gray-100 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700'
                     }`}
                   >
-                    <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-lg ${font.class} ${currentFont === font.id ? 'text-black dark:text-white' : 'text-gray-300 dark:text-gray-600'}`}>永</span>
+                    <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-lg ${font.class} ${currentFont === font.id ? 'text-black dark:text-white' : 'text-gray-400 dark:text-gray-600'}`}>永</span>
                     <div className="flex-1 text-left">
                       <p className={`text-sm tracking-wide ${font.class} ${currentFont === font.id ? 'text-black dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>{font.name}</p>
-                      <p className="text-[8px] text-gray-300 dark:text-gray-600 uppercase tracking-widest font-sans">{font.sub}</p>
+                      <p className="text-[8px] text-gray-400 dark:text-gray-600 uppercase tracking-widest font-sans">{font.sub}</p>
                     </div>
                     {currentFont === font.id && <Check size={14} className="text-green-500 dark:text-green-400 shrink-0" />}
                   </button>
@@ -163,7 +163,7 @@ const AppearanceEditor: React.FC = () => {
       </div>
 
       <div className="p-8 rounded-3xl bg-gray-50 dark:bg-white/5 border-0.5 border-gray-100 dark:border-gray-800">
-        <div className="text-[9px] text-gray-300 dark:text-gray-600 uppercase tracking-widest mb-4">Preview // 实时预览</div>
+        <div className="text-[9px] text-gray-400 dark:text-gray-600 uppercase tracking-widest mb-4">Preview // 实时预览</div>
         <p className={`leading-relaxed text-gray-600 dark:text-gray-300`} style={{ fontFamily: currentFont, fontSize: `${currentSize}px` }}>
           回声系统正在同步。所有的记忆都将被重新排版。
         </p>

@@ -50,7 +50,7 @@ const NavItem: React.FC<{ id: string; label: string; icon: string; sub: string; 
     </div>
     <div className="flex-1 text-left">
       <h4 className="text-sm font-serif text-gray-600 dark:text-gray-300 tracking-wide">{label}</h4>
-      <p className="text-[8px] text-gray-300 dark:text-gray-500 uppercase mt-0.5 tracking-widest">{sub}</p>
+      <p className="text-[8px] text-gray-400 dark:text-gray-500 uppercase mt-0.5 tracking-widest">{sub}</p>
     </div>
   </div>
 )
@@ -69,7 +69,7 @@ const ConfigPanel: React.FC = () => {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsConfigOpen(false)} className="fixed inset-0 z-[100] bg-white/10 dark:bg-black/20 backdrop-blur-md cursor-pointer" />
           <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="theme-surface fixed right-0 top-0 bottom-0 w-full max-w-sm z-[101] bg-echo-white/95 dark:bg-[#0a0a0a]/98 backdrop-blur-3xl border-l-0.5 border-echo-border flex flex-col shadow-2xl">
 
-            <header className="p-8 pb-6 flex items-center justify-between border-b-0.5 border-gray-100/50 dark:border-gray-800/50">
+            <header className="p-8 pb-6 safe-area-top flex items-center justify-between border-b-0.5 border-gray-100/50 dark:border-gray-800/50">
               {activeView !== 'main' && (
                 <button onClick={() => setActiveView(getBackTarget(activeView))} className="text-gray-400 hover:text-gray-600 dark:text-gray-600 transition-colors">
                   <ChevronLeft size={20} strokeWidth={1} />
@@ -77,7 +77,7 @@ const ConfigPanel: React.FC = () => {
               )}
               <div className="flex flex-col items-end flex-1 text-right">
                 <h2 className="text-xs font-serif tracking-[0.3em] text-gray-500 dark:text-gray-400 font-medium">系统配置 // SYSTEM</h2>
-                <p className="text-[7px] text-gray-300 dark:text-gray-600 uppercase tracking-widest mt-1">Logic Configuration</p>
+                <p className="text-[7px] text-gray-400 dark:text-gray-600 uppercase tracking-widest mt-1">Logic Configuration</p>
               </div>
             </header>
 
@@ -91,7 +91,7 @@ const ConfigPanel: React.FC = () => {
                     <IdentityLink onClick={() => { setIsConfigOpen(false); setTimeout(() => setCurrentView('selection'), 300) }} />
 
                     <div className="space-y-1">
-                      <label className="text-[9px] tracking-widest text-gray-300 dark:text-gray-600 uppercase italic px-4 underline decoration-gray-100 dark:decoration-gray-800 underline-offset-8">Settings</label>
+                      <label className="text-[9px] tracking-widest text-gray-400 dark:text-gray-600 uppercase italic px-4 underline decoration-gray-100 dark:decoration-gray-800 underline-offset-8">Settings</label>
                       {MAIN_ITEMS.map(item => (
                         <NavItem key={item.id} {...item} onClick={() => setActiveView(item.id as SubView)} />
                       ))}
@@ -99,7 +99,7 @@ const ConfigPanel: React.FC = () => {
 
                     {/* 高级设置入口 */}
                     <div className="space-y-1">
-                      <label className="text-[9px] tracking-widest text-gray-300 dark:text-gray-600 uppercase italic px-4 underline decoration-gray-100 dark:decoration-gray-800 underline-offset-8">Advanced</label>
+                      <label className="text-[9px] tracking-widest text-gray-400 dark:text-gray-600 uppercase italic px-4 underline decoration-gray-100 dark:decoration-gray-800 underline-offset-8">Advanced</label>
                       <NavItem id="advanced" label="高级设置" icon="⚙" sub="Appearance · Storage · Debug" onClick={() => setActiveView('advanced')} />
                     </div>
 
@@ -127,7 +127,7 @@ const ConfigPanel: React.FC = () => {
                     >
                       <div>
                         <p className="text-sm font-serif text-gray-600 dark:text-gray-300 tracking-wide">多角色模式</p>
-                        <p className="text-[8px] text-gray-300 dark:text-gray-500 uppercase mt-0.5 tracking-widest">Multi-Character</p>
+                        <p className="text-[8px] text-gray-400 dark:text-gray-500 uppercase mt-0.5 tracking-widest">Multi-Character</p>
                       </div>
                       <button className="text-gray-400 pointer-events-none">
                         {multiCharMode ? <ToggleRight className="text-purple-400" size={24} /> : <ToggleLeft size={24} />}
@@ -141,7 +141,7 @@ const ConfigPanel: React.FC = () => {
 
                     {multiCharMode && (
                       <div className="px-5 py-3 space-y-2">
-                        <p className="text-[9px] text-gray-300 dark:text-gray-600 uppercase tracking-widest">Router Provider</p>
+                        <p className="text-[9px] text-gray-400 dark:text-gray-600 uppercase tracking-widest">Router Provider</p>
                         <select
                           value={routerProviderId}
                           onChange={e => setRouterProviderId(e.target.value)}
@@ -162,7 +162,7 @@ const ConfigPanel: React.FC = () => {
                     >
                       <div>
                         <p className="text-sm font-serif text-gray-600 dark:text-gray-300 tracking-wide">调试模式</p>
-                        <p className="text-[8px] text-gray-300 dark:text-gray-500 uppercase mt-0.5 tracking-widest">Debug Mode</p>
+                        <p className="text-[8px] text-gray-400 dark:text-gray-500 uppercase mt-0.5 tracking-widest">Debug Mode</p>
                       </div>
                       <button className="text-gray-400 pointer-events-none">
                         {config.isDebugEnabled ? <ToggleRight className="text-green-400" size={24} /> : <ToggleLeft size={24} />}

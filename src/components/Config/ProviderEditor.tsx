@@ -62,7 +62,7 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
       className="p-8 space-y-10"
     >
       <div className="group">
-        <label className="text-[9px] tracking-wide text-gray-300 dark:text-gray-600 uppercase mb-3 block italic underline decoration-gray-100 dark:decoration-gray-800 underline-offset-8">Node Name // 节点名称</label>
+        <label className="text-[9px] tracking-wide text-gray-400 dark:text-gray-600 uppercase mb-3 block italic underline decoration-gray-100 dark:decoration-gray-800 underline-offset-8">Node Name // 节点名称</label>
         <input 
           type="text" 
           value={provider.name} 
@@ -72,7 +72,7 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
       </div>
 
       <div className="group">
-        <label className="text-[9px] tracking-wide text-gray-300 dark:text-gray-600 uppercase mb-3 block italic">API Format // 协议格式</label>
+        <label className="text-[9px] tracking-wide text-gray-400 dark:text-gray-600 uppercase mb-3 block italic">API Format // 协议格式</label>
         <select 
           value={provider.apiFormat || 'openai'} 
           onChange={(e) => updateProvider(id, { apiFormat: e.target.value as any })}
@@ -85,7 +85,7 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
       </div>
 
       <div className="group">
-        <label className="text-[9px] tracking-wide text-gray-300 dark:text-gray-600 uppercase mb-3 block italic">Endpoint URL // 接口地址</label>
+        <label className="text-[9px] tracking-wide text-gray-400 dark:text-gray-600 uppercase mb-3 block italic">Endpoint URL // 接口地址</label>
         <input 
           type="text" 
           value={provider.endpoint} 
@@ -96,7 +96,7 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
       </div>
 
       <div className="group">
-        <label className="text-[9px] tracking-wide text-gray-300 dark:text-gray-600 uppercase mb-3 block italic">Neural Token // API Key</label>
+        <label className="text-[9px] tracking-wide text-gray-400 dark:text-gray-600 uppercase mb-3 block italic">Neural Token // API Key</label>
         <input 
           type="password" 
           value={provider.apiKey} 
@@ -107,7 +107,7 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
       </div>
 
       <div className="group">
-        <label className="text-[9px] tracking-wide text-gray-300 dark:text-gray-600 uppercase mb-3 block italic">Custom Headers // 自定义请求头 (JSON)</label>
+        <label className="text-[9px] tracking-wide text-gray-400 dark:text-gray-600 uppercase mb-3 block italic">Custom Headers // 自定义请求头 (JSON)</label>
         <textarea 
           value={provider.customHeaders || ''} 
           onChange={(e) => updateProvider(id, { customHeaders: e.target.value })} 
@@ -118,7 +118,7 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
 
       <div className="group">
         <div className="flex justify-between items-center mb-3">
-            <label className="text-[9px] tracking-wide text-gray-300 dark:text-gray-600 uppercase italic">Model Identifier // 模型选择</label>
+            <label className="text-[9px] tracking-wide text-gray-400 dark:text-gray-600 uppercase italic">Model Identifier // 模型选择</label>
             <button 
                 onClick={handleFetchModels}
                 disabled={isFetching}
@@ -187,7 +187,7 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
       <div className="space-y-6 pt-4 border-t-0.5 border-gray-100 dark:border-gray-800/50">
         <div className="flex justify-between items-center group cursor-pointer" onClick={() => updateProvider(id, { stream: provider.stream !== false ? false : true })}>
           <div className="flex flex-col">
-            <label className="text-[9px] tracking-wide text-gray-300 dark:text-gray-600 uppercase italic cursor-pointer">Streaming // 流式传输</label>
+            <label className="text-[9px] tracking-wide text-gray-400 dark:text-gray-600 uppercase italic cursor-pointer">Streaming // 流式传输</label>
             <span className="text-[7px] text-gray-400 mt-1">关闭后将等待完整响应</span>
           </div>
           <div className={`w-8 h-4 rounded-full flex items-center transition-colors px-0.5 ${provider.stream !== false ? 'bg-green-400/50' : 'bg-gray-300 dark:bg-gray-700'}`}>
@@ -197,7 +197,7 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
 
         <div className="group">
           <div className="flex justify-between items-center mb-2">
-            <label className="text-[9px] tracking-wide text-gray-300 dark:text-gray-600 uppercase italic">Temperature // 发散度</label>
+            <label className="text-[9px] tracking-wide text-gray-400 dark:text-gray-600 uppercase italic">Temperature // 发散度</label>
             <span className="text-[10px] text-gray-500 font-mono">{provider.temperature ?? 0.7}</span>
           </div>
           <input 
@@ -216,7 +216,7 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
           <div className="mt-3 space-y-4 pl-2 border-l border-white/10">
             <div className="group">
               <div className="flex justify-between items-center mb-2">
-                <label className="text-[9px] tracking-wide text-gray-300 dark:text-gray-600 uppercase italic">Top P // 核采样</label>
+                <label className="text-[9px] tracking-wide text-gray-400 dark:text-gray-600 uppercase italic">Top P // 核采样</label>
                 <span className="text-[10px] text-gray-500 font-mono">{provider.topP ?? 1.0}</span>
               </div>
               <input 
@@ -230,7 +230,7 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
 
             <div className="group">
               <div className="flex justify-between items-center mb-2">
-                <label className="text-[9px] tracking-wide text-gray-300 dark:text-gray-600 uppercase italic">Context Capacity (Tokens) // 上下文容量</label>
+                <label className="text-[9px] tracking-wide text-gray-400 dark:text-gray-600 uppercase italic">Context Capacity (Tokens) // 上下文容量</label>
                 <span className="text-[10px] text-gray-500 font-mono">{provider.contextWindow ? (provider.contextWindow >= 1000 ? (provider.contextWindow / 1000).toFixed(0) + 'k' : provider.contextWindow) : '32k'}</span>
               </div>
               <input
@@ -244,7 +244,7 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
             </div>
 
             <div className="group">
-              <label className="text-[9px] tracking-wide text-gray-300 dark:text-gray-600 uppercase italic mb-2 block">Assistant Prefill // 引导语</label>
+              <label className="text-[9px] tracking-wide text-gray-400 dark:text-gray-600 uppercase italic mb-2 block">Assistant Prefill // 引导语</label>
               <input
                 type="text"
                 value={provider.assistantPrefill ?? ''}

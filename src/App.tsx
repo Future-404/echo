@@ -185,7 +185,7 @@ const App: React.FC = () => {
             </div>
 
             {/* 输入框区域 */}
-            <div className={`w-full max-w-2xl mx-auto px-4 pointer-events-auto bg-gradient-to-t from-echo-base/95 dark:from-black/70 to-transparent pt-4 transition-all duration-200 ${isKeyboardVisible ? 'pb-1' : 'pb-4 md:pb-8'}`}>
+            <div className={`w-full max-w-2xl mx-auto px-4 pointer-events-auto bg-gradient-to-t from-echo-base/95 dark:from-black/70 to-transparent pt-4 transition-all duration-200 ${isKeyboardVisible ? 'pb-1' : 'pb-4 md:pb-8 safe-area-bottom'}`}>
               <ChatInput 
                 onSend={sendMessage} 
                 disabled={isTyping || isWaitingForClick} 

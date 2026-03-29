@@ -42,7 +42,7 @@ const TtsSettings: React.FC = () => {
       {/* Master Toggle */}
       <div className="flex justify-between items-center bg-white/5 p-6 rounded-[2rem] border border-white/5">
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] tracking-[0.2em] text-gray-300 uppercase font-bold italic">Neural Voice // 语音合成</label>
+          <label className="text-[10px] tracking-[0.2em] text-gray-400 uppercase font-bold italic">Neural Voice // 语音合成</label>
           <span className="text-[8px] text-gray-500 uppercase tracking-widest">Enable TTS for assistant replies</span>
         </div>
         <button 
@@ -67,7 +67,7 @@ const TtsSettings: React.FC = () => {
                   <button 
                     key={p}
                     onClick={() => updateTtsSettings({ provider: p })}
-                    className={`py-3 rounded-2xl border text-[10px] uppercase tracking-widest transition-all ${ttsSettings.provider === p ? 'bg-white/10 border-white/20 text-white' : 'bg-transparent border-white/5 text-gray-500 hover:border-white/10'}`}
+                    className={`py-3 rounded-2xl border text-[10px] uppercase tracking-widest transition-all ${ttsSettings.provider === p ? 'bg-orange-500/10 border-orange-500/30 text-orange-600 dark:text-orange-400' : 'bg-transparent border-gray-100 dark:border-white/5 text-gray-400 hover:border-gray-200 dark:hover:border-white/10'}`}
                   >
                     {p}
                   </button>
@@ -85,7 +85,7 @@ const TtsSettings: React.FC = () => {
                     value={ttsSettings.globalSettings.apiKey || ''} 
                     onChange={e => updateTtsSettings({ globalSettings: { ...ttsSettings.globalSettings, apiKey: e.target.value } })}
                     placeholder="sk-..."
-                    className="w-full bg-white/5 border-b border-white/10 py-2 text-xs text-gray-300 focus:outline-none focus:border-orange-500/50 transition-colors"
+                    className="w-full bg-white/5 border-b border-white/10 py-2 text-xs text-gray-400 focus:outline-none focus:border-orange-500/50 transition-colors"
                   />
                 </div>
                 {ttsSettings.provider === 'openai' && (
@@ -96,7 +96,7 @@ const TtsSettings: React.FC = () => {
                       value={ttsSettings.globalSettings.endpoint || ''} 
                       onChange={e => updateTtsSettings({ globalSettings: { ...ttsSettings.globalSettings, endpoint: e.target.value } })}
                       placeholder="https://api.openai.com/v1"
-                      className="w-full bg-white/5 border-b border-white/10 py-2 text-xs text-gray-300 focus:outline-none focus:border-orange-500/50 transition-colors"
+                      className="w-full bg-white/5 border-b border-white/10 py-2 text-xs text-gray-400 focus:outline-none focus:border-orange-500/50 transition-colors"
                     />
                   </div>
                 )}

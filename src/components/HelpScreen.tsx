@@ -488,77 +488,79 @@ AUTH_TOKEN=your_token node server.js
   },
   {
     id: 'status',
-    title: '状态栏',
+    title: '状态渲染协议',
     icon: <BarChart2 size={18} />,
     content: (
       <div className="space-y-6 text-xs md:text-sm">
-        <p>状态栏允许 AI 在回复中输出结构化的角色状态，并以可视化组件渲染在对话框内。</p>
-        <ul className="list-disc pl-5 space-y-2 opacity-80">
-          <li><strong>自动提取：</strong> 引擎自动识别状态标签，将数值同步到角色属性槽，无需手动解析。</li>
-          <li><strong>自定义解析器：</strong> 在「数据提取规则」面板中，可为每个角色定义专属正则表达式，精确提取任意格式的状态数据。</li>
-        </ul>
+        <p>ECHO 拥有一套强大的结构化渲染引擎，允许 AI 通过输出特定的标记符号来直接构建 UI 组件（如进度条、数据矩阵）。</p>
+        
+        <div className="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/10 space-y-2 text-[11px] leading-relaxed">
+          <p><strong>核心语法：</strong> <code className="bg-white/10 px-1 rounded">{"{{类型|内容}}"}</code></p>
+          <p className="opacity-70">当 AI 输出符合此格式的内容时，文本会被拦截并转化为对应的可视化卡片。你可以通过 System Prompt 引导模型掌握此协议。</p>
+        </div>
 
         <div className="space-y-4">
-          <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">推荐格式 · 写入角色卡 System Prompt</p>
+          <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">主流渲染组件 // Renderers</p>
 
           {/* status-container */}
           <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
-            <div className="px-4 py-2 bg-blue-500/10 flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400">status-container</span>
-              <span className="text-[9px] opacity-50">进度条 + 叙事块（推荐）</span>
+            <div className="px-4 py-2 bg-orange-500/10 flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-orange-400">status-container // 同步矩阵</span>
+              <span className="text-[9px] opacity-50">中文语义化协议（推荐）</span>
             </div>
-            <pre className="p-4 text-[10px] leading-relaxed opacity-70 overflow-x-auto whitespace-pre bg-black/5 dark:bg-black/20 font-mono">{`<status-container>
-<time>傍晚 18:30</time>
-<location>魔法学院图书馆</location>
-<weather>晴</weather>
-<love>72</love>
-<hp>85/100</hp>
-<thought>他今天主动来找我……</thought>
-<comment>好感度小幅提升。</comment>
-</status-container>`}</pre>
-            <div className="px-4 py-2 text-[9px] opacity-50 border-t border-white/5">
-              数字标签自动渲染为进度条；<code className="bg-white/10 px-1 rounded">thought</code> 蓝色斜体，<code className="bg-white/10 px-1 rounded">comment</code> 红色卡片。内置颜色：love→玫红，hp→红，mana→蓝。
+            <div className="p-4 space-y-3">
+              <pre className="text-[10px] leading-relaxed opacity-70 overflow-x-auto whitespace-pre bg-black/5 dark:bg-black/20 font-mono p-3 rounded-xl border border-white/5">{`{{status-container|
+<哈基米值>95</哈基米值>
+<血量>80/100</血量>
+<能量>1200/2000</能量>
+<时间>深夜 02:00</时间>
+}}`}</pre>
+              <div className="space-y-2 text-[10px] opacity-80 leading-relaxed">
+                <p>• <strong>中文标签驱动</strong>：系统优先解析中文语义标签。标签名内允许包含空格。</p>
+                <p>• <strong>智能匹配</strong>：<code className="bg-white/10 px-1 rounded">血量</code> 自动匹配红色条，<code className="bg-white/10 px-1 rounded">能量</code> 自动匹配蓝色条。</p>
+                <p>• <strong>自定义扩展</strong>：如 <code className="bg-white/10 px-1 rounded">哈基米值</code> 等非预设标签，可在 Custom CSS 中定义变量手动上色。</p>
+              </div>
             </div>
           </div>
 
           {/* status */}
           <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
             <div className="px-4 py-2 bg-purple-500/10 flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-purple-400">status</span>
-              <span className="text-[9px] opacity-50">数据矩阵</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-purple-400">status // 属性矩阵</span>
+              <span className="text-[9px] opacity-50">适合多维度文本属性</span>
             </div>
-            <pre className="p-4 text-[10px] leading-relaxed opacity-70 overflow-x-auto whitespace-pre bg-black/5 dark:bg-black/20 font-mono">{`<status>
-<-角色状态->
-|姓名|艾拉·斯塔尔|
-|心情|有些紧张|
-|好感|72|
-<-环境信息->
-|时间|傍晚 18:30|
-|地点|魔法学院图书馆|
-</status>`}</pre>
-            <div className="px-4 py-2 text-[9px] opacity-50 border-t border-white/5">
-              <code className="bg-white/10 px-1 rounded">{'<-标题->'}</code> 创建分节，<code className="bg-white/10 px-1 rounded">|键|值|</code> 渲染为标签卡片。
+            <div className="p-4 space-y-3">
+              <pre className="text-[10px] leading-relaxed opacity-70 overflow-x-auto whitespace-pre bg-black/5 dark:bg-black/20 font-mono p-3 rounded-xl border border-white/5">{`{{status|
+<-核心状态->
+|好感|极高|
+|心情|有些兴奋|
+<-外部环境->
+|天气|电磁风暴|
+}}`}</pre>
+              <p className="text-[10px] opacity-80 leading-relaxed italic">使用表格语法快速构建紧凑的信息展示区。</p>
             </div>
           </div>
 
-          {/* html */}
+          {/* Iframe */}
           <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
             <div className="px-4 py-2 bg-green-500/10 flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-green-400">html</span>
-              <span className="text-[9px] opacity-50">完全自定义界面</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-green-400">html // 终极自定义界面</span>
+              <span className="text-[9px] opacity-50">全沙箱隔离渲染</span>
             </div>
-            <pre className="p-4 text-[10px] leading-relaxed opacity-70 overflow-x-auto whitespace-pre bg-black/5 dark:bg-black/20 font-mono">{`<html>
-<div style="padding:12px;background:#1a1a2e;
-  color:#eee;border-radius:12px;font-family:sans-serif">
-  <div style="font-size:18px;font-weight:bold">艾拉</div>
-  <div style="color:#f43f5e">好感度 ❤️ 72</div>
-  <div style="color:#3b82f6">HP 85/100</div>
+            <div className="p-4">
+              <p className="text-[10px] opacity-80 leading-relaxed mb-3">支持完整的 HTML/CSS 结构。甚至可以引导 AI 输出包含内联 JavaScript 的小型交互组件。</p>
+              <pre className="text-[10px] leading-relaxed opacity-70 overflow-x-auto whitespace-pre bg-black/5 dark:bg-black/20 font-mono p-3 rounded-xl border border-white/5">{`{{html|
+<div style="color: cyan; border: 1px solid">
+  检测到终端指令注入...
 </div>
-</html>`}</pre>
-            <div className="px-4 py-2 text-[9px] opacity-50 border-t border-white/5">
-              在沙箱 iframe 中渲染，支持完整 HTML/CSS/JS，样式完全隔离。
+}}`}</pre>
             </div>
           </div>
+        </div>
+
+        <div className="p-3 rounded-2xl bg-amber-500/5 border border-amber-500/10 text-[10px] space-y-1">
+          <p className="font-bold text-amber-400 uppercase tracking-widest">💡 动态配色小贴士</p>
+          <p className="opacity-70 leading-relaxed">进度条的颜色是自动匹配的。例如标签名为 <code className="bg-white/10 px-1 rounded">&lt;sanity&gt;</code>，你可以通过 Custom CSS 设置 <code className="bg-white/10 px-1 rounded">--stat-color-sanity: #00ff00;</code> 来实时为其上色。默认颜色可在「自定义样式」文档中查看。</p>
         </div>
       </div>
     )
@@ -569,118 +571,161 @@ AUTH_TOKEN=your_token node server.js
     icon: <Paintbrush size={18} />,
     content: (
       <div className="space-y-6 text-xs md:text-sm">
-        <p>在「外观」设置面板底部的 <strong>Custom CSS</strong> 编辑框中输入 CSS，保存后立即生效，并随配置持久化。</p>
+        <p>ECHO 支持通过 CSS 变量和直接选择器覆盖进行深度视觉定制。自定义样式全局持久化，并随账户多端同步。</p>
+
+        {/* 核心机制 */}
+        <div className="space-y-2">
+          <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">核心机制 // Architecture</p>
+          <div className="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/10 space-y-2 text-[11px] leading-relaxed opacity-80">
+            <p><strong>动态高优先级注入：</strong> 系统采用 <code className="bg-white/10 px-1 rounded">MutationObserver</code> 实时监控样式表状态。无论第三方库如何加载，自定义样式始终被强制保持在 <code className="bg-white/10 px-1 rounded">&lt;head&gt;</code> 的末尾。这意味着你可以直接覆盖 Tailwind 生成的类名，而无需大量使用 <code className="bg-white/10 px-1 rounded">!important</code>。</p>
+          </div>
+        </div>
 
         {/* CSS 变量速查表 */}
-        <div className="space-y-2">
-          <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">可用 CSS 变量</p>
-          <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
-            <div className="divide-y divide-white/5">
-              {[
-                ['--dialogue-bg', 'rgba(255,255,255,0.70)', '对话框背景色（支持 rgba / 渐变）'],
-                ['--dialogue-border', 'rgba(255,255,255,0.20)', '对话框边框颜色'],
-                ['--dialogue-text-dialogue', '#000000', '对话文字颜色（引号内台词）'],
-                ['--dialogue-text-narration', '#6b7280', '旁白文字颜色（居中小字）'],
-                ['--dialogue-text-thought', '#6b7280', '心理描写颜色（斜体括号内）'],
-                ['--dialogue-text-action', '#4b5563', '动作描写颜色（居中斜体）'],
-                ['--char-a-color', '#60a5fa', '双角色模式：CharA 头像/名字颜色'],
-                ['--char-b-color', '#c084fc', '双角色模式：CharB 头像/名字颜色'],
-                ['--app-font', 'Noto Sans SC', '全局字体（也可在字体选择器中设置）'],
-                ['--app-font-size', '16px', '全局字号（也可在字号滑块中设置）'],
-                ['--custom-bg', 'none', '自定义背景图（url(...) 格式）'],
-              ].map(([varName, defaultVal, desc]) => (
-                <div key={varName} className="grid grid-cols-[auto_auto_1fr] gap-x-4 items-start px-4 py-2.5 text-[10px]">
-                  <code className="font-mono text-blue-400 shrink-0">{varName}</code>
-                  <code className="font-mono opacity-40 shrink-0">{defaultVal}</code>
-                  <span className="opacity-50">{desc}</span>
-                </div>
-              ))}
+        <div className="space-y-4">
+          <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">设计令牌速查表 // Full Token Reference</p>
+          
+          <div className="space-y-2">
+            <p className="text-[9px] text-blue-400/60 uppercase tracking-widest px-1 font-bold">1. 对话核心 // Dialogue Core</p>
+            <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+              <div className="divide-y divide-white/5">
+                {[
+                  ['--dialogue-bg', 'rgba(255,255,255,0.7)', '对话主体背景（支持渐变/毛玻璃）'],
+                  ['--dialogue-border', 'rgba(255,255,255,0.2)', '对话框边框颜色'],
+                  ['--dialogue-text-dialogue', '#000000', '台词颜色（引号内文字）'],
+                  ['--dialogue-text-narration', '#6b7280', '旁白/系统叙述文字颜色'],
+                  ['--dialogue-text-thought', '#6b7280', '心理描写文字颜色（括号内）'],
+                  ['--dialogue-text-action', '#4b5563', '动作描写文字颜色（星号内）'],
+                ].map(([varName, defaultVal, desc]) => (
+                  <div key={varName} className="grid grid-cols-[11rem_auto_1fr] gap-x-4 items-start px-4 py-2 text-[10px]">
+                    <code className="font-mono text-blue-400 shrink-0">{varName}</code>
+                    <code className="font-mono opacity-40 shrink-0">{defaultVal}</code>
+                    <span className="opacity-50">{desc}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-[9px] text-orange-400/60 uppercase tracking-widest px-1 font-bold">2. 状态条配色 // Progression & Stats</p>
+            <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+              <div className="divide-y divide-white/5">
+                {[
+                  ['--stat-color-love', '#f43f5e', '好感度/爱心条颜色'],
+                  ['--stat-color-hp', '#ef4444', '生命/体力条颜色'],
+                  ['--stat-color-mana', '#3b82f6', '魔力/精力条颜色'],
+                  ['--stat-color-hate', '#9333ea', '厌恶度/阴影条颜色'],
+                  ['--stat-color-favor', '#fb7185', '偏好度/粉色条颜色'],
+                  ['--stat-color-value', '#fbbf24', '通用数值/黄色条颜色'],
+                  ['--stat-color-default', '#94a3b8', '默认未分类条颜色'],
+                ].map(([varName, defaultVal, desc]) => (
+                  <div key={varName} className="grid grid-cols-[11rem_auto_1fr] gap-x-4 items-start px-4 py-2 text-[10px]">
+                    <code className="font-mono text-orange-400 shrink-0">{varName}</code>
+                    <code className="font-mono opacity-40 shrink-0">{defaultVal}</code>
+                    <span className="opacity-50">{desc}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-[9px] text-purple-400/60 uppercase tracking-widest px-1 font-bold">3. 字体与排版 // Typography</p>
+            <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+              <div className="divide-y divide-white/5">
+                {[
+                  ['--app-font', 'Noto Sans SC', '全局基准字体家族'],
+                  ['--app-font-size', '16px', '全局文字基准大小'],
+                  ['--font-serif', 'var(--app-font), ...', '衬线体组合（对话正文）'],
+                  ['--font-sans', 'var(--app-font), ...', '无衬线组合（UI标签）'],
+                  ['--font-mono', 'Noto Sans Mono SC', '等宽组合（代码/技术信息）'],
+                ].map(([varName, defaultVal, desc]) => (
+                  <div key={varName} className="grid grid-cols-[11rem_auto_1fr] gap-x-4 items-start px-4 py-2 text-[10px]">
+                    <code className="font-mono text-purple-400 shrink-0">{varName}</code>
+                    <code className="font-mono opacity-40 shrink-0 truncate max-w-[6rem]">{defaultVal}</code>
+                    <span className="opacity-50">{desc}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-[9px] text-green-400/60 uppercase tracking-widest px-1 font-bold">4. 全局 UI 调色盘 // Global Theme Surface</p>
+            <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+              <div className="divide-y divide-white/5">
+                {[
+                  ['--color-echo-base', '#F5F5F7', '系统应用背景基色'],
+                  ['--color-echo-white', '#FBFBFB', '面板容器表面主色'],
+                  ['--color-echo-border', 'rgba(255,255,255,0.2)', '系统全局分割线/边框色'],
+                  ['--char-a-color', '#60a5fa', '多角色：主角色（CharA）主题色'],
+                  ['--char-b-color', '#c084fc', '多角色：副角色（CharB）主题色'],
+                  ['--backdrop-blur-xs', '2px', '微量毛玻璃模糊强度'],
+                ].map(([varName, defaultVal, desc]) => (
+                  <div key={varName} className="grid grid-cols-[11rem_auto_1fr] gap-x-4 items-start px-4 py-2 text-[10px]">
+                    <code className="font-mono text-green-400 shrink-0">{varName}</code>
+                    <code className="font-mono opacity-40 shrink-0">{defaultVal}</code>
+                    <span className="opacity-50">{desc}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* 示例 */}
+        {/* 高级示例 */}
         <div className="space-y-3">
-          <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">示例</p>
+          <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">进阶示例 // Advanced Implementation</p>
 
           <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
             <div className="px-4 py-2 bg-purple-500/10 flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-purple-400">暗色沉浸风</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-purple-400">暗色沉浸预设 (Immersive Dark)</span>
             </div>
-            <pre className="p-4 text-[10px] leading-relaxed opacity-70 overflow-x-auto whitespace-pre bg-black/5 dark:bg-black/20 font-mono">{`:root {
-  --dialogue-bg: rgba(10, 10, 20, 0.88);
-  --dialogue-border: rgba(100, 120, 255, 0.15);
-  --dialogue-text-dialogue: #e2e8f0;
-  --dialogue-text-narration: #64748b;
+            <pre className="p-4 text-[10px] leading-relaxed opacity-70 overflow-x-auto whitespace-pre bg-black/5 dark:bg-black/20 font-mono">{`:root.dark {
+  --dialogue-bg: rgba(10, 10, 15, 0.9);
+  --dialogue-border: rgba(100, 150, 255, 0.1);
+  --dialogue-text-dialogue: #f8fafc;
+  --dialogue-text-narration: #94a3b8;
   --dialogue-text-thought: #818cf8;
-  --dialogue-text-action: #94a3b8;
-  --stat-color-love: #ff6b9d;
-  --stat-color-hp: #f87171;
-  --stat-color-mana: #818cf8;
+  --stat-color-love: #fb7185;
 }`}</pre>
           </div>
 
           <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
             <div className="px-4 py-2 bg-amber-500/10 flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400">任意选择器覆盖</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400">UI 结构调整 (Structural Overrides)</span>
             </div>
-            <pre className="p-4 text-[10px] leading-relaxed opacity-70 overflow-x-auto whitespace-pre bg-black/5 dark:bg-black/20 font-mono">{`/* 对话框改为直角 */
-.glass-morphism { border-radius: 0 !important; }
+            <pre className="p-4 text-[10px] leading-relaxed opacity-70 overflow-x-auto whitespace-pre bg-black/5 dark:bg-black/20 font-mono">{`/* 去除对话框毛玻璃效果并改为直角 */
+.glass-morphism {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-radius: 4px !important;
+}
 
-/* 自定义滚动条 */
-.no-scrollbar { scrollbar-width: thin !important; }`}</pre>
-          </div>
-
-          <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
-            <div className="px-4 py-2 bg-green-500/10 flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-green-400">双角色配色</span>
-            </div>
-            <pre className="p-4 text-[10px] leading-relaxed opacity-70 overflow-x-auto whitespace-pre bg-black/5 dark:bg-black/20 font-mono">{`:root {
-  --char-a-color: #f43f5e;  /* CharA 改为玫红 */
-  --char-b-color: #10b981;  /* CharB 改为绿色 */
-}`}</pre>
+/* 隐藏对话框顶部的角色名状态条 */
+.DialogueBox-header { display: none; }`}</pre>
           </div>
 
           <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
             <div className="px-4 py-2 bg-blue-500/10 flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400">深浅色主题分别控制</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400">响应式适配 (Responsive Tweaks)</span>
             </div>
-            <pre className="p-4 text-[10px] leading-relaxed opacity-70 overflow-x-auto whitespace-pre bg-black/5 dark:bg-black/20 font-mono">{`/* 同时覆盖两个主题 */
-:root {
-  --dialogue-bg: rgba(20, 10, 40, 0.85);
-}
-
-/* 只覆盖深色模式 */
-:root.dark {
-  --dialogue-bg: rgba(0, 0, 0, 0.7);
-  --dialogue-border: rgba(100, 80, 255, 0.2);
-}
-
-/* 只覆盖亮色模式 */
-:root:not(.dark) {
-  --dialogue-bg: rgba(255, 250, 240, 0.9);
-}`}</pre>
-          </div>
-
-          <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
-            <div className="px-4 py-2 bg-rose-500/10 flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-rose-400">角色卡 HTML 内容样式覆盖</span>
-            </div>
-            <pre className="p-4 text-[10px] leading-relaxed opacity-70 overflow-x-auto whitespace-pre bg-black/5 dark:bg-black/20 font-mono">{`/* 统一缩小角色卡 HTML 内容的字号（移动端适配）*/
-.echo-html-block * {
-  font-size: 13px !important;
-}
-
-/* 覆盖角色卡状态栏背景色 */
-.echo-html-block details {
-  background: rgba(0, 0, 0, 0.6) !important;
+            <pre className="p-4 text-[10px] leading-relaxed opacity-70 overflow-x-auto whitespace-pre bg-black/5 dark:bg-black/20 font-mono">{`/* 仅在移动端缩小 AI 生成的 HTML 块字号 */
+@media (max-width: 768px) {
+  .echo-html-block * {
+    font-size: 12px !important;
+    line-height: 1.4 !important;
+  }
 }`}</pre>
           </div>
         </div>
 
         <div className="p-3 rounded-2xl bg-amber-500/5 border border-amber-500/10 text-[10px] space-y-1">
-          <p className="font-bold text-amber-400 uppercase tracking-widest">⚠️ 注意</p>
-          <p className="opacity-70 leading-relaxed">自定义 CSS 以最高优先级注入，可覆盖任何内置样式。深色/浅色主题切换时，<code className="bg-white/10 px-1 rounded">:root</code> 变量会同时生效，如需区分主题请使用 <code className="bg-white/10 px-1 rounded">:root.dark</code> 选择器。</p>
+          <p className="font-bold text-amber-400 uppercase tracking-widest">⚠️ 样式隔离声明</p>
+          <p className="opacity-70 leading-relaxed">
+            自定义 CSS 能够影响主应用的所有 UI 元素。但是，AI 生成的 <code className="bg-white/10 px-1 rounded">&lt;html&gt;</code> 标签内容由于运行在沙箱化 Iframe 中，**不受**此处 CSS 的影响。如需定制 Iframe 样式，请在角色卡的 System Prompt 中引导 AI 输出内联样式。
+          </p>
         </div>
       </div>
     )
@@ -938,7 +983,7 @@ const HelpScreen: React.FC = () => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-echo-base dark:bg-[#0a0a0a] flex items-center justify-center p-0 md:p-10"
+      className="fixed inset-0 z-50 bg-echo-base dark:bg-[#0a0a0a] flex items-center justify-center p-0 md:p-10 safe-area-top"
     >
       <div className="relative w-full max-w-5xl h-full md:h-[85vh] bg-white dark:bg-[#0d0d0d] md:border-0.5 md:border-echo-border md:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col md:flex-row">
         

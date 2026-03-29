@@ -16,7 +16,7 @@ const SkillArsenal: React.FC = () => {
     >
       <div className="px-4 flex flex-col">
         <label className="text-xs font-serif tracking-widest text-gray-500 dark:text-gray-400 font-medium">核心能力库</label>
-        <span className="text-[7px] text-gray-300 dark:text-gray-600 uppercase tracking-[0.2em] mt-0.5">Extensions</span>
+        <span className="text-[7px] text-gray-400 dark:text-gray-600 uppercase tracking-[0.2em] mt-0.5">Extensions</span>
       </div>
       
       <div className="space-y-3">
@@ -28,7 +28,7 @@ const SkillArsenal: React.FC = () => {
               className={`w-full p-5 rounded-3xl border-0.5 transition-all flex items-start gap-4 ${isEnabled ? 'border-gray-300 dark:border-gray-500 bg-white/60 dark:bg-white/10' : 'border-gray-100 dark:border-gray-800 bg-white/20 dark:bg-white/5 opacity-60'}`}
             >
               <div className="w-10 h-10 rounded-2xl border-0.5 border-gray-100 dark:border-gray-800 flex items-center justify-center shrink-0">
-                <Zap size={16} strokeWidth={1} className={isEnabled ? 'text-gray-600 dark:text-gray-300' : 'text-gray-300 dark:text-gray-700'} />
+                <Zap size={16} strokeWidth={1} className={isEnabled ? 'text-gray-600 dark:text-gray-300' : 'text-gray-400 dark:text-gray-700'} />
               </div>
               
               <div className="flex-1">
@@ -42,7 +42,7 @@ const SkillArsenal: React.FC = () => {
 
               <button 
                 onClick={() => toggleSkill(skill.name)} 
-                className="text-gray-300 dark:text-gray-600 hover:text-gray-500 transition-colors pt-1"
+                className="text-gray-400 dark:text-gray-600 hover:text-gray-500 transition-colors pt-1"
               >
                 {isEnabled ? <ToggleRight size={20} strokeWidth={1} className="text-green-300 dark:text-green-800" /> : <ToggleLeft size={20} strokeWidth={1} />}
               </button>
@@ -52,7 +52,7 @@ const SkillArsenal: React.FC = () => {
       </div>
 
       <div className="px-6 py-4 rounded-2xl bg-gray-50 dark:bg-white/5 flex gap-3 items-center">
-        <Info size={12} className="text-gray-300 dark:text-gray-700" />
+        <Info size={12} className="text-gray-400 dark:text-gray-700" />
         <p className="text-[7px] text-gray-400 dark:text-gray-600 uppercase tracking-[0.2em] leading-normal">
           开启技能后，AI 将获得对话以外的特定操作权限 // 实时生效
         </p>

@@ -237,14 +237,14 @@ const CharacterSelection: React.FC = () => {
           className="fixed inset-0 z-[100] bg-echo-base dark:bg-[#050505] flex items-center justify-center p-6 md:p-10"
         >
           <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none select-none">
-             <span className="text-[25vh] font-serif font-black text-gray-200/20 dark:text-white/5 uppercase tracking-[0.3em]">Archive</span>
+             <span className="text-[25vh] font-serif font-black text-gray-200/20 dark:text-white/5 uppercase tracking-[0.3em]">Archive // 档案室</span>
           </div>
 
-          <div className="relative z-10 w-full max-w-7xl cursor-default">
+          <div className="relative z-10 w-full max-w-7xl cursor-default safe-area-top">
             <header className="mb-12 md:mb-20 text-center">
               <motion.h2 initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-[12px] md:text-[14px] tracking-[0.8em] text-gray-500 dark:text-gray-400 uppercase mb-4 font-medium">Neural Identifiers</motion.h2>
-              <div className="w-12 h-[1px] bg-gray-300 dark:bg-gray-700 mx-auto" />
-              <p className="mt-4 text-[8px] text-gray-400 dark:text-gray-500 uppercase tracking-[0.4em] opacity-80">Click card to select // Edit via top right icon</p>
+              <div className="w-12 h-[1px] bg-gray-400 dark:bg-gray-700 mx-auto" />
+              <p className="mt-4 text-[8px] text-gray-400 dark:text-gray-500 uppercase tracking-[0.4em] opacity-80">Click card to select // 点击卡片选择角色</p>
             </header>
 
             <div className="flex gap-8 md:gap-12 overflow-x-auto no-scrollbar pb-20 px-4 md:px-10 snap-x relative after:content-[''] after:w-4 after:md:w-10 after:flex-shrink-0">
@@ -293,8 +293,8 @@ const CharacterSelection: React.FC = () => {
                 <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-white/5 flex items-center justify-center mb-6 group-hover:bg-white dark:group-hover:bg-gray-800 transition-colors shadow-inner">
                     <Plus strokeWidth={1} className="text-gray-400 dark:text-gray-500 group-hover:text-gray-800 dark:group-hover:text-gray-200" />
                 </div>
-                <span className="text-[10px] tracking-[0.4em] text-gray-400 dark:text-gray-500 uppercase group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors">Blank Template</span>
-                <span className="text-[8px] mt-2 text-gray-400/60 dark:text-gray-600">Create new</span>
+                <span className="text-[10px] tracking-[0.4em] text-gray-400 dark:text-gray-500 uppercase group-hover:text-gray-700 dark:group-hover:text-gray-400 transition-colors">Blank Template // 空白模板</span>
+                <span className="text-[8px] mt-2 text-gray-400/60 dark:text-gray-600">Create new // 创建新角色</span>
               </motion.div>
 
               <motion.div
@@ -309,16 +309,16 @@ const CharacterSelection: React.FC = () => {
                     : <FileUp strokeWidth={1} className="text-gray-400 dark:text-gray-500 group-hover:text-gray-800 dark:group-hover:text-gray-200" />
                   }
                 </div>
-                <span className="text-[10px] tracking-[0.4em] text-gray-400 dark:text-gray-500 uppercase group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors">
-                  {importStatus === 'loading' ? 'Uploading...' : 'Import Data'}
+                <span className="text-[10px] tracking-[0.4em] text-gray-400 dark:text-gray-500 uppercase group-hover:text-gray-700 dark:group-hover:text-gray-400 transition-colors">
+                  {importStatus === 'loading' ? 'Uploading // 上传中...' : 'Import Data // 导入数据'}
                 </span>
-                <span className="text-[8px] mt-2 text-gray-400/60 dark:text-gray-600">JSON / PNG</span>
+                <span className="text-[8px] mt-2 text-gray-400/60 dark:text-gray-600">JSON / PNG / V3</span>
                 <input type="file" ref={fileInputRef} onChange={handleFileImport} className="hidden" accept=".json,image/*" />
               </motion.div>
             </div>
 
             <footer className="text-center mt-4">
-                <button onClick={handleBack} className="text-[9px] tracking-[0.6em] text-gray-400 dark:text-gray-600 uppercase hover:text-gray-800 dark:hover:text-gray-300 transition-all">Discard // Return</button>
+                <button onClick={handleBack} className="text-[9px] tracking-[0.6em] text-gray-400 dark:text-gray-600 uppercase hover:text-gray-800 dark:hover:text-gray-400 transition-all">Discard // 返回</button>
             </footer>
           </div>
 

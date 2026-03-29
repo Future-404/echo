@@ -46,7 +46,7 @@ export const DataLinkBar: React.FC<StatusBarProps> = ({ metadata }) => {
           <Activity size={14} className="text-blue-500 animate-pulse" />
           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">Neural Sync // 状态矩阵</span>
         </div>
-        <Terminal size={12} className="text-gray-300 dark:text-gray-700" />
+        <Terminal size={12} className="text-gray-400 dark:text-gray-700" />
       </div>
 
       {/* 动态渲染区块 */}
