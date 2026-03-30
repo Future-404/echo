@@ -10,7 +10,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['logo.webp', 'icons.svg', 'mp3/*.mp3'],
+      includeAssets: ['logo.png', 'icons.svg', 'mp3/*.mp3'],
       manifest: {
         name: 'Echo VN Engine',
         short_name: 'Echo',
@@ -22,19 +22,19 @@ export default defineConfig({
         orientation: 'portrait-primary',
         icons: [
           {
-            src: 'logo.webp',
+            src: 'logo.png',
             sizes: '192x192',
-            type: 'image/webp'
+            type: 'image/png'
           },
           {
-            src: 'logo.webp',
+            src: 'logo.png',
             sizes: '512x512',
-            type: 'image/webp'
+            type: 'image/png'
           },
           {
-            src: 'logo.webp',
+            src: 'logo.png',
             sizes: '512x512',
-            type: 'image/webp',
+            type: 'image/png',
             purpose: 'any maskable'
           }
         ]
