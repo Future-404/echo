@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
+import { STORE_KEY } from './persist'
 import { DEFAULT_CHARACTERS, INITIAL_DIRECTIVES, INITIAL_PROVIDERS } from './constants'
 import { getStorageAdapter } from '../storage'
 import { db } from '../storage/db'
@@ -87,7 +88,7 @@ export const useAppStore = create<AppState>()(
       setHasHydrated: (val) => set({ _hasHydrated: val }),
     }),
     {
-      name: 'echo-storage-v16',
+      name: STORE_KEY,
       storage: createJSONStorage(() => ({
         getItem: (key) => getStorageAdapter().getItem(key),
         setItem: (key, value) => getStorageAdapter().setItem(key, value),
