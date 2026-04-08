@@ -67,25 +67,20 @@ export const backupService = {
   /**
    * 导出指定存档包 (.echo-slot)
    */
-  async exportSingleSlot(slotId: string): Promise<void> {
+  async exportSingleSlot(slot: import('../types/store').SaveSlot): Promise<void> {
     try {
-      console.log(`[Backup] 正在打包存档 ${slotId}...`);
-      
-      // 1. 获取该存档元数据
-      const slot = await db.saveSlots.get(slotId);
-      if (!slot) throw new Error('存档不存在');
-
-      // 2. 抓取该存档的消息流
+      const slotId = slot.id;
+      // 1. 抓取该存档的消息流
       const messages = await db.messages.where('slotId').equals(slotId).toArray();
 
-      // 3. 抓取该存档的结晶记忆
+      // 2. 抓取该存档的记忆片段
       const episodes = await db.memoryEpisodes.where('slotId').equals(slotId).toArray();
 
-      // 4. 抓取关联角色 (可能包含多个)
+      // 3. 抓取关联角色
       const charIds = [slot.characterId, slot.secondaryCharacterId].filter(Boolean) as string[];
       const characters = await db.characters.where('id').anyOf(charIds).toArray();
 
-      // 5. 抓取角色头像（排除 http URL，只取本地存储的 ID）
+      // 4. 抓取角色头像（仅本地存储的）
       const avatarIds = characters.map(c => c.image).filter((id): id is string => !!id && !id.startsWith('http'));
       const images = (await Promise.all(
         avatarIds.map(async id => ({ id, base64: await imageDb.getRaw(id) }))
@@ -102,7 +97,6 @@ export const backupService = {
         images
       };
 
-      // 6. 下载
       const blob = new Blob([JSON.stringify(packageData)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');

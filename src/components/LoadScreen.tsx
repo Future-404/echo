@@ -24,10 +24,10 @@ const LoadScreen: React.FC = () => {
     .filter(s => !s.id.startsWith('auto_'))
     .sort((a, b) => b.timestamp - a.timestamp);
 
-  const handleExportSlot = async (e: React.MouseEvent, slotId: string) => {
+  const handleExportSlot = async (e: React.MouseEvent, slot: ReturnType<typeof useAppStore.getState>['saveSlots'][0]) => {
     e.stopPropagation();
     try {
-      await backupService.exportSingleSlot(slotId);
+      await backupService.exportSingleSlot(slot);
     } catch (err: any) {
       alert(`导出失败: ${err?.message ?? err}`);
     }
@@ -83,7 +83,7 @@ const LoadScreen: React.FC = () => {
                       {new Date(slot.timestamp).toLocaleTimeString()}
                     </span>
                     <button
-                      onClick={(e) => handleExportSlot(e, slot.id)}
+                      onClick={(e) => handleExportSlot(e, slot)}
                       className="p-2 -m-1 text-blue-400/50 md:text-blue-400/30 hover:text-blue-400 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                       title="下载此存档 (.echo-slot)"
                     >
@@ -138,7 +138,7 @@ const LoadScreen: React.FC = () => {
                       {new Date(slot.timestamp).toLocaleString()}
                     </span>
                     <button
-                      onClick={(e) => handleExportSlot(e, slot.id)}
+                      onClick={(e) => handleExportSlot(e, slot)}
                       className="p-2 -m-1 text-blue-400/60 md:text-blue-400/50 hover:text-blue-400 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                       title="下载此存档 (.echo-slot)"
                     >
