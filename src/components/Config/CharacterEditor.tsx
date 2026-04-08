@@ -31,7 +31,6 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
   // 2. 私人记忆编辑逻辑
   const [isAddingPrivate, setIsAddingPrivate] = useState(false)
   const [expandedPrivateId, setExpandedPrivateId] = useState<string | null>(null)
-  const [newKeys, setNewKeys] = useState('')
   const [newContent, setNewContent] = useState('')
   const [isParsersExpanded, setIsParsersExpanded] = React.useState(false);
 
@@ -138,15 +137,15 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
     if (!newContent.trim()) return
     const entry: WorldBookEntry = {
       id: `private_${Date.now()}`,
-      keys: newKeys.split(',').map(k => k.trim()).filter(Boolean),
+      keys: [],
       content: newContent,
       enabled: true,
-      comment: '私人记忆'
+      comment: ''
     }
     addPrivateWorldBookEntry(entry, charId)
-    setNewKeys('')
     setNewContent('')
     setIsAddingPrivate(false)
+    setExpandedPrivateId(entry.id)
   }
 
   return (
@@ -353,10 +352,9 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
 
             {isAddingPrivate && (
               <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-gray-50 dark:bg-white/5 rounded-2xl p-4 space-y-3">
-                <input placeholder="Memory Tag (Optional)" value={newKeys} onChange={e => setNewKeys(e.target.value)} className="w-full bg-transparent border-b border-gray-200 dark:border-gray-800 text-[10px] py-1 focus:outline-none" />
-                <textarea placeholder="The character's immutable knowledge..." value={newContent} onChange={e => setNewContent(e.target.value)} className="w-full bg-transparent text-[11px] font-serif min-h-[80px] resize-none focus:outline-none text-gray-600 dark:text-gray-300" />
+                <textarea placeholder="输入私设内容..." value={newContent} onChange={e => setNewContent(e.target.value)} className="w-full bg-transparent text-[11px] font-serif min-h-[80px] resize-none focus:outline-none text-gray-600 dark:text-gray-300" />
                 <div className="flex justify-end gap-2 pt-2">
-                  <button onClick={() => setIsAddingPrivate(false)} className="text-[8px] uppercase tracking-widest text-gray-400 px-3 py-1">Cancel</button>
+                  <button onClick={() => { setIsAddingPrivate(false); setNewContent(''); }} className="text-[8px] uppercase tracking-widest text-gray-400 px-3 py-1">Cancel</button>
                   <button onClick={handleAddPrivate} className="text-[8px] uppercase tracking-widest bg-blue-500/10 text-blue-500 font-bold px-3 py-1 rounded-lg">Store</button>
                 </div>
               </motion.div>
