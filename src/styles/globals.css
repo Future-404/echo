@@ -4,7 +4,31 @@
   /* 全局安全区域变量 */
   --sat: env(safe-area-inset-top, 0px);
   --sab: env(safe-area-inset-bottom, 0px);
-  
+
+  /* ── Shell / 手机壳 ─────────────────────────────── */
+  --shell-bg: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  --shell-width: 420px;
+  --shell-radius: 0px;          /* 用户可改为 40px 变圆角手机 */
+  --shell-shadow: 0 25px 60px rgba(0,0,0,0.5);
+
+  /* ── 品牌强调色 ─────────────────────────────────── */
+  --echo-accent: #6366f1;
+  --echo-accent-soft: rgba(99,102,241,0.12);
+  --echo-accent-hover: #4f46e5;
+
+  /* ── 聊天气泡（Chat App 专用）────────────────────── */
+  --chat-bubble-out: #6366f1;
+  --chat-bubble-out-text: #ffffff;
+  --chat-bubble-in: #f3f4f6;
+  --chat-bubble-in-text: #111827;
+  --chat-header-bg: rgba(255,255,255,0.85);
+  --chat-input-bg: rgba(255,255,255,0.9);
+
+  /* ── 桌面 Launcher ──────────────────────────────── */
+  --launcher-icon-radius: 16px;
+  --launcher-icon-size: 60px;
+  --launcher-label-color: #ffffff;
+
   /* 基础配色 */
   --echo-base: #fdfdfd;
   --echo-white: #ffffff;
@@ -46,6 +70,11 @@
   --dialogue-text-dialogue: #e2e8f0;
   --dialogue-text-thought: #a0aec0;
   --dialogue-text-action: #cbd5e0;
+
+  --chat-bubble-in: #2a2a2a;
+  --chat-bubble-in-text: #f9fafb;
+  --chat-header-bg: rgba(18,18,18,0.85);
+  --chat-input-bg: rgba(18,18,18,0.9);
 }
 
 @theme {

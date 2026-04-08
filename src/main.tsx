@@ -2,7 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { flushSync } from 'react-dom'
 import { registerSW } from 'virtual:pwa-register'
-import App from './App.tsx'
+import AppShell from './components/AppShell.tsx'
 import './styles/globals.css'
 import { initStorage, authenticateWithPassword } from './storage'
 import { GateScreen } from './components/GateScreen.tsx'
@@ -14,7 +14,7 @@ const root = ReactDOM.createRoot(document.getElementById('root')!)
 
 function renderApp() {
   flushSync(() => {
-    root.render(<React.StrictMode><App /></React.StrictMode>)
+    root.render(<React.StrictMode><AppShell /></React.StrictMode>)
   })
 }
 

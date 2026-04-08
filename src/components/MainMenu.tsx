@@ -13,6 +13,7 @@ const GithubIcon = () => (
 
 const MainMenu: React.FC = () => {
   const { setCurrentView, setIsConfigOpen, selectedCharacter, startNewGame, messages } = useAppStore();
+  const setCurrentApp = useAppStore(s => s.setCurrentApp);
 
   const menuItems = [
     { 
@@ -53,6 +54,11 @@ const MainMenu: React.FC = () => {
       label: '引导手册', 
       subLabel: 'HELP',
       action: () => setCurrentView('help') 
+    },
+    {
+      label: '← 桌面',
+      subLabel: 'LAUNCHER',
+      action: () => setCurrentApp('launcher')
     }
   ];
 

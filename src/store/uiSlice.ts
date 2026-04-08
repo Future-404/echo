@@ -12,6 +12,7 @@ export interface UISlice {
   isLoading: boolean;
   isConfigOpen: boolean;
   isDialogueFullscreen: boolean;
+  currentApp: 'launcher' | 'vn' | 'chat';
   currentView: 'home' | 'main' | 'selection' | 'multi-selection' | 'save' | 'load' | 'help';
   configSubView: 'main' | 'advanced' | 'gateway' | 'world' | 'prompt' | 'provider-edit' | 'directive-edit' | 'skills' | 'persona' | 'debug' | 'parsers' | 'appearance' | 'tts' | 'memory-palace' | 'global-management';
   lastInteraction: { x: number; y: number } | null;
@@ -33,6 +34,7 @@ export interface UISlice {
   setIsConfigOpen: (open: boolean, subView?: UISlice['configSubView']) => void;
   setConfigSubView: (view: UISlice['configSubView']) => void;
   setCurrentView: (view: UISlice['currentView']) => void;
+  setCurrentApp: (app: UISlice['currentApp']) => void;
   setDialogueFullscreen: (v: boolean) => void;
   setInteraction: (x: number, y: number, interacting: boolean) => void;
   addDebugLog: (entry: Omit<DebugEntry, 'id' | 'timestamp'>) => void;
@@ -57,6 +59,7 @@ export const createUISlice: StateCreator<UISlice & any, [], [], UISlice> = (set,
   isLoading: true,
   isConfigOpen: false,
   isDialogueFullscreen: false,
+  currentApp: 'launcher',
   currentView: 'home',
   configSubView: 'main',
   lastInteraction: null,
@@ -87,6 +90,7 @@ export const createUISlice: StateCreator<UISlice & any, [], [], UISlice> = (set,
   })),
   setConfigSubView: (view) => set({ configSubView: view }),
   setCurrentView: (view) => set({ currentView: view }),
+  setCurrentApp: (app) => set({ currentApp: app }),
   setDialogueFullscreen: (v) => set({ isDialogueFullscreen: v }),
   setInteraction: (x, y, interacting) => set({ lastInteraction: interacting ? { x, y } : null, isInteracting: interacting }),
   
