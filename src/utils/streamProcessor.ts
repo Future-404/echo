@@ -40,7 +40,24 @@ export const processChatStream = async (
   try {
     while (true) {
       const { done, value } = await reader.read();
-      if (done) break;
+      if (done) {
+        // 处理 buffer 中可能残留的最后一行
+        if (buffer.trim()) {
+          const cleanedLine = buffer.trim();
+          if (format === 'openai' && cleanedLine.startsWith('data: ')) {
+            const dataStr = cleanedLine.slice(6);
+            if (dataStr !== '[DONE]') {
+              try {
+                const json = JSON.parse(dataStr);
+                if (json.usage) lastUsage = json.usage;
+                const delta = json.choices?.[0]?.delta;
+                if (delta?.content) { fullText += delta.content; callbacks.onChunk(delta.content); }
+              } catch { /* incomplete chunk, ignore */ }
+            }
+          }
+        }
+        break;
+      }
 
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n');
@@ -106,6 +123,10 @@ export const processChatStream = async (
                 type: 'function',
                 function: { name: json.content_block.name || '', arguments: '' }
               };
+            }
+            if (json.type === 'message_stop') {
+              callbacks.onFinish(fullText, Object.values(toolCallsMap).length > 0 ? Object.values(toolCallsMap) : undefined, lastUsage);
+              return;
             }
           } catch (e) { console.warn('Incomplete Anthropic chunk', e); }
         }

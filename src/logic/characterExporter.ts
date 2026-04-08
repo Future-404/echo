@@ -27,9 +27,9 @@ export const convertToSillyTavernV2 = (char: CharacterCard) => {
           enabled: e.enabled,
           insertion_order: e.insertionOrder || 0,
           case_sensitive: false,
+          id: e.id,
           name: e.id,
           priority: 10,
-          id: e.id,
           comment: e.comment || "",
           selective: false,
           constant: e.constant || false,
@@ -41,6 +41,20 @@ export const convertToSillyTavernV2 = (char: CharacterCard) => {
           missions: char.extensions?.missions || [],
           directives: char.extensions?.directives || [],
         },
+        depth_prompt: char.depthPrompt ? {
+          prompt: char.depthPrompt.content,
+          depth: char.depthPrompt.depth,
+          role: char.depthPrompt.role,
+        } : undefined,
+        luminescence: char.extensions?.luminescence,
+        regex_scripts: (char.extensions?.tagTemplates || []).map(t => ({
+          id: t.id,
+          scriptName: t.name,
+          findRegex: t.originalRegex || '',
+          replaceString: t.replaceString ?? '',
+          placement: t.placement ?? [1, 2],
+          disabled: !t.enabled,
+        })),
         fav: false
       }
     }

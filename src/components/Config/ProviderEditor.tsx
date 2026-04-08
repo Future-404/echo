@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { RefreshCw, Check, MessageSquare, Brain, Volume2, ChevronLeft, Trash2, Settings2, ChevronDown, ChevronUp } from 'lucide-react'
+import { RefreshCw, Check, MessageSquare, Brain, Volume2, ChevronLeft, Trash2, Settings2, ChevronDown, ChevronUp, Zap } from 'lucide-react'
 import { useAppStore } from '../../store/useAppStore'
 import { useDialog } from '../GlobalDialog'
 
@@ -15,6 +15,8 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
   const provider = config?.providers?.find(p => p.id === id)
   
   const [isFetching, setIsFetching] = useState(false)
+  const [isTesting, setIsTesting] = useState(false)
+  const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null)
   const [modelList, setModelList] = useState<string[]>([])
   const [showDropdown, setShowDropdown] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -51,8 +53,53 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
     finally { setIsFetching(false) }
   }
 
+  const handleTestConnection = async () => {
+    if (!provider.apiKey || !provider.endpoint) {
+      setTestResult({ ok: false, msg: '请先填写 API Key 和 Endpoint' })
+      return
+    }
+    setIsTesting(true)
+    setTestResult(null)
+    const base = provider.endpoint.replace(/\/+$/, '')
+    const fmt = provider.apiFormat || 'openai'
+    try {
+      let res: Response
+      if (fmt === 'anthropic') {
+        res = await fetch(`${base}/messages`, {
+          method: 'POST',
+          headers: { 'x-api-key': provider.apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+          body: JSON.stringify({ model: provider.model || 'claude-3-haiku-20240307', max_tokens: 1, messages: [{ role: 'user', content: 'hi' }] })
+        })
+      } else if (fmt === 'gemini') {
+        const model = provider.model || 'gemini-1.5-flash'
+        res = await fetch(`${base}/models/${model}:generateContent?key=${provider.apiKey}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: 'hi' }] }], generationConfig: { maxOutputTokens: 1 } })
+        })
+      } else {
+        res = await fetch(`${base}/chat/completions`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${provider.apiKey}`, 'content-type': 'application/json' },
+          body: JSON.stringify({ model: provider.model || 'gpt-4o-mini', max_tokens: 1, messages: [{ role: 'user', content: 'hi' }] })
+        })
+      }
+      if (res.ok || res.status === 400) {
+        // 400 通常是参数问题但鉴权通过，视为连通
+        setTestResult({ ok: true, msg: `Connected · HTTP ${res.status}` })
+      } else {
+        const body = await res.json().catch(() => ({}))
+        const errMsg = body?.error?.message || body?.message || `HTTP ${res.status}`
+        setTestResult({ ok: false, msg: errMsg })
+      }
+    } catch (err: any) {
+      setTestResult({ ok: false, msg: err.message })
+    } finally {
+      setIsTesting(false)
+    }
+  }
+
   const handleJsonChange = (val: string) => {
-    updateProvider(id, { customHeaders: val });
     if (!val.trim()) {
       setJsonError(null);
       return;
@@ -135,10 +182,20 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
           <div className="md:col-span-2 space-y-2">
             <div className="flex justify-between items-center px-1">
               <label className="text-[8px] uppercase tracking-widest text-gray-400 font-bold italic">Model ID // 模型名称</label>
-              <button onClick={handleFetchModels} disabled={isFetching} className="text-[8px] uppercase tracking-widest text-blue-500 hover:opacity-70 transition-opacity flex items-center gap-1">
-                <RefreshCw size={10} className={isFetching ? 'animate-spin' : ''} /> {isFetching ? 'Scanning...' : 'Fetch List'}
-              </button>
+              <div className="flex items-center gap-3">
+                <button onClick={handleTestConnection} disabled={isTesting} className="text-[8px] uppercase tracking-widest text-purple-500 hover:opacity-70 transition-opacity flex items-center gap-1">
+                  <Zap size={10} className={isTesting ? 'animate-pulse' : ''} /> {isTesting ? 'Testing...' : 'Test'}
+                </button>
+                <button onClick={handleFetchModels} disabled={isFetching} className="text-[8px] uppercase tracking-widest text-blue-500 hover:opacity-70 transition-opacity flex items-center gap-1">
+                  <RefreshCw size={10} className={isFetching ? 'animate-spin' : ''} /> {isFetching ? 'Scanning...' : 'Fetch List'}
+                </button>
+              </div>
             </div>
+            {testResult && (
+              <p className={`text-[7px] uppercase font-bold tracking-tighter ml-1 ${testResult.ok ? 'text-green-500' : 'text-red-400 animate-pulse'}`}>
+                {testResult.ok ? '✓' : '✗'} {testResult.msg}
+              </p>
+            )}
             <div className="relative">
               <input ref={inputRef} type="text" value={provider.model} 
                 onChange={(e) => { updateProvider(id, { model: e.target.value }); setShowDropdown(true); }}

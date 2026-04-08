@@ -96,6 +96,7 @@ const CharacterSelection: React.FC = () => {
         if (embeddedData.extensions) {
           const ext = embeddedData.extensions;
           if (ext.mission_tracker?.missions) extensions.missions = ext.mission_tracker.missions;
+          else if (ext.echo?.missions) extensions.missions = ext.echo.missions;
           
           const charBook = ext.world_book || embeddedData.character_book;
           if (charBook?.entries) {
@@ -201,8 +202,12 @@ const CharacterSelection: React.FC = () => {
                 }));
               }
 
+              const ext = data.extensions || item.extensions || {};
+              if (ext.mission_tracker?.missions) extensions.missions = ext.mission_tracker.missions;
+              else if (ext.echo?.missions) extensions.missions = ext.echo.missions;
+              if (ext.luminescence) extensions.luminescence = ext.luminescence;
+
               addCharacter({
-                id: item.id || `custom-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
                 name: data.name,
                 image: item.image || data.image || '/src/assets/react.svg',
                 description: data.description || data.personality || 'Echo 档案室新成员',

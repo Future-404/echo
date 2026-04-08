@@ -23,9 +23,9 @@ export class OpenAIProvider implements IChatProvider {
         if (m.content?.trim()) {
           content.unshift({ type: 'text', text: m.content });
         }
-        return { role: m.role, name: m.name, content };
+        return { role: m.role, ...(m.name ? { name: m.name } : {}), content };
       }
-      return { role: m.role, name: m.name, content: m.content };
+      return { role: m.role, ...(m.name ? { name: m.name } : {}), content: m.content };
     });
 
     const body = {
@@ -39,7 +39,8 @@ export class OpenAIProvider implements IChatProvider {
       ...(provider.topP != null && provider.topP !== 1.0 && { top_p: provider.topP }),
     };
 
-    const response = await fetch(`${provider.endpoint}/chat/completions`, {
+    const base = provider.endpoint.replace(/\/+$/, '');
+    const response = await fetch(`${base}/chat/completions`, {
       method: 'POST',
       headers: fetchHeaders,
       body: JSON.stringify(body),
@@ -55,15 +56,15 @@ export class OpenAIProvider implements IChatProvider {
       return new Promise((resolve, reject) => {
         processChatStream(response, {
           onChunk: (chunk) => onChunk?.(chunk),
-          onFinish: (fullText, toolCalls, usage) => resolve({ content: fullText, toolCalls, usage }),
+          onFinish: (fullText, toolCalls, usage) => resolve({ content: fullText, toolCalls: toolCalls ?? undefined, usage }),
           onError: (err) => reject(err)
         }, 'openai');
       });
     } else {
       const data = await response.json();
       return {
-        content: data.choices?.[0]?.message?.content || '',
-        toolCalls: data.choices?.[0]?.message?.tool_calls,
+        content: data.choices?.[0]?.message?.content ?? '',
+        toolCalls: data.choices?.[0]?.message?.tool_calls ?? undefined,
         usage: data.usage
       };
     }

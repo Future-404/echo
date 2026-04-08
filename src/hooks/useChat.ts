@@ -75,7 +75,8 @@ export const useChat = () => {
     // 关键：捕获请求发起时的 slotId
     const requestSlotId = useAppStore.getState().currentAutoSlotId;
     
-    const char = charId === selectedCharacter.id ? selectedCharacter : secondaryCharacter!
+    const char = charId === selectedCharacter.id ? selectedCharacter : secondaryCharacter
+    if (!char) throw new Error(`[requestChar] 找不到角色 ${charId}`)
     const provider = config.providers.find(p => p.id === char.providerId) || config.providers.find(p => p.id === config.activeProviderId) || config.providers[0]
     if (!provider?.apiKey) {
       throw new Error(`[${char.name}] 未配置 API Key`)
@@ -94,12 +95,6 @@ export const useChat = () => {
       currentQuest: (missions || []).find(m => m.status === 'ACTIVE' && m.type === 'MAIN')?.title,
     }) : undefined
 
-    // 对发送给 AI 的历史消息应用全局正则 (AI 范围)
-    const aiProcessedMessages = currentMessages.map(m => ({
-      ...m,
-      content: applyRegexRules(m.content, config.regexRules || [], 'ai')
-    }));
-
     // 组装完整的 API 消息数组 (ST 1:1 复刻逻辑)
     const apiMessages = await buildPromptMessages({
       character: char,
@@ -110,7 +105,7 @@ export const useChat = () => {
       userName: config.userName || 'Observer',
       enabledSkillIds: config.enabledSkillIds,
       slotId: requestSlotId, // 告知引擎从哪个存档拉取 AI 上下文
-      recentMessages: aiProcessedMessages,
+      recentMessages: currentMessages,
       isMultiChar: !!secondaryCharacter,
       otherCharName: secondaryCharacter ? (charId === selectedCharacter.id ? secondaryCharacter.name : selectedCharacter.name) : undefined,
     }, contextWindow)
@@ -164,13 +159,18 @@ export const useChat = () => {
       if (usage) {
         useAppStore.getState().setTokenStats(usage.total_tokens || (usage.prompt_tokens + (usage.completion_tokens || 0)), provider.contextWindow || 128000);
       } else {
-        const estTokens = Math.ceil(fullText.length / 3.5) + (apiMessages.reduce((acc, m) => acc + m.content.length, 0) / 3.5);
+        const estTokens = Math.ceil(fullText.length / 3.5) + (apiMessages.reduce((acc, m) => {
+          const len = typeof m.content === 'string' ? m.content.length : JSON.stringify(m.content).length;
+          return acc + len;
+        }, 0) / 3.5);
         useAppStore.getState().setTokenStats(Math.ceil(estTokens), provider.contextWindow || 128000);
       }
 
       if (config.isDebugEnabled) addDebugLog({ direction: 'IN', label: `[${char.name}] Response`, data: { text: fullText, usage } });
       extractAndSyncTags(fullText, char, updateAttributes);
-      const transformed = applyCharacterRegexScripts(fullText, char, 1);
+      // 先应用全局正则（ai 范围），再应用角色卡正则脚本
+      const globalProcessed = applyRegexRules(fullText, config.regexRules || [], 'ai');
+      const transformed = applyCharacterRegexScripts(globalProcessed, char, 1);
 
       if (toolCalls?.length) {
         const assistantMsg: Message = { role: 'assistant', content: transformed, tool_calls: toolCalls, speakerId: charId };
@@ -194,16 +194,18 @@ export const useChat = () => {
 
         if (toolResults.length > 0) {
           try {
+            const followUpController = new AbortController();
             const followUpMessages = [...apiMessages, { role: 'assistant', content: transformed, tool_calls: toolCalls }, ...toolResults];
             const followUpResult = await providerImpl.request({
               messages: followUpMessages as Message[],
               provider,
               isStreaming: false,
-              signal: controller.signal
+              signal: followUpController.signal
             });
             if (followUpResult.content) {
               extractAndSyncTags(followUpResult.content, char, updateAttributes);
-              await addMessage({ role: 'assistant', content: applyCharacterRegexScripts(followUpResult.content, char, 1), speakerId: charId }, requestSlotId);
+              const followUpGlobal = applyRegexRules(followUpResult.content, config.regexRules || [], 'ai');
+              await addMessage({ role: 'assistant', content: applyCharacterRegexScripts(followUpGlobal, char, 1), speakerId: charId }, requestSlotId);
             }
           } catch (e) { console.error('Tool follow-up error:', e); }
         }

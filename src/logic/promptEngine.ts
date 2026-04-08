@@ -7,6 +7,7 @@ import type { DBMessage } from '../storage/db';
 import { vectorMath } from '../utils/vectorMath';
 import { memoryDistiller } from './memoryDistiller';
 import { useAppStore } from '../store/useAppStore';
+import { buildContextForChar } from './multiChar';
 
 
 export interface PromptContext {
@@ -60,7 +61,7 @@ export const replaceMacros = (text: string, userName: string, charName: string, 
 /**
  * 递归扫描并激活世界书条目 (高性能异步版)
  */
-export const scanActiveWorldInfo = async (ctx: PromptContext): Promise<WorldBookEntry[]> => {
+export const scanActiveWorldInfo = async (ctx: PromptContext, fullHistory?: Message[]): Promise<WorldBookEntry[]> => {
   const { character, recentMessages } = ctx;
   
   // 1. 确定搜索范围：当前角色 ID + 绑定的书库 IDs
@@ -68,7 +69,6 @@ export const scanActiveWorldInfo = async (ctx: PromptContext): Promise<WorldBook
   const validOwnerIds = [character.id, ...boundBookIds];
 
   // 2. 从数据库拉取所有潜在条目 (仅限当前对话相关的 owner)
-  // 这是性能优化的核心：不再读取不相关的世界书
   const allAvailableEntries = await db.worldEntries
     .where('ownerId')
     .anyOf(validOwnerIds)
@@ -77,9 +77,10 @@ export const scanActiveWorldInfo = async (ctx: PromptContext): Promise<WorldBook
 
   const activatedEntries = new Map<string, WorldBookEntry>();
   
-  // 3. 获取初始扫描文本 (最近的聊天记录)
+  // 3. 获取扫描文本：优先用完整历史，fallback 到 recentMessages
+  const scanSource = fullHistory || recentMessages || [];
   const scanDepth = 3; 
-  const messageContext = recentMessages.slice(-scanDepth).map(m => m.content).join('\n').toLowerCase();
+  const messageContext = scanSource.slice(-scanDepth).map(m => m.content).join('\n').toLowerCase();
 
   const performScan = (text: string): boolean => {
     let newlyAdded = false;
@@ -165,8 +166,8 @@ export const buildPromptMessages = async (ctx: PromptContext, contextWindow: num
     fullHistory = await db.getMessagesBySlot(slotId);
   }
 
-  // 1. 递归扫描获取所有激活条目 (异步)
-  const rawActiveEntries = await scanActiveWorldInfo(ctx);
+  // 1. 递归扫描获取所有激活条目 (异步)，传入完整历史以提高命中率
+  const rawActiveEntries = await scanActiveWorldInfo(ctx, fullHistory);
 
   // --- 记忆召回层 (Project Hippocampus) ---
   let recallContext = '';
@@ -177,7 +178,7 @@ export const buildPromptMessages = async (ctx: PromptContext, contextWindow: num
       try {
         // 1. 获取 Embedding Provider
         const storeState = useAppStore.getState();
-        const embProvider = storeState.config.providers.find(p => p.id === storeState.activeEmbeddingProviderId);
+        const embProvider = storeState.config.providers.find(p => p.id === storeState.config.activeEmbeddingProviderId);
         
         if (embProvider && embProvider.apiKey) {
           // --- 性能防火墙：1.5s 强制超时 ---
@@ -233,11 +234,16 @@ export const buildPromptMessages = async (ctx: PromptContext, contextWindow: num
   }
 
   // 4. 组装 System Content
-  const topInjections = budgetedEntries.filter(e => e.position === 4).map(e => fastReplace(e.content)).join('\n\n');
-  const beforeInjections = budgetedEntries.filter(e => e.position === 0).map(e => fastReplace(e.content)).join('\n\n');
-  const afterInjections = budgetedEntries.filter(e => e.position === 1 || e.position === undefined).map(e => fastReplace(e.content)).join('\n\n');
+  // position=0: before char def, position=1: after char def, depth>0: depth injection (handled separately)
+  const topInjections    = budgetedEntries.filter(e => !e.depth && e.position === 0).map(e => fastReplace(e.content)).join('\n\n');
+  const afterInjections  = budgetedEntries.filter(e => !e.depth && (e.position === 1 || e.position === undefined)).map(e => fastReplace(e.content)).join('\n\n');
 
-  const systemFinal = `${topInjections ? topInjections + '\n\n' : ''}${beforeInjections ? beforeInjections + '\n\n' : ''}${systemBase}${afterInjections ? '\n\n' + afterInjections : ''}\n\n### PROTOCOLS\n${enabledDirectives}`.trim();
+  const systemFinal = [
+    topInjections,
+    systemBase,
+    afterInjections,
+    enabledDirectives ? `### PROTOCOLS\n${enabledDirectives}` : ''
+  ].filter(Boolean).join('\n\n').trim();
 
   // 5. 计算历史记录预算并加载
   const depthInjections: { content: string, depth: number, role: string, tokens: number }[] = [];
@@ -270,12 +276,11 @@ export const buildPromptMessages = async (ctx: PromptContext, contextWindow: num
     }
     
     usedHistoryTokens += t;
-    const charForMsg = msg.speakerId === character.id ? character : (isMultiChar && otherCharName ? { name: otherCharName } : undefined);
     eligibleMessages.unshift({ 
       role: msg.role as any, 
       content: msg.content,
-      name: msg.role === 'user' ? actualUserName : (charForMsg?.name || undefined),
-      images: msg.images
+      images: msg.images,
+      speakerId: msg.speakerId,
     });
   }
 
@@ -302,11 +307,37 @@ export const buildPromptMessages = async (ctx: PromptContext, contextWindow: num
 
   // 6. 最终合成
   const result: any[] = [{ role: 'system', content: systemFinal }];
-  let finalHistory = [...eligibleMessages];
-  depthInjections.sort((a, b) => b.depth - a.depth);
-  depthInjections.forEach(inj => {
-    const idx = Math.max(0, finalHistory.length - inj.depth);
-    finalHistory.splice(idx, 0, { role: inj.role as any, content: `[Note: ${inj.content}]` });
+
+  // 多角色模式：用 buildContextForChar 从目标角色视角重构历史（解决连续 assistant 问题）
+  let finalHistory: any[];
+  if (isMultiChar && otherCharName) {
+    const charNames: Record<string, string> = {
+      user: actualUserName,
+      [character.id]: character.name,
+    };
+    // otherCharName 只有名字没有 id，用占位 key
+    charNames['__other__'] = otherCharName;
+    // 给 eligibleMessages 里没有 speakerId 的消息补上 speakerId
+    const msgsForContext = eligibleMessages.map(m => ({
+      ...m,
+      speakerId: m.speakerId ?? (m.role === 'user' ? 'user' : character.id),
+    }));
+    finalHistory = buildContextForChar(msgsForContext, character.id, charNames);
+  } else {
+    // 单角色：直接使用，去掉 speakerId（provider 不需要）
+    finalHistory = eligibleMessages.map(({ speakerId: _s, ...m }) => m);
+  }
+
+  // depth injection：先计算所有插入位置（基于原始长度），再从后往前 splice 避免偏移
+  const originalLen = finalHistory.length;
+  depthInjections.sort((a, b) => a.depth - b.depth); // 升序，depth=1 最靠近末尾
+  const spliceOps = depthInjections.map(inj => ({
+    idx: Math.max(0, originalLen - inj.depth),
+    msg: { role: inj.role as any, content: `[Note: ${inj.content}]` }
+  }));
+  // 从大 idx 到小 idx 插入，保证前面的插入不影响后面的位置
+  spliceOps.sort((a, b) => b.idx - a.idx).forEach(op => {
+    finalHistory.splice(op.idx, 0, op.msg);
   });
 
   result.push(...finalHistory);

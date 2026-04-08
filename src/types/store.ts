@@ -27,6 +27,7 @@ export interface Provider {
   temperature?: number;
   topP?: number;
   contextWindow?: number;
+  maxTokens?: number;
   stream?: boolean;
   apiFormat?: 'openai' | 'anthropic' | 'gemini';
   customHeaders?: string;

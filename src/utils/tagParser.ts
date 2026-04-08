@@ -28,7 +28,8 @@ export const applyCharacterRegexScripts = (text: string, char: CharacterCard, la
         // 处理 ST 特有的 /s 修饰符 (dotAll)
         if (flags.includes('s')) {
           flags = flags.replace('s', '');
-          pattern = pattern.replace(/\./g, '[\\s\\S]');
+          // 只替换字符类外部的独立 .，避免污染 [^.] 等字符类内部
+          pattern = pattern.replace(/(?<!\[(?:[^\]]*))\./g, '[\\s\\S]');
         }
       }
 
@@ -60,7 +61,7 @@ export const applyCharacterRegexScripts = (text: string, char: CharacterCard, la
 const inferFieldNamesFromRegex = (regexStr: string): string[] => {
   const names: string[] = [];
   // 匹配模式：[非特殊字符的文本][冒号/分号][空白][紧跟的左括号]
-  const metaRegex = /([^\\s\\|\\(（\\[\\]：:，,]+)[：:]\s*(?=\s*\(|\s*\\\()/g;
+  const metaRegex = /([^\s|(（\[\]：:，,]+)[：:]\s*(?=\s*\(|\s*\\\()/g;
   
   let match;
   while ((match = metaRegex.exec(regexStr)) !== null) {
@@ -138,7 +139,8 @@ export const extractAndSyncTags = (
 ) => {
   const newAttrs: Record<string, any> = {};
 
-  // 先对文本应用转换，以支持从转换后的 HTML 界面中提取数据
+  // 属性提取始终基于原始文本，避免替换操作删除了需要提取的内容
+  // processedText 仅用于容器标签的结构化解析（某些卡片会用正则把原始标签转换为可解析格式）
   const processedText = applyCharacterRegexScripts(text, char, 1);
 
   // --- 1. 自动解析 <status>, <details>, <html> 等容器标签内部的 Markdown 表格 ---
@@ -175,7 +177,7 @@ export const extractAndSyncTags = (
     Object.assign(newAttrs, heuristicData);
   }
 
-  // --- 2. 传统正则表达式解析 (兼容已有卡片) ---
+  // --- 2. 传统正则表达式解析 (兼容已有卡片)，始终对原始 text 执行 ---
   const templates = char.extensions?.tagTemplates || [];
   templates.forEach(tpl => {
     if (!tpl.enabled || !tpl.originalRegex) return;
@@ -194,7 +196,7 @@ export const extractAndSyncTags = (
       const regex = new RegExp(regexStr, 'g');
       
       let match;
-      while ((match = regex.exec(processedText)) !== null) {
+      while ((match = regex.exec(text)) !== null) {
         const captures = match.slice(1);
         
         captures.forEach((val, i) => {
