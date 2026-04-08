@@ -13,7 +13,7 @@ export const backupService = {
    */
   async exportFullBackup(): Promise<void> {
     try {
-      console.log('[Backup] 正在准备意识数据包...');
+      console.log('[Backup] 开始导出...');
       
       // 1. 抓取 IndexedDB 所有表
       const messages = await db.messages.toArray();
@@ -51,7 +51,7 @@ export const backupService = {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `echo-consciousness-${new Date().toISOString().split('T')[0]}.echo`;
+      a.download = `echo-backup-${new Date().toISOString().split('T')[0]}.echo`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

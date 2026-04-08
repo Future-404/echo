@@ -51,8 +51,8 @@ const StorageSettings: React.FC = () => {
     setBackupLoading(true);
     try {
       await backupService.exportFullBackup();
-    } catch (e) {
-      alert('导出失败');
+    } catch (e: any) {
+      alert(`导出失败: ${e?.message ?? e}`);
     } finally {
       setBackupLoading(false);
     }
