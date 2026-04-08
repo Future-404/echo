@@ -145,10 +145,10 @@ const StorageSettings: React.FC = () => {
         </div>
       </section>
 
-      {/* 云端同步 (R2) */}
+      {/* 服务端同步 */}
       <section className="space-y-6">
         <div className="flex items-center gap-2 px-1">
-          <label className="text-[10px] uppercase tracking-widest text-gray-400 font-bold italic">云端实时同步 // CLOUD SYNC</label>
+          <label className="text-[10px] uppercase tracking-widest text-gray-400 font-bold italic">服务端同步 // SERVER SYNC</label>
         </div>
 
         {cloudConnected ? (
@@ -158,12 +158,12 @@ const StorageSettings: React.FC = () => {
                 <ShieldCheck size={24} />
               </div>
               <div>
-                <p className="text-xs font-bold text-green-600 dark:text-green-400">云端同步已连接</p>
-                <p className="text-[8px] text-gray-400 mt-1 uppercase tracking-widest">R2 STORAGE ACTIVE</p>
+                <p className="text-xs font-bold text-green-600 dark:text-green-400">服务端已连接</p>
+                <p className="text-[8px] text-gray-400 mt-1 uppercase tracking-widest">DATA SYNCED TO REMOTE SERVER</p>
               </div>
             </div>
             <button onClick={() => { localStorage.removeItem('echo-storage-token'); resetStorageAdapter(); window.location.reload(); }} className="w-full py-4 text-[9px] uppercase tracking-[0.3em] text-red-400 hover:text-red-500 transition-all font-mono">
-              断开云端同步
+              断开服务端同步
             </button>
           </div>
         ) : (
@@ -183,7 +183,7 @@ const StorageSettings: React.FC = () => {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter R2 Access Token..."
+                  placeholder="Enter server access token..."
                   className="w-full bg-white dark:bg-black/20 border-0.5 border-gray-200 dark:border-white/5 rounded-2xl px-5 py-4 text-xs focus:outline-none focus:border-blue-400 transition-all shadow-sm"
                 />
               </div>
@@ -201,7 +201,7 @@ const StorageSettings: React.FC = () => {
                 className="w-full py-4 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white rounded-2xl text-[10px] uppercase tracking-[0.2em] font-bold shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-3"
               >
                 {loading ? <Loader2 className="animate-spin" size={14} /> : <Cloud size={14} />}
-                连接云端存储
+                连接服务端存储
               </button>
             </div>
           </div>
