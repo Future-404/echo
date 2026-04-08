@@ -46,22 +46,30 @@ const App: React.FC = () => {
   // 1. 初始化应用生命周期
   React.useEffect(() => {
     if (_hasHydrated) {
-      syncImagesFromDb().catch(() => {}).finally(() => {
-        setIsLoading(false)
-        const splash = document.getElementById('splash-screen')
-        if (splash) {
-          splash.style.opacity = '0'
-          setTimeout(() => splash.remove(), 800)
-        }
-      })
+      // 立即解除 loading，让 UI 框架先出来
+      setIsLoading(false)
+      const splash = document.getElementById('splash-screen')
+      if (splash) {
+        splash.style.opacity = '0'
+        setTimeout(() => splash.remove(), 800)
+      }
+      // 异步同步图片，不再阻塞 UI
+      syncImagesFromDb().catch(err => console.error('[echo] sync images failed:', err))
     }
   }, [_hasHydrated, setIsLoading, syncImagesFromDb])
 
   // 保底：5秒后强制解除 loading（防止 rehydrate 回调未触发）
   React.useEffect(() => {
-    const t = setTimeout(() => setIsLoading(false), 5000)
+    const t = setTimeout(() => {
+      setIsLoading(false)
+      const splash = document.getElementById('splash-screen')
+      if (splash) {
+        splash.style.opacity = '0'
+        setTimeout(() => splash.remove(), 800)
+      }
+    }, 5000)
     return () => clearTimeout(t)
-  }, [])
+  }, [setIsLoading])
 
   // 2. 初始化主题与字体
   useTheme()
@@ -94,8 +102,13 @@ const App: React.FC = () => {
   }, [firstMessage])
   
   const [showHtmlGreeting, setShowHtmlGreeting] = React.useState(isHtmlGreeting)
-  
+  const skipHtmlGreetingRef = React.useRef(false)
+
   React.useEffect(() => {
+    if (skipHtmlGreetingRef.current) {
+      skipHtmlGreetingRef.current = false
+      return
+    }
     if (isHtmlGreeting && firstMessage && messages.length === 1) {
       setShowHtmlGreeting(true)
     }
@@ -237,6 +250,7 @@ const App: React.FC = () => {
                     <button
                       key={i}
                       onClick={() => {
+                        skipHtmlGreetingRef.current = true
                         setSelectedCharacter(selectedCharacter, g ?? undefined)
                         setShowGreetingPicker(false)
                       }}

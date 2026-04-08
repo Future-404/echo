@@ -13,15 +13,35 @@ export const GateScreen: React.FC<Props> = ({ onUnlock }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [attempts, setAttempts] = useState(0);
+  const [lockedUntil, setLockedUntil] = useState(0);
+
+  const MAX_ATTEMPTS = 5;
+  const LOCKOUT_MS = 30_000;
 
   const handleSubmit = async () => {
+    const now = Date.now();
+    if (lockedUntil > now) {
+      const secs = Math.ceil((lockedUntil - now) / 1000);
+      setError(`ACCESS LOCKED: RETRY IN ${secs}s`);
+      return;
+    }
     if (!password || loading) return;
     setLoading(true);
     setError('');
     try {
       await onUnlock(password);
     } catch (err) {
-      setError('ACCESS DENIED: INVALID TOKEN');
+      const next = attempts + 1;
+      setAttempts(next);
+      if (next >= MAX_ATTEMPTS) {
+        const until = Date.now() + LOCKOUT_MS;
+        setLockedUntil(until);
+        setAttempts(0);
+        setError(`ACCESS DENIED: TOO MANY ATTEMPTS. LOCKED FOR 30s`);
+      } else {
+        setError(`ACCESS DENIED: INVALID TOKEN (${MAX_ATTEMPTS - next} attempts left)`);
+      }
       setLoading(false);
     }
   };
@@ -89,7 +109,7 @@ export const GateScreen: React.FC<Props> = ({ onUnlock }) => {
                 onKeyDown={e => e.key === 'Enter' && handleSubmit()}
                 placeholder="AUTHENTICATION TOKEN"
                 autoFocus
-                disabled={loading}
+                disabled={loading || lockedUntil > Date.now()}
                 className="w-full pl-12 pr-6 py-4 bg-black/80 border border-white/30 rounded-2xl text-white text-sm font-mono tracking-widest placeholder:text-white/30 focus:outline-none focus:border-blue-400 focus:bg-black/90 transition-all"
               />
             </div>
@@ -109,7 +129,7 @@ export const GateScreen: React.FC<Props> = ({ onUnlock }) => {
 
             <button
               onClick={handleSubmit}
-              disabled={loading || !password}
+              disabled={loading || !password || lockedUntil > Date.now()}
               className="w-full group relative overflow-hidden py-4 bg-white/90 hover:bg-white text-black rounded-2xl text-[11px] font-bold tracking-[0.4em] uppercase transition-all disabled:opacity-20 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(255,255,255,0.1)] active:scale-[0.98]"
             >
               <div className="relative z-10 flex items-center justify-center gap-2">

@@ -29,8 +29,17 @@ function serveStatic(req, res) {
   let filePath = path.join(STATIC_DIR, req.url === '/' ? 'index.html' : req.url)
   // strip query string
   filePath = filePath.split('?')[0]
-  if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
+  // 路径遍历防护：确保解析后的路径仍在 STATIC_DIR 内
+  const resolved = path.resolve(filePath)
+  const staticRoot = path.resolve(STATIC_DIR)
+  if (!resolved.startsWith(staticRoot + path.sep) && resolved !== staticRoot) {
+    res.writeHead(403, { 'Content-Type': 'text/plain' })
+    return res.end('Forbidden')
+  }
+  if (!fs.existsSync(resolved) || fs.statSync(resolved).isDirectory()) {
     filePath = path.join(STATIC_DIR, 'index.html') // SPA fallback
+  } else {
+    filePath = resolved
   }
   const ext = path.extname(filePath)
   const mime = MIME[ext] || 'application/octet-stream'

@@ -1,18 +1,28 @@
-import type { SaveSlot } from './useAppStore'
+import type { Message } from '../types/chat'
+import type { SaveSlot } from '../types/store'
+import { SAVE_KEY, MULTI_SAVE_KEY } from './constants'
 import { replaceMacros } from '../logic/promptEngine'
 import { getStorageAdapter } from '../storage'
+import { db } from '../storage/db'
 
-const SAVE_KEY = 'echo-saves'
-const MULTI_SAVE_KEY = 'echo-multi-saves'
-
+/**
+ * 优化：存档现在分为元数据（saveSlots）和消息正文（messages 表）
+ * saveSlots 列表将不再包含巨大的 messages 数组，以提升首屏和列表加载速度
+ */
 export async function persistSlots(key: string, slots: SaveSlot[]) {
-  await getStorageAdapter().setItem(key, JSON.stringify(slots))
+  // 剥离消息正文后再存储元数据
+  const metaOnly = slots.map(s => {
+    const { messages, ...meta } = s;
+    return meta;
+  });
+  await getStorageAdapter().setItem(key, JSON.stringify(metaOnly))
 }
 
 export async function loadSlotsFromStorage(key: string): Promise<SaveSlot[]> {
   try {
     const raw = await getStorageAdapter().getItem(key)
-    return raw ? JSON.parse(raw) : []
+    if (!raw) return [];
+    return JSON.parse(raw);
   } catch {
     return []
   }
@@ -20,10 +30,10 @@ export async function loadSlotsFromStorage(key: string): Promise<SaveSlot[]> {
 
 export interface SaveSlice {
   saveSlots: SaveSlot[];
-  saveGame: (slotId: string, name?: string) => void;
-  branchGame: (messages: any[], name: string) => string; // 返回新 slotId
+  saveGame: (slotId: string, name?: string) => Promise<void>;
+  branchGame: (messages: Message[], name: string) => Promise<string>;
   renameSaveSlot: (slotId: string, newName: string) => void;
-  loadGame: (slotId: string) => void;
+  loadGame: (slotId: string) => Promise<void>;
   deleteSaveSlot: (slotId: string) => void;
   startNewGame: (charId: string) => void;
 }
@@ -31,21 +41,61 @@ export interface SaveSlice {
 export const createSaveSlice = (set: any, get: any): SaveSlice => ({
   saveSlots: [],
 
-  saveGame: (slotId, name) => {
-    // ... (unchanged)
+  saveGame: async (slotId, name) => {
+    const state = get()
+    const lastMsg = state.messages.length > 0 ? state.messages[state.messages.length - 1].content : '新存档'
+    const existing = (state.saveSlots || []).find((s: SaveSlot) => s.id === slotId)
+    
+    // 1. 同步消息正文到独立表 (Dexie)
+    await db.saveMessages(slotId, state.messages)
+
+    // 2. 更新元数据
+    const newSlot: SaveSlot = {
+      id: slotId,
+      name: name || existing?.name || `存档 - ${new Date().toLocaleString()}`,
+      timestamp: Date.now(),
+      characterId: state.selectedCharacter.id,
+      summary: lastMsg.slice(0, 50) + (lastMsg.length > 50 ? '...' : ''),
+      missions: state.missions,
+      fragments: state.fragments,
+    }
+
+    set((s: any) => {
+      const slots = (s.saveSlots || []).some((sl: SaveSlot) => sl.id === slotId)
+        ? s.saveSlots.map((sl: SaveSlot) => sl.id === slotId ? newSlot : sl)
+        : [...(s.saveSlots || []), newSlot]
+      persistSlots(SAVE_KEY, slots)
+      return { saveSlots: slots }
+    })
   },
 
-  branchGame: (messages, name) => {
+  branchGame: async (messages, name) => {
     const state = get()
+    const parentSlotId = state.currentAutoSlotId
     const slotId = 'branch_' + Date.now()
     const lastMsg = messages.length > 0 ? messages[messages.length - 1].content : '分支起点'
     
+    // 1. 同步消息正文到独立表 (Dexie)
+    await db.saveMessages(slotId, messages)
+
+    // 2. 深度克隆记忆结晶 (海马体)
+    if (parentSlotId) {
+      const parentEpisodes = await db.memoryEpisodes.where('slotId').equals(parentSlotId).toArray();
+      if (parentEpisodes.length > 0) {
+        const clonedEpisodes = parentEpisodes.map(({ id, ...ep }) => ({
+          ...ep,
+          slotId: slotId // 关联到新分支
+        }));
+        await db.memoryEpisodes.bulkAdd(clonedEpisodes);
+        console.log(`[Branch] 已从 ${parentSlotId} 克隆 ${clonedEpisodes.length} 条记忆碎片`);
+      }
+    }
+
     const newSlot: SaveSlot = {
       id: slotId,
       name: name || `分支 - ${new Date().toLocaleString()}`,
       timestamp: Date.now(),
       characterId: state.selectedCharacter.id,
-      messages: messages,
       summary: lastMsg.slice(0, 50) + (lastMsg.length > 50 ? '...' : ''),
       missions: state.missions,
       fragments: state.fragments,
@@ -68,14 +118,21 @@ export const createSaveSlice = (set: any, get: any): SaveSlice => ({
     })
   },
 
-  loadGame: (slotId) => {
+  loadGame: async (slotId) => {
     const state = get()
     const slot = (state.saveSlots || []).find((s: SaveSlot) => s.id === slotId)
     if (!slot) return
+    
+    // 核心优化：按需从独立表拉取消息正文
+    const storedMessages = await db.getMessagesBySlot(slotId)
+    const messages = storedMessages.length > 0 
+      ? storedMessages.map(({ slotId, timestamp, id, ...m }: any) => m as Message) 
+      : [];
+
     const char = (state.characters || []).find((c: any) => c.id === slot.characterId) || state.characters[0]
     set({
       selectedCharacter: char,
-      messages: slot.messages,
+      messages: messages,
       missions: slot.missions,
       fragments: slot.fragments,
       currentView: 'main',
@@ -88,6 +145,8 @@ export const createSaveSlice = (set: any, get: any): SaveSlice => ({
     set((s: any) => {
       const slots = (s.saveSlots || []).filter((sl: SaveSlot) => sl.id !== slotId)
       persistSlots(SAVE_KEY, slots)
+      // 同步删除独立消息表
+      db.messages.where('slotId').equals(slotId).delete()
       return {
         saveSlots: slots,
         currentAutoSlotId: s.currentAutoSlotId === slotId ? null : s.currentAutoSlotId,

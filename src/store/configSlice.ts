@@ -1,4 +1,5 @@
-import type { Provider, Directive, WorldBook, WorldBookEntry, UserPersona, ThemeMode } from './useAppStore'
+import type { Provider, Directive, WorldBook, WorldBookEntry, UserPersona, ThemeMode, RegexRule } from './useAppStore'
+import { db } from '../storage/db'
 
 export interface ConfigSlice {
   config: {
@@ -19,6 +20,7 @@ export interface ConfigSlice {
     dialogueQuotes?: string;
     actionMarkers?: string;
     thoughtMarkers?: string;
+    regexRules: RegexRule[];
   };
   
   updateConfig: (newConfig: Partial<ConfigSlice['config']>) => void;
@@ -30,12 +32,12 @@ export interface ConfigSlice {
   updateProvider: (id: string, updates: Partial<Provider>) => void;
   removeProvider: (id: string) => void;
   setActiveProvider: (id: string) => void;
-  addWorldBook: (book: WorldBook) => void;
-  updateWorldBook: (id: string, updates: Partial<WorldBook>) => void;
-  removeWorldBook: (id: string) => void;
-  addWorldBookEntry: (bookId: string, entry: WorldBookEntry) => void;
-  updateWorldBookEntry: (bookId: string, entryId: string, updates: Partial<WorldBookEntry>) => void;
-  removeWorldBookEntry: (bookId: string, entryId: string) => void;
+  addWorldBook: (book: WorldBook) => Promise<void>;
+  updateWorldBook: (id: string, updates: Partial<WorldBook>) => Promise<void>;
+  removeWorldBook: (id: string) => Promise<void>;
+  addWorldBookEntry: (bookId: string, entry: WorldBookEntry) => Promise<void>;
+  updateWorldBookEntry: (bookId: string, entryId: string, updates: Partial<WorldBookEntry>) => Promise<void>;
+  removeWorldBookEntry: (bookId: string, entryId: string) => Promise<void>;
   addDirective: (directive: Directive) => void;
   updateDirective: (id: string, updates: Partial<Directive>) => void;
   removeDirective: (id: string) => void;
@@ -48,6 +50,10 @@ export interface ConfigSlice {
   addPersonaWorldBookEntry: (personaId: string, entry: WorldBookEntry) => void;
   updatePersonaWorldBookEntry: (personaId: string, entryId: string, updates: Partial<WorldBookEntry>) => void;
   removePersonaWorldBookEntry: (personaId: string, entryId: string) => void;
+  addRegexRule: (rule: RegexRule) => void;
+  updateRegexRule: (id: string, updates: Partial<RegexRule>) => void;
+  removeRegexRule: (id: string) => void;
+  reorderRegexRules: (rules: RegexRule[]) => void;
 }
 
 export const createConfigSlice = (set: any, get: any, INITIAL_CONFIG: ConfigSlice['config']): ConfigSlice => ({
@@ -86,50 +92,75 @@ export const createConfigSlice = (set: any, get: any, INITIAL_CONFIG: ConfigSlic
 
   setActiveProvider: (id) => set((state: any) => ({ config: { ...state.config, activeProviderId: id } })),
 
-  addWorldBook: (book) => set((state: any) => ({ 
-    config: { ...state.config, worldBookLibrary: [...(state.config.worldBookLibrary || []), book] } 
-  })),
-
-  updateWorldBook: (id, updates) => set((state: any) => ({ 
-    config: { ...state.config, worldBookLibrary: (state.config.worldBookLibrary || []).map((b: WorldBook) => b.id === id ? { ...b, ...updates } : b) } 
-  })),
-
-  removeWorldBook: (id) => set((state: any) => ({ 
-    config: { ...state.config, worldBookLibrary: (state.config.worldBookLibrary || []).filter((b: WorldBook) => b.id !== id) } 
-  })),
-
-  addWorldBookEntry: (bookId, entry) => set((state: any) => ({
-    config: {
-      ...state.config,
-      worldBookLibrary: (state.config.worldBookLibrary || []).map((b: WorldBook) => 
-        b.id === bookId ? { ...b, entries: [...(b.entries || []), entry] } : b
-      )
+  addWorldBook: async (book) => {
+    if (book.entries?.length) {
+      const dbEntries = book.entries.map(e => ({ ...e, ownerId: book.id, updatedAt: Date.now() }));
+      await db.worldEntries.bulkPut(dbEntries);
     }
+    set((state: any) => ({ 
+      config: { ...state.config, worldBookLibrary: [...(state.config.worldBookLibrary || []), book] } 
+    }));
+  },
+
+  updateWorldBook: async (id, updates) => set((state: any) => ({ 
+    config: { ...state.config, worldBookLibrary: (state.config.worldBookLibrary || []).map((b: any) => b.id === id ? { ...b, ...updates } : b) } 
   })),
 
-  updateWorldBookEntry: (bookId, entryId, updates) => set((state: any) => ({
-    config: {
-      ...state.config,
-      worldBookLibrary: (state.config.worldBookLibrary || []).map((b: WorldBook) => 
-        b.id === bookId ? {
-          ...b,
-          entries: (b.entries || []).map((e: WorldBookEntry) => e.id === entryId ? { ...e, ...updates } : e)
-        } : b
-      )
-    }
-  })),
+  removeWorldBook: async (id) => {
+    await db.worldEntries.where('ownerId').equals(id).delete();
+    set((state: any) => ({ 
+      config: { ...state.config, worldBookLibrary: (state.config.worldBookLibrary || []).filter((b: any) => b.id !== id) } 
+    }));
+  },
 
-  removeWorldBookEntry: (bookId, entryId) => set((state: any) => ({
-    config: {
-      ...state.config,
-      worldBookLibrary: (state.config.worldBookLibrary || []).map((b: WorldBook) => 
-        b.id === bookId ? {
-          ...b,
-          entries: (b.entries || []).filter((e: WorldBookEntry) => e.id !== entryId)
-        } : b
-      )
-    }
-  })),
+  addWorldBookEntry: async (bookId, entry) => {
+    await db.worldEntries.put({ ...entry, ownerId: bookId, updatedAt: Date.now() });
+    set((state: any) => ({
+      config: {
+        ...state.config,
+        worldBookLibrary: (state.config.worldBookLibrary || []).map((b: any) => 
+          b.id === bookId ? { ...b, entries: [...(b.entries || []), entry] } : b
+        )
+      }
+    }));
+  },
+
+  updateWorldBookEntry: async (bookId, entryId, updates) => {
+    const state = get();
+    const book = (state.config.worldBookLibrary || []).find((b: any) => b.id === bookId);
+    const entry = book?.entries?.find((e: any) => e.id === entryId);
+    if (!entry) return;
+
+    const updatedEntry = { ...entry, ...updates };
+    await db.worldEntries.put({ ...updatedEntry, ownerId: bookId, updatedAt: Date.now() });
+
+    set((state: any) => ({
+      config: {
+        ...state.config,
+        worldBookLibrary: (state.config.worldBookLibrary || []).map((b: any) => 
+          b.id === bookId ? {
+            ...b,
+            entries: (b.entries || []).map((e: WorldBookEntry) => e.id === entryId ? updatedEntry : e)
+          } : b
+        )
+      }
+    }));
+  },
+
+  removeWorldBookEntry: async (bookId, entryId) => {
+    await db.worldEntries.delete(entryId);
+    set((state: any) => ({
+      config: {
+        ...state.config,
+        worldBookLibrary: (state.config.worldBookLibrary || []).map((b: any) => 
+          b.id === bookId ? {
+            ...b,
+            entries: (b.entries || []).filter((e: WorldBookEntry) => e.id !== entryId)
+          } : b
+        )
+      }
+    }));
+  },
 
   addDirective: (directive) => set((state: any) => ({ 
     config: { ...state.config, directives: [...(state.config.directives || []), directive] } 
@@ -207,4 +238,18 @@ export const createConfigSlice = (set: any, get: any, INITIAL_CONFIG: ConfigSlic
       )
     }
   })),
+
+  addRegexRule: (rule) => set((state: any) => ({
+    config: { ...state.config, regexRules: [...(state.config.regexRules || []), rule] }
+  })),
+
+  updateRegexRule: (id, updates) => set((state: any) => ({
+    config: { ...state.config, regexRules: (state.config.regexRules || []).map((r: RegexRule) => r.id === id ? { ...r, ...updates } : r) }
+  })),
+
+  removeRegexRule: (id) => set((state: any) => ({
+    config: { ...state.config, regexRules: (state.config.regexRules || []).filter((r: RegexRule) => r.id !== id) }
+  })),
+
+  reorderRegexRules: (rules) => set((state: any) => ({ config: { ...state.config, regexRules: rules } })),
 });

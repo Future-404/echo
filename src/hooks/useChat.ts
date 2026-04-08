@@ -1,18 +1,20 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useAppStore } from '../store/useAppStore'
-import type { Message } from '../store/useAppStore'
-import { getEnabledSkills, executeSkill } from '../skills'
+import type { Message } from '../types/store'
+import { getEnabledSkills, executeSkill, registeredSkills } from '../skills'
 import { buildSystemPrompt, buildPromptMessages } from '../logic/promptEngine'
 import { buildContextForChar, buildStopSequences } from '../logic/multiChar'
 import { replaceMacros } from '../logic/promptEngine'
-import { processChatStream } from '../utils/streamProcessor'
-import { CORE_FORMATTING_RULES } from '../store/constants'
+import { ProviderFactory, type ProviderFormat } from '../logic/providers'
 import { extractAndSyncTags, applyCharacterRegexScripts } from '../utils/tagParser'
+import { applyRegexRules } from '../utils/regexEngine'
 import { routerSchema, parseRouterResult } from '../skills/router/schema'
 import { buildRouterPrompt } from '../skills/router/prompt'
 import type { RouterAction } from '../skills/router/schema'
 import { iframeBus } from '../utils/iframeBus'
 import { ttsService } from '../utils/ttsService'
+import { vectorService } from '../utils/vectorService'
+import { db } from '../storage/db'
 
 const cleanJson = (str: string) => {
   let cleaned = str.trim();
@@ -29,13 +31,17 @@ export const useChat = () => {
     addMessage, isTyping, setIsTyping, addDebugLog,
     updateAttributes, isGreetingSession,
     secondaryCharacter, multiCharMode, routerProviderId,
-    ttsSettings,
+    ttsSettings, setAbortController,
   } = useAppStore()
 
   const [displayText, setDisplayText] = useState('')
   const [activeSpeakerId, setActiveSpeakerId] = useState<string | undefined>(undefined)
   const lastGreetingKey = useRef<string | null>(null)
   const activePersona = config.personas?.find(p => p.id === config.activePersonaId) || config.personas?.[0]
+
+  // 始终持有最新 state 的 ref，供 useCallback 内部读取，避免闭包旧值问题
+  const stateRef = useRef({ config, selectedCharacter, secondaryCharacter, activePersona, missions, ttsSettings, routerProviderId, multiCharMode })
+  stateRef.current = { config, selectedCharacter, secondaryCharacter, activePersona, missions, ttsSettings, routerProviderId, multiCharMode }
 
   const skipGreeting = useCallback(() => {
     const firstMsg = messages[0]
@@ -63,13 +69,19 @@ export const useChat = () => {
     currentMessages: Message[],
     userContent: string,
   ) => {
+    // 始终从 ref 读取最新 state，彻底避免闭包旧值
+    const { config, selectedCharacter, secondaryCharacter, activePersona, missions, ttsSettings } = stateRef.current
+
+    // 关键：捕获请求发起时的 slotId
+    const requestSlotId = useAppStore.getState().currentAutoSlotId;
+    
     const char = charId === selectedCharacter.id ? selectedCharacter : secondaryCharacter!
     const provider = config.providers.find(p => p.id === char.providerId) || config.providers.find(p => p.id === config.activeProviderId) || config.providers[0]
     if (!provider?.apiKey) {
       throw new Error(`[${char.name}] 未配置 API Key`)
     }
 
-    const format = provider.apiFormat || 'openai'
+    const format = (provider.apiFormat || 'openai') as ProviderFormat;
     const isStreaming = provider.stream !== false
     const contextWindow = provider.contextWindow ?? 10
     const enabledTools = getEnabledSkills(config.enabledSkillIds)
@@ -82,8 +94,14 @@ export const useChat = () => {
       currentQuest: (missions || []).find(m => m.status === 'ACTIVE' && m.type === 'MAIN')?.title,
     }) : undefined
 
+    // 对发送给 AI 的历史消息应用全局正则 (AI 范围)
+    const aiProcessedMessages = currentMessages.map(m => ({
+      ...m,
+      content: applyRegexRules(m.content, config.regexRules || [], 'ai')
+    }));
+
     // 组装完整的 API 消息数组 (ST 1:1 复刻逻辑)
-    const apiMessages = buildPromptMessages({
+    const apiMessages = await buildPromptMessages({
       character: char,
       persona: activePersona,
       directives: config.directives || [],
@@ -91,7 +109,8 @@ export const useChat = () => {
       missions,
       userName: config.userName || 'Observer',
       enabledSkillIds: config.enabledSkillIds,
-      recentMessages: currentMessages,
+      slotId: requestSlotId, // 告知引擎从哪个存档拉取 AI 上下文
+      recentMessages: aiProcessedMessages,
       isMultiChar: !!secondaryCharacter,
       otherCharName: secondaryCharacter ? (charId === selectedCharacter.id ? secondaryCharacter.name : selectedCharacter.name) : undefined,
     }, contextWindow)
@@ -105,227 +124,118 @@ export const useChat = () => {
     }
     const stopSeqs = secondaryCharacter ? buildStopSequences(charId, charNames) : []
 
-    let fetchUrl = `${provider.endpoint}/chat/completions`
-    let fetchHeaders: any = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${provider.apiKey}` }
-    
-    // 合并自定义 Headers
-    if (provider.customHeaders) {
-      try {
-        const extraHeaders = JSON.parse(provider.customHeaders);
-        fetchHeaders = { ...fetchHeaders, ...extraHeaders };
-      } catch (e) { console.error('Failed to parse custom headers:', e) }
-    }
+    const controller = new AbortController();
+    setAbortController(controller);
 
-    let fetchBody: any = {}
+    if (config.isDebugEnabled) addDebugLog({ direction: 'OUT', label: `[${char.name}] API Request (${format})`, data: { provider, messages: apiMessages } })
 
-    if (format === 'openai') {
-      const mappedMessages = apiMessages.map(m => {
-        if (m.images && m.images.length > 0) {
-          const content: any[] = m.images.map((img: string) => ({ type: 'image_url', image_url: { url: img } }));
-          if (m.content?.trim()) {
-            content.unshift({ type: 'text', text: m.content });
-          }
-          return { role: m.role, name: m.name, content };
-        }
-        return { role: m.role, name: m.name, content: m.content };
-      });
-
-      fetchBody = {
-        model: provider.model,
-        messages: prefill ? [...mappedMessages, { role: 'assistant', content: prefill }] : mappedMessages,
-        ...(enabledTools.length > 0 && { tools: enabledTools }),
-        ...(stopSeqs.length > 0 && { stop: stopSeqs }),
-        stream: isStreaming,
-        ...(isStreaming && { stream_options: { "include_usage": true } }),
-        temperature: provider.temperature ?? 0.7,
-        ...(provider.topP != null && provider.topP !== 1.0 && { top_p: provider.topP }),
-      };
-    } else if (format === 'anthropic') {
-      fetchUrl = `${provider.endpoint.replace(/\/chat\/completions$/, '')}/messages`;
-      fetchHeaders = { 'Content-Type': 'application/json', 'x-api-key': provider.apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' };
+    try {
+      const providerImpl = ProviderFactory.getProvider(format);
       
-      const systemMsg = apiMessages.find(m => m.role === 'system')?.content || '';
-      const nonSystemMsgs = apiMessages.filter(m => m.role !== 'system').map(m => {
-        if (m.images && m.images.length > 0) {
-          const content: any[] = m.images.map((img: string) => {
-            const match = img.match(/^data:(image\/\w+);base64,(.*)$/);
-            return {
-              type: 'image',
-              source: {
-                type: 'base64',
-                media_type: match ? match[1] : 'image/jpeg',
-                data: match ? match[2] : img
-              }
-            };
-          });
-          if (m.content?.trim()) {
-            content.push({ type: 'text', text: m.content });
-          }
-          return { role: m.role === 'assistant' ? 'assistant' : 'user', content };
-        }
-        return { role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content };
-      });
+      let ttsBuffer = '';
+      const voiceId = ttsSettings.enabled && ttsSettings.autoSpeak ? ttsSettings.voiceMap[charId] : null;
 
-      fetchBody = {
-        model: provider.model,
-        system: systemMsg,
-        messages: prefill ? [...nonSystemMsgs, { role: 'assistant', content: prefill }] : nonSystemMsgs,
-        max_tokens: 4096,
-        ...(stopSeqs.length > 0 && { stop_sequences: stopSeqs }),
-        stream: isStreaming,
-        temperature: provider.temperature ?? 0.7,
-      };
-    } else if (format === 'gemini') {
-      const isStreamSuffix = isStreaming ? 'streamGenerateContent?alt=sse&' : 'generateContent?';
-      fetchUrl = `${provider.endpoint.replace(/\/chat\/completions$/, '')}/models/${provider.model}:${isStreamSuffix}key=${provider.apiKey}`;
-      fetchHeaders = { 'Content-Type': 'application/json' };
-      
-      const systemMsg = apiMessages.find(m => m.role === 'system')?.content || '';
-      const contents = apiMessages.filter(m => m.role !== 'system').map(m => {
-        const parts: any[] = [];
-        if (m.images && m.images.length > 0) {
-          m.images.forEach((img: string) => {
-            const match = img.match(/^data:(image\/\w+);base64,(.*)$/);
-            if (match) {
-              parts.push({
-                inlineData: { mimeType: match[1], data: match[2] }
-              });
+      const result = await providerImpl.request({
+        messages: apiMessages,
+        provider,
+        stopSequences: stopSeqs,
+        prefill,
+        isStreaming,
+        tools: enabledTools,
+        signal: controller.signal,
+        onChunk: (chunk) => {
+          setDisplayText(prev => prev + chunk);
+          if (voiceId !== null) {
+            ttsBuffer += chunk;
+            const sentenceEnd = /[。！？!?.]+/.exec(ttsBuffer);
+            if (sentenceEnd) {
+              const sentence = ttsBuffer.slice(0, sentenceEnd.index + sentenceEnd[0].length).trim();
+              ttsBuffer = ttsBuffer.slice(sentenceEnd.index + sentenceEnd[0].length);
+              if (sentence) ttsService.speak(sentence, ttsSettings, voiceId);
             }
-          });
+          }
         }
-        if (m.content?.trim() || parts.length === 0) {
-          parts.push({ text: m.content || " " });
-        }
-        return { role: m.role === 'assistant' ? 'model' : 'user', parts };
       });
 
-      if (prefill) {
-        contents.push({
-          role: 'model',
-          parts: [{ text: prefill }]
-        })
-      }
+      const { content: fullText, toolCalls, usage } = result;
+      setDisplayText(fullText);
 
-      fetchBody = {
-        contents,
-        system_instruction: { parts: [{ text: systemMsg }] },
-        generationConfig: {
-          temperature: provider.temperature ?? 0.7,
-          topP: provider.topP ?? 1.0,
-          maxOutputTokens: 4096,
-          stopSequences: stopSeqs,
-        }
-      }
-    } else {
-      addMessage({ role: 'assistant', content: '错误：不支持的接口格式。', speakerId: charId })
-      return
-    }
-
-    if (config.isDebugEnabled) addDebugLog({ direction: 'OUT', label: `[${char.name}] API Request`, data: { url: fetchUrl, body: fetchBody } })
-
-    const response = await fetch(fetchUrl, { method: 'POST', headers: fetchHeaders, body: JSON.stringify(fetchBody) })
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}))
-      throw new Error(`[${char.name}] HTTP ${response.status}${err?.error?.message ? ': ' + err.error.message : ''}`)
-    }
-
-    const handleFinish = async (fullText: string, toolCalls?: any[], usage?: any) => {
+      setAbortController(null);
       if (usage) {
-        useAppStore.getState().setTokenStats(usage.total_tokens || (usage.prompt_tokens + (usage.completion_tokens || 0)), provider.contextWindow || 32000);
+        useAppStore.getState().setTokenStats(usage.total_tokens || (usage.prompt_tokens + (usage.completion_tokens || 0)), provider.contextWindow || 128000);
       } else {
-        // 估算逻辑
         const estTokens = Math.ceil(fullText.length / 3.5) + (apiMessages.reduce((acc, m) => acc + m.content.length, 0) / 3.5);
-        useAppStore.getState().setTokenStats(Math.ceil(estTokens), provider.contextWindow || 32000);
+        useAppStore.getState().setTokenStats(Math.ceil(estTokens), provider.contextWindow || 128000);
       }
 
-      if (config.isDebugEnabled) addDebugLog({ direction: 'IN', label: `[${char.name}] Response`, data: { text: fullText } })
-      extractAndSyncTags(fullText, char, updateAttributes)
-      const transformed = applyCharacterRegexScripts(fullText, char, 1)
+      if (config.isDebugEnabled) addDebugLog({ direction: 'IN', label: `[${char.name}] Response`, data: { text: fullText, usage } });
+      extractAndSyncTags(fullText, char, updateAttributes);
+      const transformed = applyCharacterRegexScripts(fullText, char, 1);
 
       if (toolCalls?.length) {
-        const assistantMsg: Message = { role: 'assistant', content: transformed, tool_calls: toolCalls, speakerId: charId }
-        addMessage(assistantMsg)
-        const toolResults: Message[] = []
+        const assistantMsg: Message = { role: 'assistant', content: transformed, tool_calls: toolCalls, speakerId: charId };
+        await addMessage(assistantMsg, requestSlotId);
+        const toolResults: Message[] = [];
         for (const tc of toolCalls) {
           try {
-            const args = JSON.parse(cleanJson(tc.function.arguments))
-            const result = executeSkill(tc.function.name, args)
-            const toolMsg: Message = { role: 'tool', tool_call_id: tc.id, name: tc.function.name, content: result.message }
-            addMessage(toolMsg)
-            toolResults.push(toolMsg)
-          } catch (e) { console.error('Skill error:', e) }
+            const skillName = tc.function.name;
+            const displayName = registeredSkills[skillName]?.displayName || skillName;
+            useAppStore.getState().addFragment(`✨ 正在激活 [${displayName}]...`);
+            const args = JSON.parse(cleanJson(tc.function.arguments));
+            const skillResult = await executeSkill(skillName, args);
+            if (skillResult.success) {
+              useAppStore.getState().addFragment(`✅ [${displayName}] 感知同步完成`);
+            }
+            const toolMsg: Message = { role: 'tool', tool_call_id: tc.id, name: tc.function.name, content: skillResult.message };
+            await addMessage(toolMsg, requestSlotId);
+            toolResults.push(toolMsg);
+          } catch (e) { console.error('Skill error:', e); }
         }
-        // follow-up：把 tool results 回传，获取最终叙事回复
+
         if (toolResults.length > 0) {
           try {
-            const followUpBody = format === 'anthropic'
-              ? { ...fetchBody, messages: [...fetchBody.messages, { role: 'assistant', content: toolCalls.map((tc: any) => ({ type: 'tool_use', id: tc.id, name: tc.function.name, input: JSON.parse(cleanJson(tc.function.arguments)) })) }, { role: 'user', content: toolResults.map(r => ({ type: 'tool_result', tool_use_id: r.tool_call_id, content: r.content })) }] }
-              : { ...fetchBody, messages: [...fetchBody.messages, assistantMsg, ...toolResults], stream: false }
-            const followUpRes = await fetch(fetchUrl, { method: 'POST', headers: fetchHeaders, body: JSON.stringify(followUpBody) })
-            if (followUpRes.ok) {
-              const followUpData = await followUpRes.ok ? await followUpRes.json() : {}
-              const followUpText = format === 'anthropic' ? followUpData.content?.[0]?.text : followUpData.choices?.[0]?.message?.content
-              if (followUpText) {
-                extractAndSyncTags(followUpText, char, updateAttributes)
-                addMessage({ role: 'assistant', content: applyCharacterRegexScripts(followUpText, char, 1), speakerId: charId })
-              }
+            const followUpMessages = [...apiMessages, { role: 'assistant', content: transformed, tool_calls: toolCalls }, ...toolResults];
+            const followUpResult = await providerImpl.request({
+              messages: followUpMessages as Message[],
+              provider,
+              isStreaming: false,
+              signal: controller.signal
+            });
+            if (followUpResult.content) {
+              extractAndSyncTags(followUpResult.content, char, updateAttributes);
+              await addMessage({ role: 'assistant', content: applyCharacterRegexScripts(followUpResult.content, char, 1), speakerId: charId }, requestSlotId);
             }
-          } catch (e) { console.error('Tool follow-up error:', e) }
+          } catch (e) { console.error('Tool follow-up error:', e); }
         }
       } else {
-        addMessage({ role: 'assistant', content: transformed, speakerId: charId })
+        await addMessage({ role: 'assistant', content: transformed, speakerId: charId }, requestSlotId);
       }
 
-      // 触发 TTS
-      if (ttsSettings.enabled && ttsSettings.autoSpeak) {
+      const embeddingProvider = config.providers.find(p => p.id === config.activeEmbeddingProviderId);
+      if (embeddingProvider && embeddingProvider.apiKey) {
+        const chatProvider = config.providers.find(p => p.id === char.providerId) || provider;
+        db.messages.where('slotId').equals(requestSlotId!).sortBy('timestamp').then(history => {
+          const lastMsg = history[history.length - 1];
+          if (lastMsg) {
+            vectorService.onMessageAdded(requestSlotId!, lastMsg, char.name, chatProvider, embeddingProvider);
+          }
+        });
+      }
+
+      if (ttsSettings.enabled && ttsSettings.autoSpeak && !isStreaming) {
         const voiceId = ttsSettings.voiceMap[charId];
         ttsService.speak(transformed, ttsSettings, voiceId);
       }
-    }
 
-    if (isStreaming) {
-      let ttsBuffer = ''
-      const voiceId = ttsSettings.enabled && ttsSettings.autoSpeak ? ttsSettings.voiceMap[charId] : null
-      await processChatStream(response, {
-        onChunk: (chunk) => {
-          setDisplayText(prev => prev + chunk)
-          if (voiceId !== null) {
-            ttsBuffer += chunk
-            // 检测句子边界（中英文标点）
-            const sentenceEnd = /[。！？!?.]+/.exec(ttsBuffer)
-            if (sentenceEnd) {
-              const sentence = ttsBuffer.slice(0, sentenceEnd.index + sentenceEnd[0].length).trim()
-              ttsBuffer = ttsBuffer.slice(sentenceEnd.index + sentenceEnd[0].length)
-              if (sentence) ttsService.speak(sentence, ttsSettings, voiceId)
-            }
-          }
-        },
-        onFinish: handleFinish,
-        onError: (err) => { throw new Error(err) }
-      }, format)
-    } else {
-      const data = await response.json()
-      let content = ''
-      let tcs = undefined
-      let usage = data.usage
-
-      if (format === 'anthropic') {
-        content = data.content?.[0]?.text
-      } else if (format === 'gemini') {
-        content = data.candidates?.[0]?.content?.parts?.[0]?.text
-        usage = data.usageMetadata ? {
-          prompt_tokens: data.usageMetadata.promptTokenCount,
-          completion_tokens: data.usageMetadata.candidatesTokenCount,
-          total_tokens: data.usageMetadata.totalTokenCount
-        } : undefined
-      } else {
-        content = data.choices?.[0]?.message?.content
-        tcs = data.choices?.[0]?.message?.tool_calls
+    } catch (err: any) {
+      setAbortController(null);
+      if (err.name === 'AbortError') {
+        console.log(`[${char.name}] 用户中断了生成`);
+        return;
       }
-      
-      await handleFinish(content || '', tcs, usage)
+      throw err;
     }
-  }, [config, selectedCharacter, secondaryCharacter, activePersona, missions, multiCharMode, addMessage, addDebugLog, updateAttributes])
+  }, [addMessage, addDebugLog, updateAttributes, setAbortController])
 
   // ─── Router 请求 ─────────────────────────────────────────────────────────────
   const requestRouter = useCallback(async (
@@ -333,6 +243,7 @@ export const useChat = () => {
     currentMessages: Message[],
     images?: string[],
   ): Promise<RouterAction[]> => {
+    const { config, selectedCharacter, secondaryCharacter, activePersona, routerProviderId } = stateRef.current
     const routerProvider = config.providers.find(p => p.id === routerProviderId) || config.providers.find(p => p.id === config.activeProviderId) || config.providers[0]
     if (!routerProvider?.apiKey || !secondaryCharacter) {
       // fallback
@@ -382,13 +293,18 @@ export const useChat = () => {
 
     const result = parseRouterResult(toolCall.function.arguments, selectedCharacter.id, secondaryCharacter.id)
     return result.actions
-  }, [config, selectedCharacter, secondaryCharacter, activePersona, routerProviderId, addDebugLog])
+  }, [addDebugLog])
 
   // ─── 主入口 ──────────────────────────────────────────────────────────────────
   const sendMessage = useCallback(async (content: string, images?: string[]) => {
     if ((!content.trim() && (!images || images.length === 0)) || isTyping) return
 
-    const userMsg: Message = { role: 'user', content, speakerId: 'user', ...(images && images.length > 0 ? { images } : {}) }
+    const { config, selectedCharacter, secondaryCharacter, multiCharMode } = stateRef.current
+
+    // 应用全局正则 (用户输入范围)
+    const processedContent = applyRegexRules(content, config.regexRules || [], 'user');
+
+    const userMsg: Message = { role: 'user', content: processedContent, speakerId: 'user', ...(images && images.length > 0 ? { images } : {}) }
     addMessage(userMsg)
     setIsTyping(true)
     setDisplayText('')
@@ -400,13 +316,12 @@ export const useChat = () => {
       return
     }
 
-    // 这里需要获取包含新消息在内的最新状态，否则 currentMessages 会少一条
+    // addMessage 是异步写入，必须从 getState() 读取包含新消息的最新列表
     const currentMessages = [...useAppStore.getState().messages]
 
     try {
       // ── 多角色模式 ──────────────────────────────────────────────────────────
       if (multiCharMode && secondaryCharacter) {
-        // 1. Router 决策（呼吸灯此时为 yellow，activeSpeakerId=undefined）
         setActiveSpeakerId(undefined)
         let actions: RouterAction[]
         try {
@@ -417,10 +332,8 @@ export const useChat = () => {
           return
         }
 
-        // 2. 按 actions 串行执行
         for (const action of actions) {
           if (action.type === 'narrate') {
-            // 旁白静默，不发送到对话框（仅调试日志）
             if (config.isDebugEnabled) addDebugLog({ direction: 'IN', label: '[Router] Narrate (silent)', data: { content: action.narrateContent } })
             continue
           }
@@ -437,7 +350,7 @@ export const useChat = () => {
         return
       }
 
-      // ── 单角色模式：复用 requestChar ───────────────────────────────────────
+      // ── 单角色模式 ─────────────────────────────────────────────────────────
       await requestChar(selectedCharacter.id, currentMessages, content)
       setIsTyping(false)
 
@@ -447,7 +360,7 @@ export const useChat = () => {
       addMessage({ role: 'assistant', content: `错误: ${err.message || '未知错误'}` })
       setIsTyping(false)
     }
-  }, [addMessage, config, isTyping, messages, selectedCharacter, secondaryCharacter, multiCharMode, missions, setIsTyping, activePersona, addDebugLog, requestChar, requestRouter])
+  }, [isTyping, addMessage, setIsTyping, addDebugLog, requestChar, requestRouter])
 
   // 注册 iframe triggerSlash 的消息处理
   useEffect(() => {

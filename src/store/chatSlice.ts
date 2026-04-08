@@ -1,5 +1,5 @@
-import type { CharacterCard, Message, Mission, SaveSlot } from './useAppStore'
-import { persistSlots, SAVE_KEY } from './saveSlice'
+import type { CharacterCard, Message, Mission, SaveSlot } from '../types/chat';
+import { db } from '../storage/db';
 
 export interface ChatSlice {
   messages: Message[];
@@ -8,16 +8,23 @@ export interface ChatSlice {
   missions: Mission[];
   fragments: string[];
   currentAutoSlotId: string | null;
-  _autoSaveTimer: ReturnType<typeof setTimeout> | null;
+  hasMoreOlder: boolean; 
+  activeAudioId: string | null; 
+  abortController: AbortController | null;
 
-  addMessage: (msg: Message) => void;
+  addMessage: (msg: Message, targetSlotId?: string) => Promise<void>;
+  loadInitialMessages: (slotId: string) => Promise<void>;
+  fetchOlderMessages: () => Promise<void>;
   clearMessages: () => void;
-  rollbackMessages: (index: number, shouldBranch?: boolean) => void;
+  rollbackMessages: (messageId: number | undefined, shouldBranch?: boolean) => Promise<void>;
   setIsTyping: (typing: boolean) => void;
+  setActiveAudioId: (id: string | null) => void;
+  setAbortController: (controller: AbortController | null) => void;
+  stopGeneration: () => void;
   setMissions: (missions: Mission[]) => void;
+  setIsGreetingSession: (isGreeting: boolean) => void;
   updateMission: (id: string, updates: Partial<Mission>) => void;
   addFragment: (text: string) => void;
-  autoSave: () => void;
 }
 
 export const createChatSlice = (set: any, get: any): ChatSlice => ({
@@ -27,115 +34,147 @@ export const createChatSlice = (set: any, get: any): ChatSlice => ({
   missions: [],
   fragments: [],
   currentAutoSlotId: null,
-  _autoSaveTimer: null,
+  hasMoreOlder: false,
+  activeAudioId: null,
+  abortController: null,
 
-  addMessage: (msg) => {
-    // 立即更新内存状态以保证 UI 响应
-    set((state: any) => ({ messages: [...state.messages, msg] }));
-    
-    // 防抖处理：1.5s 后执行 autoSave，这不仅会更新 saveSlots 分支，
-    // 还会触发 Zustand persist 将完整的 state (包括最新的 messages) 同步到 R2。
+  addMessage: async (msg, targetSlotId) => {
     const state = get();
-    if (state._autoSaveTimer) clearTimeout(state._autoSaveTimer);
-    const timer = setTimeout(() => {
-      get().autoSave();
-    }, 1500);
-    set({ _autoSaveTimer: timer });
-  },
+    // 优先使用传入的 targetSlotId，否则使用当前全局 slotId
+    const slotId = targetSlotId || state.currentAutoSlotId || `auto_${Date.now()}`;
+    if (!state.currentAutoSlotId && !targetSlotId) set({ currentAutoSlotId: slotId });
 
-  clearMessages: () => set({ messages: [] }),
+    // 1. 异步写入数据库 (精准定向写入)
+    await db.messages.add({ ...msg, slotId, timestamp: Date.now() });
 
-  rollbackMessages: (index, shouldBranch = false) => {
-    const state = get();
-    if (state._autoSaveTimer) clearTimeout(state._autoSaveTimer);
-    const truncated: Message[] = index < 0 ? [] : state.messages.slice(0, index + 1);
-
-    // 从角色卡初始 missions 出发，重放截断范围内的所有 tool_call
-    const baseMissions: Mission[] = state.selectedCharacter.extensions?.missions || [];
-    let replayedMissions = baseMissions.map((m: Mission) => ({ ...m }));
-    for (const msg of truncated) {
-      if (msg.role !== 'assistant' || !msg.tool_calls?.length) continue;
-      for (const tc of msg.tool_calls) {
-        if (tc.function?.name !== 'manage_quest_state') continue;
-        try {
-          const args = JSON.parse(tc.function.arguments);
-          const { action, quest_id, quest_type, title, description, progress_delta } = args;
-          if (action === 'CREATE') {
-            const exists = replayedMissions.some(m => m.id === quest_id);
-            if (exists) {
-              replayedMissions = replayedMissions.map(m => m.id !== quest_id ? m : {
-                ...m, description: description || m.description,
-                progress: Math.min(100, Math.max(0, m.progress + (progress_delta || 0))),
-                status: Math.min(100, m.progress + (progress_delta || 0)) >= 100 ? 'COMPLETED' : 'ACTIVE'
-              });
-            } else {
-              const p = Math.min(100, Math.max(0, progress_delta || 0));
-              replayedMissions.push({ id: quest_id, title: title || '新任务', description, type: quest_type || (quest_id.startsWith('main_') ? 'MAIN' : 'SIDE'), progress: p, status: p >= 100 ? 'COMPLETED' : 'ACTIVE' });
-            }
-          } else if (action === 'UPDATE') {
-            replayedMissions = replayedMissions.map(m => m.id !== quest_id ? m : {
-              ...m, description: description || m.description,
-              progress: Math.min(100, Math.max(0, m.progress + (progress_delta || 0))),
-              status: Math.min(100, m.progress + (progress_delta || 0)) >= 100 ? 'COMPLETED' : 'ACTIVE'
-            });
-          } else if (action === 'RESOLVE') {
-            replayedMissions = replayedMissions.map(m => m.id !== quest_id ? m : { ...m, progress: 100, status: 'COMPLETED' });
-          } else if (action === 'FAIL') {
-            replayedMissions = replayedMissions.map(m => m.id !== quest_id ? m : { ...m, status: 'FAILED' });
-          }
-        } catch { /* malformed args, skip */ }
-      }
+    // 2. 只有当写入的目标是当前正在查看的存档时，才更新内存窗口
+    if (slotId === state.currentAutoSlotId) {
+      set((s: any) => {
+        const newMsgs = [...s.messages, msg];
+        const windowedMsgs = newMsgs.length > 50 ? newMsgs.slice(-50) : newMsgs;
+        return { 
+          messages: windowedMsgs,
+          hasMoreOlder: s.hasMoreOlder || newMsgs.length > 50
+        };
+      });
     }
 
-    set((s: any) => ({
-      messages: truncated,
-      missions: replayedMissions,
-      isTyping: false,
-      currentAutoSlotId: shouldBranch ? null : s.currentAutoSlotId,
-      _autoSaveTimer: null
-    }));
-    get().autoSave();
-  },
-
-  setIsTyping: (typing) => set({ isTyping: typing }),
-
-  setMissions: (missions) => set({ missions }),
-
-  updateMission: (id, updates) => {
-    set((state: any) => ({ missions: (state.missions || []).map((m: Mission) => m.id === id ? { ...m, ...updates } : m) }));
-    get().autoSave();
-  },
-
-  addFragment: (text) => set((state: any) => ({ fragments: [...(state.fragments || []), text] })),
-
-  autoSave: () => {
-    const state = get();
-    if (state.messages.length === 0) return;
-    const lastMsg = state.messages[state.messages.length - 1].content;
-    let autoId = state.currentAutoSlotId;
-    if (!autoId) {
-      autoId = `auto_${Date.now()}`;
-      set({ currentAutoSlotId: autoId });
-    }
-    const existingAutoSlot = (state.saveSlots || []).find((s: SaveSlot) => s.id === autoId);
+    // 3. 更新存档元数据 (摘要、时间戳)
+    const lastMsg = msg.content;
     const autoSlot: SaveSlot = {
-      id: autoId,
-      name: existingAutoSlot?.name,
+      id: slotId,
       timestamp: Date.now(),
       characterId: state.selectedCharacter.id,
-      messages: state.messages,
+      messages: [], 
       summary: `[自动] ${lastMsg.slice(0, 40)}${lastMsg.length > 40 ? '...' : ''}`,
       missions: state.missions,
       fragments: state.fragments
     };
+    
     set((s: any) => {
       const slots = s.saveSlots || [];
-      const otherAutoSlots = slots.filter((slot: SaveSlot) => slot.id.startsWith('auto_') && slot.id !== autoId);
-      const manualSlots = slots.filter((slot: SaveSlot) => !slot.id.startsWith('auto_'));
-      const limitedAutoSlots = [autoSlot, ...otherAutoSlots].sort((a, b) => b.timestamp - a.timestamp).slice(0, 10);
-      const finalSlots = [...limitedAutoSlots, ...manualSlots];
-      persistSlots(SAVE_KEY, finalSlots);
-      return { saveSlots: finalSlots };
+      const updatedSlots = slots.some((sl: any) => sl.id === slotId)
+        ? slots.map((sl: any) => sl.id === slotId ? { ...sl, ...autoSlot } : sl)
+        : [autoSlot, ...slots];
+      return { saveSlots: updatedSlots.slice(0, 50) };
     });
   },
+
+  loadInitialMessages: async (slotId) => {
+    // 从数据库拉取最后 30 条
+    const allMsgs = await db.messages.where('slotId').equals(slotId).sortBy('timestamp');
+    const initial = allMsgs.slice(-30);
+    set({ 
+      messages: initial, 
+      hasMoreOlder: allMsgs.length > 30,
+      currentAutoSlotId: slotId 
+    });
+  },
+
+  fetchOlderMessages: async () => {
+    const state = get();
+    if (!state.currentAutoSlotId || !state.hasMoreOlder) return;
+
+    // 获取当前内存中最老消息的时间戳
+    const firstMsg = state.messages[0];
+    const slotId = state.currentAutoSlotId;
+
+    // 查找更早的消息
+    const older = await db.messages
+      .where('slotId').equals(slotId)
+      .filter(m => m.timestamp < (firstMsg as any).timestamp)
+      .reverse()
+      .limit(30)
+      .toArray();
+
+    if (older.length > 0) {
+      set((s: any) => ({
+        messages: [...older.reverse(), ...s.messages],
+        hasMoreOlder: older.length === 30
+      }));
+    } else {
+      set({ hasMoreOlder: false });
+    }
+  },
+
+  clearMessages: () => set({ messages: [] }),
+
+  rollbackMessages: async (messageId, shouldBranch = false) => {
+    const state = get();
+    if (messageId === undefined) return;
+
+    // 1. 获取目标消息的确切元数据 (通过 ID)
+    const targetMsg = await db.messages.get(messageId);
+    if (!targetMsg) {
+      console.warn('[Rollback] 目标消息不存在于数据库中:', messageId);
+      return;
+    }
+
+    // 2. 数据库回滚：物理删除该消息之后的所有记录
+    await db.messages
+      .where('slotId').equals(state.currentAutoSlotId || '')
+      .filter(m => m.timestamp > targetMsg.timestamp)
+      .delete();
+
+    // 3. 内存窗口回滚：找到内存中对应的那条消息并截断
+    set((s: any) => {
+      const memoryIdx = s.messages.findIndex((m: any) => (m as any).timestamp === targetMsg.timestamp);
+      if (memoryIdx === -1) {
+        // 极端情况：消息已在内存窗口外（通过分页加载又滚远了）
+        // 此时重新从库里加载最后 30 条作为补偿
+        db.messages.where('slotId').equals(state.currentAutoSlotId || '').sortBy('timestamp').then(all => {
+          set({ messages: all.slice(-30), hasMoreOlder: all.length > 30 });
+        });
+        return { currentAutoSlotId: shouldBranch ? null : state.currentAutoSlotId };
+      }
+      return {
+        messages: s.messages.slice(0, memoryIdx + 1),
+        currentAutoSlotId: shouldBranch ? null : state.currentAutoSlotId
+      };
+    });
+  },
+
+  setIsTyping: (typing) => set({ isTyping: typing }),
+
+  setActiveAudioId: (id) => set({ activeAudioId: id }),
+
+  setAbortController: (controller) => set({ abortController: controller }),
+
+  stopGeneration: () => {
+    const { abortController } = get();
+    if (abortController) {
+      abortController.abort();
+      set({ abortController: null, isTyping: false });
+    }
+  },
+
+  setMissions: (missions) => set({ missions }),
+
+  setIsGreetingSession: (isGreeting) => set({ isGreetingSession: isGreeting }),
+
+  updateMission: (id, updates) => {
+    set((state: any) => ({ missions: (state.missions || []).map((m: Mission) => m.id === id ? { ...m, ...updates } : m) }));
+  },
+
+  addFragment: (text) => set((state: any) => ({ fragments: [...(state.fragments || []), text] })),
 });

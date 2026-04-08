@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Trash2, Check, Globe, Plus, Book, Settings2, Edit2, ChevronDown, ChevronUp, Key, Camera } from 'lucide-react'
 import { useAppStore } from '../../store/useAppStore'
-import type { WorldBookEntry } from '../../store/useAppStore'
+import type { WorldBook } from '../../types/store'
 import TagTemplateEditor from './TagTemplateEditor'
 import { extractPersonaFromPng } from '../../utils/pngParser'
 import { useDialog } from '../GlobalDialog'
@@ -159,8 +159,11 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
     >
       <motion.div 
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg bg-echo-white dark:bg-[#0d0d0d] rounded-[2.5rem] md:rounded-[3rem] border-0.5 border-echo-border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] md:max-h-[85vh] safe-area-top"
+        className="w-full max-w-lg bg-echo-white dark:bg-[#0d0d0d] rounded-[2.5rem] md:rounded-[3rem] border-0.5 border-echo-border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] md:max-h-[85vh]"
       >
+        {/* iOS 状态栏占位 */}
+        <div className="h-[var(--sat)] w-full shrink-0" />
+
         <header className="p-6 md:p-8 pb-4 flex justify-between items-center border-b-0.5 border-gray-100 dark:border-gray-800">
           <div className="flex flex-col text-left">
             <h2 className="text-[10px] tracking-[0.6em] text-gray-400 uppercase">Core // Identifier</h2>
@@ -526,24 +529,25 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
             const msg = relatedSlots.length > 0
               ? `确定要删除此角色吗？同时将删除 ${relatedSlots.length} 个相关存档，此操作不可撤销。`
               : '确定要删除此角色吗？此操作不可撤销。'
-            
-            const ok = await confirm(msg, { 
-              title: 'Final Authorization Required',
-              confirmText: 'Confirm Delete', 
-              danger: true 
+            const ok = await confirm(msg, {
+              title: '确认删除角色',
+              confirmText: '确认删除',
+              danger: true
             })
+
             if (!ok) return
 
-            // 如果有存档，进行第二次“终极确认”
+            // 如果有存档，进行第二次确认
             if (relatedSlots.length > 0) {
               const finalOk = await confirm(
-                `警告：检测到 ${relatedSlots.length} 条关联聊天记录。删除角色后，这些记忆将永久消失，无法通过任何手段找回。你确定要抹除这一切吗？`,
-                { 
-                  title: 'ULTIMATE PURGE CONFIRMATION',
-                  confirmText: 'YES, ERASE EVERYTHING',
-                  danger: true 
+                `警告：检测到 ${relatedSlots.length} 条关联的聊天记录。删除角色后，这些数据将永久丢失。确认要永久删除吗？`,
+                {
+                  title: '最终确认',
+                  confirmText: '永久删除',
+                  danger: true
                 }
               )
+
               if (!finalOk) return
             }
 

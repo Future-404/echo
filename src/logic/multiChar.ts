@@ -1,4 +1,4 @@
-import type { Message } from '../store/useAppStore'
+import type { Message } from '../types/chat'
 
 export interface ApiMessage {
   role: 'system' | 'user' | 'assistant'

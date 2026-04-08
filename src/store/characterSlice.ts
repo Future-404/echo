@@ -1,6 +1,7 @@
 import type { CharacterCard, WorldBookEntry } from './useAppStore'
 import { getStorageAdapter } from '../storage'
 import { replaceMacros } from '../logic/promptEngine'
+import { db } from '../storage/db'
 
 export interface CharacterSlice {
   characters: CharacterCard[];
@@ -13,9 +14,9 @@ export interface CharacterSlice {
   syncImagesFromDb: () => Promise<void>;
   updateAttributes: (charId: string, attributes: Record<string, any>) => void;
   addTagTemplate: (charId: string, template: any) => void;
-  addPrivateWorldBookEntry: (entry: WorldBookEntry) => void;
-  updatePrivateWorldBookEntry: (id: string, updates: Partial<WorldBookEntry>) => void;
-  removePrivateWorldBookEntry: (id: string) => void;
+  addPrivateWorldBookEntry: (entry: WorldBookEntry) => Promise<void>;
+  updatePrivateWorldBookEntry: (id: string, updates: Partial<WorldBookEntry>) => Promise<void>;
+  removePrivateWorldBookEntry: (id: string) => Promise<void>;
 }
 
 export const createCharacterSlice = (set: any, get: any, DEFAULT_CHARACTERS: CharacterCard[]): CharacterSlice => ({
@@ -28,7 +29,7 @@ export const createCharacterSlice = (set: any, get: any, DEFAULT_CHARACTERS: Cha
     const userName = activePersona?.name || 'Observer';
     const rawGreeting = overrideGreeting ?? char.greeting;
     const finalGreeting = rawGreeting ? replaceMacros(rawGreeting, userName, char.name) : undefined;
-    // 切換角色等同新遊戲：重置 attributes、missions、fragments、autoSlot
+    
     const charReset = { ...char, attributes: {} };
     set((s: any) => ({ 
       selectedCharacter: charReset,
@@ -45,6 +46,13 @@ export const createCharacterSlice = (set: any, get: any, DEFAULT_CHARACTERS: Cha
 
   addCharacter: async (char) => {
     if (char.image.startsWith('data:')) await getStorageAdapter().saveImage(char.id, char.image);
+    
+    // 如果角色带了私设世界书，同步到 Dexie
+    if (char.extensions?.worldBook?.length) {
+      const entries = char.extensions.worldBook.map(e => ({ ...e, ownerId: char.id, updatedAt: Date.now() }));
+      await db.worldEntries.bulkPut(entries);
+    }
+
     set((state: any) => ({ characters: [...(state.characters || []), char] }));
   },
 
@@ -58,6 +66,9 @@ export const createCharacterSlice = (set: any, get: any, DEFAULT_CHARACTERS: Cha
 
   removeCharacter: async (id) => {
     await getStorageAdapter().removeImage(id);
+    // 清理该角色的私设世界书
+    await db.worldEntries.where('ownerId').equals(id).delete();
+
     set((state: any) => ({
       characters: (state.characters || []).filter((c: CharacterCard) => c.id !== id),
       selectedCharacter: state.selectedCharacter.id === id ? (state.characters[0] || DEFAULT_CHARACTERS[0]) : state.selectedCharacter
@@ -75,7 +86,6 @@ export const createCharacterSlice = (set: any, get: any, DEFAULT_CHARACTERS: Cha
     }));
     const updatedSelected = updatedChars.find((c: CharacterCard) => c.id === state.selectedCharacter.id) || state.selectedCharacter;
 
-    // 同步 secondaryCharacter 的头像
     let updatedSecondary = state.secondaryCharacter;
     if (updatedSecondary) {
       const found = updatedChars.find((c: CharacterCard) => c.id === updatedSecondary!.id);
@@ -106,35 +116,54 @@ export const createCharacterSlice = (set: any, get: any, DEFAULT_CHARACTERS: Cha
     };
   }),
 
-  addPrivateWorldBookEntry: (entry) => set((state: any) => {
+  addPrivateWorldBookEntry: async (entry) => {
+    const state = get();
     const char = state.selectedCharacter;
     const currentEntries = char.extensions?.worldBook || [];
     const updatedChar = { ...char, extensions: { ...char.extensions, worldBook: [...currentEntries, entry] } };
-    return {
-      selectedCharacter: updatedChar,
-      characters: (state.characters || []).map((c: CharacterCard) => c.id === char.id ? updatedChar : c)
-    };
-  }),
+    
+    // 同步到 Dexie
+    await db.worldEntries.put({ ...entry, ownerId: char.id, updatedAt: Date.now() });
 
-  updatePrivateWorldBookEntry: (id, updates) => set((state: any) => {
+    set((s: any) => ({
+      selectedCharacter: updatedChar,
+      characters: (s.characters || []).map((c: CharacterCard) => c.id === char.id ? updatedChar : c)
+    }));
+  },
+
+  updatePrivateWorldBookEntry: async (id, updates) => {
+    const state = get();
     const char = state.selectedCharacter;
     const currentEntries = char.extensions?.worldBook || [];
-    const updatedEntries = (currentEntries || []).map((e: WorldBookEntry) => e.id === id ? { ...e, ...updates } : e);
-    const updatedChar = { ...char, extensions: { ...char.extensions, worldBook: updatedEntries } };
-    return {
-      selectedCharacter: updatedChar,
-      characters: (state.characters || []).map((c: CharacterCard) => c.id === char.id ? updatedChar : c)
-    };
-  }),
+    const entry = currentEntries.find((e: any) => e.id === id);
+    if (!entry) return;
 
-  removePrivateWorldBookEntry: (id) => set((state: any) => {
+    const updatedEntry = { ...entry, ...updates };
+    const updatedEntries = currentEntries.map((e: any) => e.id === id ? updatedEntry : e);
+    const updatedChar = { ...char, extensions: { ...char.extensions, worldBook: updatedEntries } };
+    
+    // 同步到 Dexie
+    await db.worldEntries.put({ ...updatedEntry, ownerId: char.id, updatedAt: Date.now() });
+
+    set((s: any) => ({
+      selectedCharacter: updatedChar,
+      characters: (s.characters || []).map((c: CharacterCard) => c.id === char.id ? updatedChar : c)
+    }));
+  },
+
+  removePrivateWorldBookEntry: async (id) => {
+    const state = get();
     const char = state.selectedCharacter;
     const currentEntries = char.extensions?.worldBook || [];
-    const updatedEntries = (currentEntries || []).filter((e: WorldBookEntry) => e.id !== id);
+    const updatedEntries = currentEntries.filter((e: any) => e.id !== id);
     const updatedChar = { ...char, extensions: { ...char.extensions, worldBook: updatedEntries } };
-    return {
+    
+    // 从 Dexie 删除
+    await db.worldEntries.delete(id);
+
+    set((s: any) => ({
       selectedCharacter: updatedChar,
-      characters: (state.characters || []).map((c: CharacterCard) => c.id === char.id ? updatedChar : c)
-    };
-  }),
+      characters: (s.characters || []).map((c: CharacterCard) => c.id === char.id ? updatedChar : c)
+    }));
+  },
 });

@@ -1,15 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { authenticateWithPassword, getSavedToken, resetStorageAdapter } from '../../storage';
-import { Cloud, CloudOff, Loader2, CheckCircle2, AlertCircle, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { backupService } from '../../utils/backupService';
+import { 
+  Cloud, CloudOff, Loader2, CheckCircle2, AlertCircle, 
+  ShieldCheck, ShieldAlert, Download, Upload, RefreshCw, 
+  Database, HardDrive, Info
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useDialog } from '../GlobalDialog';
 
 const StorageSettings: React.FC = () => {
+  const { confirm } = useDialog();
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [backupLoading, setBackupLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isPersistent, setIsPersistent] = useState<boolean | null>(null);
-  const { setHasHydrated } = useAppStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (navigator.storage?.persisted) {
@@ -23,16 +32,12 @@ const StorageSettings: React.FC = () => {
     if (!password) return;
     setLoading(true);
     setError(null);
-    setSuccess(false);
-
     try {
       await authenticateWithPassword(password);
       setSuccess(true);
       setPassword('');
-      // 成功后强制重新同步一次数据
       const { useAppStore: store } = await import('../../store/useAppStore');
       await store.persist.rehydrate();
-      // 这里不设 true 会导致界面一直 loading，因为 rehydrate 会重置状态
       store.getState().setHasHydrated(true);
     } catch (err: any) {
       setError(err.message || '连接失败，请检查密码或后端地址');
@@ -41,101 +46,176 @@ const StorageSettings: React.FC = () => {
     }
   };
 
-  const handleDisconnect = () => {
-    localStorage.removeItem('echo-storage-token');
-    resetStorageAdapter();
-    window.location.reload(); // 简单粗暴但有效，重置所有状态
+  const handleExport = async () => {
+    setBackupLoading(true);
+    try {
+      await backupService.exportFullBackup();
+    } catch (e) {
+      alert('导出失败');
+    } finally {
+      setBackupLoading(false);
+    }
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const ok = await confirm('确定要导入此备份并覆盖当前所有对话、角色和配置吗？此操作无法撤销。', {
+      title: '确认覆盖数据？',
+      confirmText: '确认覆盖',
+      danger: true
+    });
+
+    if (!ok) {
+      e.target.value = '';
+      return;
+    }
+
+    setBackupLoading(true);
+    try {
+      await backupService.importFullBackup(file);
+      alert('重构成功，系统即将重启以同步意识。');
+      window.location.reload();
+    } catch (err: any) {
+      alert(`导入失败: ${err.message}`);
+    } finally {
+      setBackupLoading(false);
+      e.target.value = '';
+    }
   };
 
   return (
-    <div className="p-6 space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
-      <div className="space-y-2">
-        <h3 className="text-lg font-serif text-gray-800 dark:text-gray-100">云端同步</h3>
-        <p className="text-xs text-gray-400 leading-relaxed">
-          开启后，您的存档、角色及配置将自动备份到 Cloudflare R2。此功能为可选进阶选项。
-        </p>
+    <div className="p-8 space-y-12 pb-24">
+      {/* 标题 */}
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 shadow-inner">
+          <Database size={24} strokeWidth={1.5} />
+        </div>
+        <div>
+          <h3 className="text-sm font-serif tracking-[0.2em] text-gray-700 dark:text-gray-200 uppercase font-bold italic">数据管理 // DATA</h3>
+          <p className="text-[9px] text-gray-400 dark:text-gray-500 uppercase mt-1 tracking-widest font-mono">Archive & Consciousness Portability</p>
+        </div>
       </div>
 
-      {currentToken ? (
-        <div className="space-y-6">
-          <div className="p-5 rounded-3xl bg-green-500/5 border border-green-500/10 flex items-center gap-4">
-            <CheckCircle2 className="text-green-500 shrink-0" size={20} />
-            <div>
-              <p className="text-sm font-bold text-green-600 dark:text-green-400">已激活同步</p>
-              <p className="text-[10px] text-gray-400 mt-0.5">您的数据正在实时备份至云端</p>
-            </div>
-          </div>
+      {/* 离线数据包 (.echo) */}
+      <section className="space-y-6">
+        <div className="flex items-center gap-2 px-1">
+          <label className="text-[10px] uppercase tracking-widest text-gray-400 font-bold italic underline decoration-gray-100 dark:decoration-white/5 underline-offset-8">离线数据包 // OFFLINE PACKAGE</label>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* 导出 */}
           <button
-            onClick={handleDisconnect}
-            className="w-full py-4 rounded-3xl border-0.5 border-red-200 dark:border-red-900/30 text-red-500 text-xs font-bold hover:bg-red-50 dark:hover:bg-red-950/20 transition-all"
+            onClick={handleExport}
+            disabled={backupLoading}
+            className="group p-6 rounded-[2.5rem] bg-white/40 dark:bg-white/5 border-0.5 border-gray-100 dark:border-white/5 hover:border-blue-300 dark:hover:border-blue-900 transition-all text-left shadow-sm relative overflow-hidden"
           >
-            断开云端连接
+            <div className="relative z-10 flex flex-col gap-4">
+              <div className="w-10 h-10 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
+                <Download size={20} />
+              </div>
+              <div>
+                <p className="text-xs font-serif font-bold text-gray-700 dark:text-gray-200">导出意识数据</p>
+                <p className="text-[8px] text-gray-400 uppercase mt-1 tracking-tighter">打包角色、记忆与配置为 .echo 文件</p>
+              </div>
+            </div>
+            <Download className="absolute -right-4 -bottom-4 text-blue-500/5 rotate-12" size={80} />
+          </button>
+
+          {/* 导入 */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={backupLoading}
+            className="group p-6 rounded-[2.5rem] bg-white/40 dark:bg-white/5 border-0.5 border-gray-100 dark:border-white/5 hover:border-amber-300 dark:hover:border-amber-900 transition-all text-left shadow-sm relative overflow-hidden"
+          >
+            <input type="file" ref={fileInputRef} onChange={handleImport} accept=".echo,.json" className="hidden" />
+            <div className="relative z-10 flex flex-col gap-4">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform">
+                <Upload size={20} />
+              </div>
+              <div>
+                <p className="text-xs font-serif font-bold text-gray-700 dark:text-gray-200">重构意识数据</p>
+                <p className="text-[8px] text-gray-400 uppercase mt-1 tracking-tighter">从本地文件恢复所有数据 (覆盖模式)</p>
+              </div>
+            </div>
+            <RefreshCw className="absolute -right-4 -bottom-4 text-amber-500/5 -rotate-12" size={80} />
           </button>
         </div>
-      ) : (
-        <div className="space-y-6">
-          <div className="p-5 rounded-3xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 flex items-center gap-4 opacity-60">
-            <CloudOff className="text-gray-400 shrink-0" size={20} />
-            <div>
-              <p className="text-sm font-bold text-gray-500 dark:text-gray-400">本地模式</p>
-              <p className="text-[10px] text-gray-400 mt-0.5">数据仅存储在当前浏览器中</p>
-            </div>
-          </div>
+      </section>
 
-          {isPersistent !== null && (
-            <div className={`p-4 rounded-2xl flex items-center gap-3 ${isPersistent ? 'bg-green-500/5 border border-green-500/10' : 'bg-amber-500/5 border border-amber-500/10'}`}>
-              {isPersistent
-                ? <ShieldCheck size={16} className="text-green-500 shrink-0" />
-                : <ShieldAlert size={16} className="text-amber-500 shrink-0" />}
-              <div>
-                <p className={`text-[10px] font-bold uppercase tracking-widest ${isPersistent ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                  {isPersistent ? '持久化存储已授权' : '持久化存储未授权'}
-                </p>
-                <p className="text-[9px] text-gray-400 mt-0.5 leading-relaxed">
-                  {isPersistent
-                    ? '浏览器不会在磁盘不足时自动清理本地数据'
-                    : '磁盘空间不足时浏览器可能自动清除本地存档，建议开启云端同步'}
-                </p>
-              </div>
-            </div>
-          )}
+      {/* 云端同步 (R2) */}
+      <section className="space-y-6">
+        <div className="flex items-center gap-2 px-1">
+          <label className="text-[10px] uppercase tracking-widest text-gray-400 font-bold italic">云端实时同步 // CLOUD SYNC</label>
+        </div>
 
+        {currentToken ? (
           <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-[10px] uppercase tracking-widest text-gray-400 font-bold px-1">访问密码 (AUTH_TOKEN)</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="输入您在部署时设置的密码"
-                className="w-full bg-white dark:bg-black border-0.5 border-gray-200 dark:border-gray-800 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-              />
-            </div>
-
-            {error && (
-              <div className="flex items-center gap-2 px-2 text-red-500 animate-shake">
-                <AlertCircle size={14} />
-                <span className="text-[10px] font-bold">{error}</span>
+            <div className="p-6 rounded-[2rem] bg-green-500/5 border-0.5 border-green-500/20 flex items-center gap-5">
+              <div className="w-12 h-12 rounded-2xl bg-green-500/10 flex items-center justify-center text-green-500 shadow-inner">
+                <ShieldCheck size={24} />
               </div>
-            )}
-
-            <button
-              onClick={handleConnect}
-              disabled={loading || !password}
-              className="w-full py-4 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-3xl text-xs font-bold shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2"
-            >
-              {loading ? <Loader2 className="animate-spin" size={16} /> : <Cloud size={16} />}
-              开启云端同步
+              <div>
+                <p className="text-xs font-bold text-green-600 dark:text-green-400">同步链路已激活</p>
+                <p className="text-[8px] text-gray-400 mt-1 uppercase tracking-widest">Active Neural Link: R2 STORAGE</p>
+              </div>
+            </div>
+            <button onClick={() => { localStorage.removeItem('echo-storage-token'); resetStorageAdapter(); window.location.reload(); }} className="w-full py-4 text-[9px] uppercase tracking-[0.3em] text-red-400 hover:text-red-500 transition-all font-mono">
+              [ 断开云端链接 / SEVER NEURAL LINK ]
             </button>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="space-y-6 bg-gray-50/50 dark:bg-white/5 p-6 rounded-[2.5rem] border-0.5 border-gray-100 dark:border-white/5">
+            <div className="flex items-center gap-4 opacity-60 px-2">
+              <CloudOff className="text-gray-400 shrink-0" size={20} />
+              <div className="text-left">
+                <p className="text-xs font-bold text-gray-500 dark:text-gray-400">本地存储模式</p>
+                <p className="text-[8px] text-gray-400 mt-0.5 uppercase tracking-tighter">DATA STORED LOCALLY IN BROWSER</p>
+              </div>
+            </div>
 
-      <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/10 space-y-2">
-        <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest">💡 提示</p>
-        <p className="text-[9px] text-gray-400 leading-relaxed">
-          开启同步前，请确保您已在 Cloudflare 完成了 R2 存储桶的创建与绑定。
-        </p>
+            <div className="space-y-4 px-2">
+              <div className="space-y-2">
+                <label className="text-[8px] uppercase tracking-[0.2em] text-gray-400 font-bold ml-1 italic">Neural Token // 访问密码</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter R2 Access Token..."
+                  className="w-full bg-white dark:bg-black/20 border-0.5 border-gray-200 dark:border-white/5 rounded-2xl px-5 py-4 text-xs focus:outline-none focus:border-blue-400 transition-all shadow-sm"
+                />
+              </div>
+
+              {error && (
+                <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-2 px-2 text-red-500">
+                  <AlertCircle size={12} />
+                  <span className="text-[9px] font-bold uppercase">{error}</span>
+                </motion.div>
+              )}
+
+              <button
+                onClick={handleConnect}
+                disabled={loading || !password}
+                className="w-full py-4 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white rounded-2xl text-[10px] uppercase tracking-[0.2em] font-bold shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-3"
+              >
+                {loading ? <Loader2 className="animate-spin" size={14} /> : <Cloud size={14} />}
+                Establish Cloud Link
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* 提示区 */}
+      <div className="bg-amber-500/5 dark:bg-amber-500/5 border-0.5 border-amber-500/10 p-6 rounded-3xl flex gap-4 items-start shadow-inner">
+        <Info size={16} className="text-amber-500 mt-0.5 shrink-0" />
+        <div className="space-y-1">
+          <p className="text-[9px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest italic">⚠ 注意事项 // CAUTION</p>
+          <p className="text-[8px] text-gray-400 dark:text-amber-200/40 leading-relaxed uppercase tracking-tighter">
+            .echo 数据包是您意识的物理载体。请妥善保管此文件。导入操作将清除所有现有数据，确保您已在重构前完成了必要的备份。
+          </p>
+        </div>
       </div>
     </div>
   );

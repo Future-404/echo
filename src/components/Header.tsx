@@ -16,8 +16,13 @@ const Header: React.FC = () => {
   const tokenColorClass = tokenUsagePercent > 95 ? 'text-red-500' : tokenUsagePercent > 80 ? 'text-orange-400' : 'text-gray-400 dark:text-gray-500'
 
   return (
-    <header className="sticky top-0 z-50 min-h-16 safe-area-top flex items-center justify-between px-6 md:px-10 pointer-events-auto bg-echo-base/60 dark:bg-black/60 backdrop-blur-md border-b border-black/5 dark:border-white/5">
-      <div className="flex items-center gap-6">
+    <header className="sticky top-0 z-50 pointer-events-none bg-echo-base/60 dark:bg-black/60 backdrop-blur-md border-b border-black/5 dark:border-white/5">
+      {/* iOS 状态栏占位层 */}
+      <div className="h-[var(--sat)] w-full" />
+      
+      {/* 实际内容层：固定 16 高度 */}
+      <div className="h-16 flex items-center justify-between px-6 md:px-10 pointer-events-auto">
+        <div className="flex items-center gap-6">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: isLoading ? 0 : 1 }} className="flex items-center gap-4">
           {/* 隐藏式返回主菜单按钮 */}
           <div className="relative group">
@@ -37,7 +42,38 @@ const Header: React.FC = () => {
 
           <div className="w-[1px] h-3 bg-gray-200 dark:bg-gray-800" />
           <div className="flex flex-col md:flex-row md:items-center md:gap-3">
-            <span className="text-[9px] md:text-[10px] tracking-[0.4em] text-gray-400 dark:text-gray-600 italic uppercase">{selectedCharacter.name}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] md:text-[10px] tracking-[0.4em] text-gray-400 dark:text-gray-600 italic uppercase">{selectedCharacter.name}</span>
+              
+              {/* 双轨解析模式快速切换 */}
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => {
+                    const modes: any[] = ['vn', 'markdown', 'plain'];
+                    const currentIdx = modes.indexOf(selectedCharacter.bodyEngine || 'vn');
+                    const nextMode = modes[(currentIdx + 1) % modes.length];
+                    useAppStore.getState().updateCharacter(selectedCharacter.id, { bodyEngine: nextMode });
+                  }}
+                  className="px-1.5 py-0.5 rounded-l-md border border-gray-200 dark:border-white/5 text-[7px] font-mono uppercase bg-blue-500/5 text-blue-500/70 hover:bg-blue-500/10 transition-colors"
+                  title="正文解析引擎 (VN/MD/RAW)"
+                >
+                  B:{selectedCharacter.bodyEngine || 'vn'}
+                </button>
+                <button
+                  onClick={() => {
+                    const modes: any[] = ['xml', 'html', 'st-card', 'none'];
+                    const currentIdx = modes.indexOf(selectedCharacter.widgetEngine || 'xml');
+                    const nextMode = modes[(currentIdx + 1) % modes.length];
+                    useAppStore.getState().updateCharacter(selectedCharacter.id, { widgetEngine: nextMode });
+                  }}
+                  className="px-1.5 py-0.5 rounded-r-md border-y border-r border-gray-200 dark:border-white/5 text-[7px] font-mono uppercase bg-orange-500/5 text-orange-500/70 hover:bg-orange-500/10 transition-colors"
+                  title="组件扩展引擎 (XML/HTML/ST/OFF)"
+                >
+                  W:{selectedCharacter.widgetEngine || 'xml'}
+                </button>
+              </div>
+            </div>
+
             {lastTokenCount > 0 && (
               <span className={`text-[7px] md:text-[8px] font-mono tracking-widest uppercase ${tokenColorClass} md:mt-0.5`}>
                 [ {lastTokenCount >= 1000 ? (lastTokenCount / 1000).toFixed(1) + 'k' : lastTokenCount} / {maxContextTokens >= 1000 ? (maxContextTokens / 1000).toFixed(0) + 'k' : maxContextTokens} ctx ]
@@ -91,7 +127,8 @@ const Header: React.FC = () => {
             <div className="w-1 h-1 bg-gray-400 dark:bg-gray-600 rounded-full" />
          </motion.button>
       </div>
-    </header>
+    </div>
+  </header>
   )
 }
 

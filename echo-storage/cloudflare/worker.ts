@@ -116,8 +116,7 @@ export default {
       return json({ error: 'Not Found' }, 404, origin)
     } catch (err) {
       console.error('[echo-storage] Error:', err)
-      const msg = err instanceof Error ? err.message : String(err)
-      return json({ error: 'Internal Server Error', message: msg }, 500, origin)
+      return json({ error: 'Internal Server Error' }, 500, origin)
     }
   },
 }

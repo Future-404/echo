@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAppStore } from '../../store/useAppStore'
-import type { TagTemplate } from '../../store/useAppStore'
+import type { TagTemplate } from '../../types/chat'
 
 const BLANK: Omit<TagTemplate, 'id'> = { name: '', originalRegex: '', replaceString: '', enabled: true, fields: [] }
 
@@ -72,7 +72,7 @@ const TagTemplateEditor: React.FC = () => {
                 <motion.div layout className="w-2.5 h-2.5 rounded-full bg-white shadow-sm" animate={{ x: tpl.enabled ? 14 : 0 }} />
               </button>
               <span className="text-[11px] font-serif font-bold text-gray-700 dark:text-gray-200 flex-1 truncate">{tpl.name}</span>
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+              <div className="flex items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-all">
                 <button onClick={() => remove(tpl.id)} className="p-1 text-gray-400 hover:text-red-400 transition-colors"><Trash2 size={11} /></button>
                 <button onClick={() => setExpandedId(expandedId === tpl.id ? null : tpl.id)} className="p-1 text-gray-400">
                   {expandedId === tpl.id ? <ChevronUp size={13} /> : <ChevronDown size={13} />}

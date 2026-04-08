@@ -1,4 +1,4 @@
-import type { CharacterAsset } from '../store/useAppStore'
+import type { CharacterAsset } from '../types/chat'
 
 // 從 V3 角色卡提取 assets
 export const extractAssetsFromV3 = (data: any): CharacterAsset[] => {

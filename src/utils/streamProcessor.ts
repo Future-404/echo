@@ -54,7 +54,6 @@ export const processChatStream = async (
         if (format === 'openai' && cleanedLine.startsWith('data: ')) {
           const dataStr = cleanedLine.slice(6);
           if (dataStr === '[DONE]') {
-            reader.releaseLock();
             callbacks.onFinish(fullText, Object.values(toolCallsMap).length > 0 ? Object.values(toolCallsMap) : undefined, lastUsage);
             return;
           }
@@ -109,6 +108,26 @@ export const processChatStream = async (
               };
             }
           } catch (e) { console.warn('Incomplete Anthropic chunk', e); }
+        }
+
+        // --- Gemini (Google) 格式解析 ---
+        else if (format === 'gemini' && cleanedLine.startsWith('data: ')) {
+          const dataStr = cleanedLine.slice(6);
+          try {
+            const json = JSON.parse(dataStr);
+            if (json.usageMetadata) {
+              lastUsage = {
+                prompt_tokens: json.usageMetadata.promptTokenCount,
+                completion_tokens: json.usageMetadata.candidatesTokenCount,
+                total_tokens: json.usageMetadata.totalTokenCount
+              };
+            }
+            const part = json.candidates?.[0]?.content?.parts?.[0];
+            if (part?.text) {
+              fullText += part.text;
+              callbacks.onChunk(part.text);
+            }
+          } catch (e) { console.warn('Incomplete Gemini chunk', e); }
         }
       }
     }

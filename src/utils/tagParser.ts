@@ -1,8 +1,9 @@
-import type { CharacterCard } from '../store/useAppStore';
+import type { CharacterCard } from '../types/chat';
 import { parseUniversalStatus } from './statusParser';
 
 // layer: 1=存储层, 2=渲染层
 export const applyCharacterRegexScripts = (text: string, char: CharacterCard, layer: 1 | 2 = 1): string => {
+  if (!text) return '';
   let transformedText = text;
 
   const templates = char.extensions?.tagTemplates || [];
@@ -10,7 +11,8 @@ export const applyCharacterRegexScripts = (text: string, char: CharacterCard, la
   templates.forEach(tpl => {
     if (!tpl.enabled || !tpl.originalRegex) return;
     if (tpl.replaceString === undefined || tpl.replaceString === null) return;
-    // placement 未设置时默认两层都跑（兼容旧数据）
+    
+    // 兼容旧数据的 placement
     const placement = tpl.placement ?? [1, 2];
     if (!placement.includes(layer)) return;
     
@@ -23,20 +25,27 @@ export const applyCharacterRegexScripts = (text: string, char: CharacterCard, la
         flags = pattern.substring(lastSlash + 1) || 'g';
         pattern = pattern.substring(1, lastSlash);
         
+        // 处理 ST 特有的 /s 修饰符 (dotAll)
         if (flags.includes('s')) {
           flags = flags.replace('s', '');
           pattern = pattern.replace(/\./g, '[\\s\\S]');
         }
       }
 
-      // 把 pattern 裡的字面 \n \t 轉成真正的控制字符
-      pattern = pattern.replace(/\\n/g, '\n').replace(/\\t/g, '\t')
-
+      // 关键修复：将转义的 \n \t 还原为实际字符
+      pattern = pattern.replace(/\\n/g, '\n').replace(/\\t/g, '\t');
       const regex = new RegExp(pattern, flags);
-      const replacement = String(tpl.replaceString).replace(/\\\\n/g, '\n').replace(/\\n/g, '\n');
+      
+      // 关键修复：处理替换字符串中的换行符和反向引用
+      const replacement = String(tpl.replaceString)
+        .replace(/\\\\n/g, '\n')
+        .replace(/\\n/g, '\n')
+        .replace(/\\r/g, '\r')
+        .replace(/\\t/g, '\t');
+
       transformedText = transformedText.replace(regex, replacement);
     } catch (e) {
-      console.warn(`[TagParser] Failed to apply script: ${tpl.name}`, e);
+      console.warn(`[TagParser] Regex Script Error: ${tpl.name}`, e);
     }
   });
 

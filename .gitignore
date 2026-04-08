@@ -52,6 +52,12 @@ Thumbs.db
 tmp/
 temp/
 
+# Vite HMR cache files leaked to project root
+/*.tsx
+/*.ts
+!vite.config.ts
+!vitest.config.ts
+
 # Global/System files
 .DS_Store
 .AppleDouble

@@ -40,7 +40,7 @@ const SaveScreen: React.FC = () => {
     });
     if (name) {
       const newId = `manual_${Date.now()}`;
-      saveGame(newId, name as string);
+      await saveGame(newId, name as string);
     }
   };
 
@@ -50,17 +50,18 @@ const SaveScreen: React.FC = () => {
       confirmText: '覆盖',
       danger: true,
     });
-    if (confirmed) saveGame(slotId);
+    if (confirmed) await saveGame(slotId);
   };
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 md:p-8 bg-black/80 backdrop-blur-md pointer-events-auto"
     >
-      <div className="w-full max-w-5xl flex justify-between items-center mb-8 safe-area-top">
+      <div className="w-full max-w-5xl flex justify-between items-center mb-8 pt-[var(--sat)]">
+
         <h2 className="text-3xl md:text-4xl font-serif text-white tracking-widest">保存进度</h2>
         <button 
           onClick={() => setCurrentView('main')} 

@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useMemo, memo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MoreHorizontal, Copy, RotateCw, Maximize2, Minimize2, Volume2, GitBranch, User as UserIcon } from 'lucide-react'
+import { MoreHorizontal, Copy, RotateCw, Maximize2, Minimize2, Volume2, VolumeX, GitBranch, User as UserIcon } from 'lucide-react'
 import { useAppStore } from '../store/useAppStore'
 import MessageContent from './Dialogue/MessageContent'
 import { useDevice } from '../hooks/useMediaQuery'
@@ -17,14 +17,17 @@ const MessageRow = memo<{
   isMobile: boolean; isTouchDevice: boolean;
   showMenu: boolean; distanceFromEnd: number;
   ttsSettings: any;
+  activeAudioId: string | null;
   onMenuToggle: (idx: number) => void;
   onCopy: (content: string) => void;
   onRetry: (idx: number, msg: any) => void;
-  onSpeak: (text: string, charId?: string) => void;
+  onSpeak: (text: string, charId?: string, msgId?: string) => void;
+  onStopAudio: () => void;
   onBranch: (idx: number) => void;
-}>(({ msg, idx, isAi, isLatest, isTyping, displayText, charForMsg, activePersona, userAvatarUrl, isMobile, isTouchDevice, showMenu, distanceFromEnd, ttsSettings, onMenuToggle, onCopy, onRetry, onSpeak, onBranch }) => {
+}>(({ msg, idx, isAi, isLatest, isTyping, displayText, charForMsg, activePersona, userAvatarUrl, isMobile, isTouchDevice, showMenu, distanceFromEnd, ttsSettings, activeAudioId, onMenuToggle, onCopy, onRetry, onSpeak, onStopAudio, onBranch }) => {
   const avatar = isAi ? charForMsg?.image : userAvatarUrl;
   const name = isAi ? (charForMsg?.name ?? '') : (activePersona?.name || 'You');
+  const isPlaying = activeAudioId === msg.content;
 
   return (
     <div className={`flex gap-2 group relative w-full ${isAi ? 'flex-row' : 'flex-row-reverse'}`}>
@@ -61,7 +64,15 @@ const MessageRow = memo<{
                 className={`absolute top-0 flex items-center gap-1 bg-white/95 dark:bg-black/95 backdrop-blur-md border border-gray-200 dark:border-white/10 rounded-full px-2 py-1 shadow-lg z-20 ${isAi ? 'left-10' : 'right-10'}`}
               >
                 <button onClick={(e) => { e.stopPropagation(); onCopy(msg.content) }} title="复制内容" className={`${isMobile ? 'p-2.5' : 'p-1.5'} text-gray-500 hover:text-blue-500 transition-all`}><Copy size={isMobile ? 14 : 12} /></button>
-                {ttsSettings.enabled && <button onClick={(e) => { e.stopPropagation(); onSpeak(msg.content, msg.speakerId) }} title="播放语音" className={`${isMobile ? 'p-2.5' : 'p-1.5'} text-gray-500 hover:text-purple-500 transition-all`}><Volume2 size={isMobile ? 14 : 12} /></button>}
+                {ttsSettings.enabled && (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); isPlaying ? onStopAudio() : onSpeak(msg.content, msg.speakerId, msg.content) }} 
+                    title={isPlaying ? "停止播放" : "播放语音"} 
+                    className={`${isMobile ? 'p-2.5' : 'p-1.5'} ${isPlaying ? 'text-purple-500 animate-pulse' : 'text-gray-500'} hover:text-purple-500 transition-all`}
+                  >
+                    {isPlaying ? <VolumeX size={isMobile ? 14 : 12} /> : <Volume2 size={isMobile ? 14 : 12} />}
+                  </button>
+                )}
                 {!isLatest && <button onClick={(e) => { e.stopPropagation(); onBranch(idx) }} title="存档并跳转到此" className={`${isMobile ? 'p-2.5' : 'p-1.5'} text-gray-500 hover:text-emerald-500 transition-all`}><GitBranch size={isMobile ? 14 : 12} /></button>}
                 <button onClick={(e) => { e.stopPropagation(); onRetry(idx, msg) }} title="重试/修改" className={`${isMobile ? 'p-2.5' : 'p-1.5'} text-gray-500 hover:text-red-500 transition-all`}><RotateCw size={isMobile ? 14 : 12} /></button>
               </motion.div>
@@ -99,7 +110,8 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
     messages, selectedCharacter, config, isLoading,
     setCurrentView, rollbackMessages, secondaryCharacter,
     isDialogueFullscreen, setDialogueFullscreen,
-    ttsSettings, branchGame
+    ttsSettings, branchGame, hasMoreOlder, fetchOlderMessages,
+    loadInitialMessages, currentAutoSlotId, activeAudioId
   } = useAppStore()
   const { confirm, prompt } = useDialog()
   const { isMobile, isTouchDevice } = useDevice()
@@ -109,8 +121,36 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
   const [activeIdx, setActiveIdx] = useState<number | null>(null)
   const pressTimer = useRef<any>(null)
   const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
 
   const activePersona = config.personas?.find(p => p.id === config.activePersonaId) || config.personas?.[0]
+
+  // 初始化加载：如果没有消息且有存档 ID，尝试加载 initial
+  useEffect(() => {
+    if (currentAutoSlotId && messages.length === 0) {
+      loadInitialMessages(currentAutoSlotId);
+    }
+  }, [currentAutoSlotId]);
+
+  const handleLoadMore = async () => {
+    if (isLoadingMore) return;
+    setIsLoadingMore(true);
+    
+    // 记录加载前的滚动高度
+    const oldHeight = scrollRef.current?.scrollHeight || 0;
+    const oldTop = scrollRef.current?.scrollTop || 0;
+
+    await fetchOlderMessages();
+    
+    // 关键：恢复滚动位置，防止跳动
+    setTimeout(() => {
+      if (scrollRef.current) {
+        const newHeight = scrollRef.current.scrollHeight;
+        scrollRef.current.scrollTop = (newHeight - oldHeight) + oldTop;
+      }
+      setIsLoadingMore(false);
+    }, 50);
+  };
 
   // 使用系统原生的 imageDb 加载 Persona 头像
   useEffect(() => {
@@ -132,22 +172,30 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
   useEffect(() => { onCanAdvanceChange?.(false) }, [])
 
   const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+    if (isLoadingMore) return; // 手动加载历史时，不要滚到底部
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior })
   }
 
-  useEffect(() => { scrollToBottom() }, [messages.length, displayText])
+  useEffect(() => { 
+    if (!isLoadingMore) scrollToBottom();
+  }, [messages.length, displayText])
 
-  const handleBranch = async (index: number) => {
+  const handleBranch = async (msg: any) => {
     const branchName = await prompt('请输入分支存档的名称', {
       title: '创建分支存档',
       defaultValue: `分支 - ${new Date().toLocaleString()}`,
-      placeholder: '例如：尝试不同路线',
+      placeholder: '分支 1',
     })
     if (branchName === null) return
-    const truncatedMessages = messages.slice(0, index + 1)
-    branchGame(truncatedMessages, branchName)
-    rollbackMessages(index, true)
-    useAppStore.getState().addFragment(`已跳转至分支：${branchName}`)
+    
+    // 找到该消息在当前内存窗口中的位置
+    const msgIdx = messages.findIndex(m => (m as any).timestamp === msg.timestamp)
+    if (msgIdx === -1) return
+
+    const truncatedMessages = messages.slice(0, msgIdx + 1)
+    await branchGame(truncatedMessages, branchName)
+    await rollbackMessages(msg.id, true)
+    useAppStore.getState().addFragment(`已切换至分支：${branchName}`)
     setActiveMenuIndex(null)
   }
 
@@ -178,24 +226,33 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
     document.body.removeChild(textArea);
   }
 
-  const handleRetry = async (index: number, msg: any) => {
-    const confirmed = await confirm('之后的对话记录将被永久删除并覆盖当前存档！', {
-      title: '确定要重试吗？',
-      confirmText: '重试',
+  const handleRetry = async (msg: any) => {
+    const confirmed = await confirm('确认后，该消息之后的所有记录将被永久删除。', {
+      title: '确认重试对话？',
+      confirmText: '确认重试',
       danger: true,
     })
     if (!confirmed) return
+    
     if (msg.role === 'user') {
-      const targetIndex = index - 1
-      rollbackMessages(targetIndex < 0 ? -1 : targetIndex, false)
+      // 用户消息重试：删除该消息本身及之后的所有内容
+      const allMsgs = await db.messages.where('slotId').equals(currentAutoSlotId || '').sortBy('timestamp');
+      const targetIdx = allMsgs.findIndex(m => m.id === msg.id);
+      const prevMsg = targetIdx > 0 ? allMsgs[targetIdx - 1] : undefined;
+      
+      await rollbackMessages(prevMsg?.id, false)
       if (onRetry) setTimeout(() => onRetry(msg.content), 150)
     } else {
-      let lastUserIndex = index - 1
-      while (lastUserIndex >= 0 && messages[lastUserIndex].role !== 'user') lastUserIndex--
-      if (lastUserIndex >= 0) {
-        const userContent = messages[lastUserIndex].content
-        const targetIndex = lastUserIndex - 1
-        rollbackMessages(targetIndex < 0 ? -1 : targetIndex, false)
+      // AI 回复重试：找到该回复之前的最后一条用户消息
+      const allMsgs = await db.messages.where('slotId').equals(currentAutoSlotId || '').sortBy('timestamp');
+      let userMsgIdx = allMsgs.findIndex(m => m.id === msg.id) - 1;
+      while (userMsgIdx >= 0 && allMsgs[userMsgIdx].role !== 'user') userMsgIdx--;
+      
+      if (userMsgIdx >= 0) {
+        const userMsg = allMsgs[userMsgIdx];
+        const userContent = userMsg.content;
+        const prevToUser = userMsgIdx > 0 ? allMsgs[userMsgIdx - 1] : undefined;
+        await rollbackMessages(prevToUser?.id, false)
         if (onRetry) setTimeout(() => onRetry(userContent), 150)
       }
     }
@@ -211,9 +268,13 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
 
   const handlePointerUpOrCancel = () => { if (pressTimer.current) clearTimeout(pressTimer.current) }
 
-  const handleSpeak = (text: string, charId?: string) => {
+  const handleSpeak = (text: string, charId?: string, msgId?: string) => {
     const voiceId = charId ? ttsSettings.voiceMap[charId] : undefined
-    ttsService.speak(text, ttsSettings, voiceId)
+    ttsService.speak(text, ttsSettings, voiceId, msgId)
+  }
+
+  const handleStopAudio = () => {
+    ttsService.stop()
   }
 
   const getStatusLight = () => {
@@ -271,6 +332,26 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
           </div>
         ) : (
           <div className="space-y-8 pb-4">
+            {/* 真分页历史加载按钮 */}
+            {hasMoreOlder && (
+              <div className="flex justify-center pt-2">
+                <button
+                  onClick={handleLoadMore}
+                  disabled={isLoadingMore}
+                  className="text-[10px] tracking-[0.2em] uppercase font-mono text-gray-400 hover:text-blue-500 transition-all flex items-center gap-2 py-4"
+                >
+                  {isLoadingMore ? (
+                    <span className="animate-pulse">Loading Chronology...</span>
+                  ) : (
+                    <>
+                      <RotateCw size={10} className="opacity-50" />
+                      Retrieve Older Context
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+            
             {visibleMessages.map((msg, idx) => {
               const isAi = msg.role === 'assistant'
               const isLatest = idx === visibleMessages.length - 1
@@ -294,11 +375,13 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
                     showMenu={activeMenuIndex === idx}
                     distanceFromEnd={distanceFromEnd}
                     ttsSettings={ttsSettings}
+                    activeAudioId={activeAudioId}
                     onMenuToggle={(i) => setActiveMenuIndex(activeMenuIndex === i ? null : i)}
                     onCopy={handleCopy}
-                    onRetry={handleRetry}
+                    onRetry={() => handleRetry(msg)}
                     onSpeak={handleSpeak}
-                    onBranch={handleBranch}
+                    onStopAudio={handleStopAudio}
+                    onBranch={() => handleBranch(msg)}
                   />
                 </div>
               )

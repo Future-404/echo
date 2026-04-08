@@ -20,35 +20,32 @@ export const parseStreamingNovelText = (
   // 從配置獲取標記符號（默認值）
   const quotes = options?.dialogueQuotes || '""“”';
   const actionChars = options?.actionMarkers || '**「」『』';
-  const thoughtChars = options?.thoughtMarkers || '()（）'; // 移除 <>，防止与 AI 的 XML 标签冲突
+  const thoughtChars = options?.thoughtMarkers || '()（）'; // 严格禁止包含 <>
 
-  // 1. 预处理：提取 Markdown 风格卡片或结构化容器
+  // 1. 预处理：提取 Markdown 风格卡片、结构化容器及斜杠命令
   // 支持 {{...}}, {...}, [[...]], [...]
   const cardRegex = /\{\{([\s\S]+?)\}\}|\{([\s\S]+?)\}|\[\[([\s\S]+?)\]\]|\[([\s\S]+?)\]/g;
+  // 增加对斜杠命令的识别：必须是行首或换行符后的 /command
+  const slashRegex = /(?:^|\n)\/([a-zA-Z0-9_-]+)\s+([\s\S]+?)(?=\n\/|$)/g;
 
-  // 用有序数组保留卡片及其在文本中的位置
   const cardSlots: { placeholder: string; segment: TextSegment }[] = [];
   let cardIdx = 0;
 
-  const textWithPlaceholders = rawText.replace(cardRegex, (match, p1, p2, p3, p4) => {
+  let textWithPlaceholders = rawText.replace(cardRegex, (match, p1, p2, p3, p4) => {
+    // ... (保持原有 card 逻辑不变)
     const content = (p1 || p2 || p3 || p4 || "").trim();
-    
-    // 识别分隔符：优先使用 |
+    const pipeIdx = content.indexOf('|');
     let type = "";
     let body = "";
-    
-    const pipeIdx = content.indexOf('|');
     if (pipeIdx > 0) {
       type = content.substring(0, pipeIdx).trim();
       body = content.substring(pipeIdx + 1).trim();
     } else {
-      // 尝试换行符分隔
       const nlIdx = content.indexOf('\n');
       if (nlIdx > 0) {
         type = content.substring(0, nlIdx).trim();
         body = content.substring(nlIdx + 1).trim();
       } else {
-        // 尝试首个空格分隔
         const spIdx = content.indexOf(' ');
         if (spIdx > 0) {
           type = content.substring(0, spIdx).trim();
@@ -59,18 +56,6 @@ export const parseStreamingNovelText = (
         }
       }
     }
-
-    // 验证 type 是否有效（防止误触简单的 Json 或 变量注入）
-    const validTypes = ['status-container', 'status', 'card', 'characterCard', 'html', 'details', '状态栏'];
-    const isKnownType = validTypes.some(t => type.toLowerCase().includes(t.toLowerCase()));
-    
-    if (!isKnownType) {
-      // 如果不是已知类型，且看起来不像一个干净的标识符，则忽略
-      if (type.length > 30 || type.includes(' ') || !type.match(/^[\w\u4e00-\u9fa5-]+$/)) {
-        return match;
-      }
-    }
-
     const placeholder = `\x00CARD${cardIdx}\x00`;
     const seg: TextSegment = {
       id: `seg_card_${cardIdx}`,
@@ -78,10 +63,23 @@ export const parseStreamingNovelText = (
       content: type,
       metadata: { rawBody: body, fullMatch: match }
     };
-
     cardSlots.push({ placeholder, segment: seg });
     cardIdx++;
     return placeholder;
+  });
+
+  // 提取斜杠命令
+  textWithPlaceholders = textWithPlaceholders.replace(slashRegex, (match, cmd, args) => {
+    const placeholder = `\x00CARD${cardIdx}\x00`;
+    const seg: TextSegment = {
+      id: `seg_slash_${cardIdx}`,
+      type: 'card', // 借用 card 类型或后续扩展，这里为了不改动太多逻辑，先用 card 类型并在 content 里标注
+      content: `slash:${cmd}`,
+      metadata: { rawBody: args.trim(), fullMatch: match }
+    };
+    cardSlots.push({ placeholder, segment: seg });
+    cardIdx++;
+    return `\n${placeholder}\n`;
   });
 
   // 2. 识别对话锚点并进行初步切分（使用配置的引號）
@@ -119,8 +117,8 @@ export const parseStreamingNovelText = (
   const refinedParts: { type: string; content: string; speaker?: string; metadata?: any }[] = [];
 
   function processSubTags(text: string, baseType: string, target: typeof refinedParts, speaker?: string) {
-    // 先检查是否是卡片占位符
-    const placeholderRegex = /\x00CARD(\d+)\x00/g;
+    // 灵活匹配各种 \x00 格式的占位符
+    const placeholderRegex = /\x00(CARD|BLOCK)(_B)?(_?\d+)?\x00/g;
     let lastSubIdx = 0;
     let subMatch;
 
@@ -129,8 +127,8 @@ export const parseStreamingNovelText = (
         const preText = text.substring(lastSubIdx, subMatch.index).trim();
         if (preText) processInlineSubTags(preText, baseType, target, speaker);
       }
-      const slot = cardSlots[parseInt(subMatch[1])];
-      if (slot) target.push({ type: 'card', content: slot.segment.content, metadata: slot.segment.metadata });
+      // 保持占位符原样作为 card 类型
+      target.push({ type: 'card', content: subMatch[0] });
       lastSubIdx = placeholderRegex.lastIndex;
     }
     if (lastSubIdx < text.length) {

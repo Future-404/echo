@@ -13,6 +13,7 @@ export const StatusBarRegistry: Record<string, React.FC<StatusBarProps>> = {
   'details': IframeBar,
   'html': IframeBar,
   'card': IframeBar,
+  'slash:js': IframeBar,
 };
 
 /**

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAppStore } from '../store/useAppStore'
-import { Image as ImageIcon, X } from 'lucide-react'
+import { Image as ImageIcon, X, Square } from 'lucide-react'
 
 interface ChatInputProps {
   onSend: (content: string, images?: string[]) => void
@@ -9,7 +9,7 @@ interface ChatInputProps {
 }
 
 const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
-  const { isLoading, config } = useAppStore()
+  const { isLoading, config, isTyping, stopGeneration } = useAppStore()
   const [userInput, setUserInput] = useState('')
   const [attachedImages, setAttachedImages] = useState<string[]>([])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -153,9 +153,22 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
             className="w-full bg-transparent border-b-0.5 border-gray-200 dark:border-gray-800 py-1 pr-10 text-sm text-gray-500 dark:text-gray-400 focus:outline-none focus:border-gray-400 dark:focus:border-gray-600 transition-all placeholder:text-gray-400 dark:placeholder:text-gray-700 placeholder:italic resize-none overflow-y-auto no-scrollbar min-h-[32px] max-h-[200px]" 
           />
           
-          <AnimatePresence>
-            {(userInput.trim() || attachedImages.length > 0) && (
+          <AnimatePresence mode="wait">
+            {isTyping ? (
               <motion.button
+                key="stop-btn"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                onClick={stopGeneration}
+                className="absolute right-0 bottom-1 p-1.5 text-red-400 hover:text-red-500 transition-colors"
+                title="终止生成"
+              >
+                <Square size={16} fill="currentColor" strokeWidth={0} />
+              </motion.button>
+            ) : (userInput.trim() || attachedImages.length > 0) && (
+              <motion.button
+                key="send-btn"
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}

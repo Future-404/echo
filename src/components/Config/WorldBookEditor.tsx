@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Trash2, ChevronDown, ChevronUp, Book, Key, ArrowLeft, Edit3, Settings, Upload } from 'lucide-react'
 import { useAppStore } from '../../store/useAppStore'
-import type { WorldBookEntry, WorldBook } from '../../store/useAppStore'
+import type { WorldBook } from '../../types/store'
 
 const WorldBookEditor: React.FC = () => {
   const { 

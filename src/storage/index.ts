@@ -15,6 +15,11 @@ function saveToken(token: string) {
   localStorage.setItem(BOOTSTRAP_KEY, token)
 }
 
+async function sha256hex(text: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
 let _adapter: StorageAdapter | null = null
 
 export function getStorageAdapter(): StorageAdapter {
@@ -36,20 +41,25 @@ export function resetStorageAdapter() {
 }
 
 export function initStorage(): 'ready' | 'need-auth' {
-  // 有后端 token 或静态 auth token 已验证过，均视为 ready
+  if (!API_BASE) {
+    if (!STATIC_AUTH_TOKEN) return 'ready'
+    return localStorage.getItem(BOOTSTRAP_KEY) === 'local-authenticated' ? 'ready' : 'need-auth'
+  }
   return getSavedToken() ? 'ready' : 'need-auth'
 }
 
 // GateScreen 验证成功后调用
 export async function authenticateWithPassword(password: string): Promise<void> {
-  // 优先：有静态 AUTH_TOKEN 时，纯前端本地校验
   if (STATIC_AUTH_TOKEN) {
-    if (password !== STATIC_AUTH_TOKEN) throw new Error('密码错误')
-    saveToken(password)
+    const [inputHash, storedHash] = await Promise.all([
+      sha256hex(password),
+      sha256hex(STATIC_AUTH_TOKEN),
+    ])
+    if (inputHash !== storedHash) throw new Error('密码错误')
+    saveToken('local-authenticated')
     _adapter = localAdapter
     return
   }
-  // 有后端时走远端验证
   if (API_BASE) {
     const res = await fetch(`${API_BASE}/api/auth`, {
       method: 'POST',
@@ -62,7 +72,6 @@ export async function authenticateWithPassword(password: string): Promise<void> 
     _adapter = createHybridAdapter(localAdapter, createRemoteAdapter(API_BASE, token))
     return
   }
-  // 两者都没有：任意密码通过（开发模式）
-  saveToken(password)
-  _adapter = localAdapter
+  // 不应到达此处：无认证配置时 initStorage 返回 ready，GateScreen 不会显示
+  throw new Error('未配置认证方式')
 }

@@ -1,106 +1,77 @@
-export interface StorageAdapter {
-  getItem(key: string): Promise<string | null>;
-  setItem(key: string, value: string): Promise<void>;
-  removeItem(key: string): Promise<void>;
-  saveImage(id: string, base64: string): Promise<void>;
-  getImage(id: string): Promise<string | null>;
-  removeImage(id: string): Promise<void>;
-}
+import type { StorageAdapter } from '../types';
+import { db } from '../db';
 
-const DB_NAME = 'echo-local-db';
-const STORE_NAME = 'kv-store';
-const IMG_STORE = 'image-store';
+/**
+ * 带有 LRU 缓存的高性能存储适配器
+ */
+export class DexieStorageAdapter implements StorageAdapter {
+  private cache = new Map<string, any>();
+  private readonly MAX_CACHE_SIZE = 50;
 
-class IndexedDBAdapter implements StorageAdapter {
-  private db: IDBDatabase | null = null;
-
-  private async getDB(): Promise<IDBDatabase> {
-    if (this.db) return this.db;
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, 1);
-      request.onupgradeneeded = () => {
-        const db = request.result;
-        if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME);
-        if (!db.objectStoreNames.contains(IMG_STORE)) db.createObjectStore(IMG_STORE);
-      };
-      request.onsuccess = () => {
-        this.db = request.result;
-        resolve(this.db);
-      };
-      request.onerror = () => reject(request.error);
-    });
+  private touch(key: string, value: any) {
+    this.cache.delete(key);
+    this.cache.set(key, value);
+    if (this.cache.size > this.MAX_CACHE_SIZE) {
+      this.cache.delete(this.cache.keys().next().value!);
+    }
   }
 
   async getItem(key: string): Promise<string | null> {
-    const db = await this.getDB();
-    return new Promise((resolve) => {
-      const transaction = db.transaction(STORE_NAME, 'readonly');
-      const request = transaction.objectStore(STORE_NAME).get(key);
-      request.onsuccess = () => resolve(request.result || null);
-      request.onerror = () => resolve(null);
-    });
+    if (this.cache.has(key)) {
+      const val = this.cache.get(key);
+      this.touch(key, val);
+      return typeof val === 'string' ? val : JSON.stringify(val);
+    }
+    try {
+      const record = await db.kvStore.get(key);
+      if (!record) return null;
+      this.touch(key, record.value);
+      return typeof record.value === 'string' ? record.value : JSON.stringify(record.value);
+    } catch (e) {
+      console.error(`[DexieAdapter] GetItem Error (${key}):`, e);
+      return null;
+    }
   }
 
   async setItem(key: string, value: string): Promise<void> {
-    const db = await this.getDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(STORE_NAME, 'readwrite');
-      const request = transaction.objectStore(STORE_NAME).put(value, key);
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
+    try {
+      let valToStore: any = value;
+      if (typeof value === 'string' && (value.startsWith('{') || value.startsWith('['))) {
+        try { valToStore = JSON.parse(value); } catch {}
+      }
+      this.touch(key, valToStore);
+      await db.kvStore.put({ key, value: valToStore });
+    } catch (e) {
+      console.error(`[DexieAdapter] SetItem Error (${key}):`, e);
+    }
   }
 
   async removeItem(key: string): Promise<void> {
-    const db = await this.getDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(STORE_NAME, 'readwrite');
-      const request = transaction.objectStore(STORE_NAME).delete(key);
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
+    this.cache.delete(key);
+    await db.kvStore.delete(key);
   }
 
   async saveImage(id: string, base64: string): Promise<void> {
-    const db = await this.getDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(IMG_STORE, 'readwrite');
-      const request = transaction.objectStore(IMG_STORE).put(base64, id);
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
+    // 图片数据较大，不进入通用 LRU 缓存，直接存 DB 以免撑爆内存
+    try {
+      await db.kvStore.put({ key: `img-${id}`, value: base64 });
+    } catch (e) {
+       console.error(`[DexieAdapter] SaveImage Error:`, e);
+    }
   }
 
   async getImage(id: string): Promise<string | null> {
-    const db = await this.getDB();
-    return new Promise((resolve) => {
-      const transaction = db.transaction(IMG_STORE, 'readonly');
-      const request = transaction.objectStore(IMG_STORE).get(id);
-      request.onsuccess = () => resolve(request.result || null);
-      request.onerror = () => resolve(null);
-    });
+    const record = await db.kvStore.get(`img-${id}`);
+    return record?.value || null;
   }
 
   async removeImage(id: string): Promise<void> {
-    const db = await this.getDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(IMG_STORE, 'readwrite');
-      const request = transaction.objectStore(IMG_STORE).delete(id);
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
+    await db.kvStore.delete(`img-${id}`);
   }
 }
 
-export const localAdapter = new IndexedDBAdapter();
+export const localAdapter = new DexieStorageAdapter();
 
-// 请求持久化存储权限
-if (navigator.storage && navigator.storage.persist) {
-  navigator.storage.persist().then(persistent => {
-    if (persistent) {
-      console.log("[echo] 浏览器已批准持久化存储，数据不会被自动清理。");
-    } else {
-      console.warn("[echo] 浏览器未批准持久化存储，数据可能在磁盘不足时被清理。");
-    }
-  });
+if (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.persist) {
+  navigator.storage.persist().catch(() => {});
 }

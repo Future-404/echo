@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react'
-import { motion } from 'framer-motion'
-import { RefreshCw, AlertCircle } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { RefreshCw, Check, MessageSquare, Brain, Volume2, ChevronLeft, Trash2, Settings2, ChevronDown, ChevronUp } from 'lucide-react'
 import { useAppStore } from '../../store/useAppStore'
+import { useDialog } from '../GlobalDialog'
 
 interface ProviderEditorProps {
   id: string
@@ -9,16 +10,23 @@ interface ProviderEditorProps {
 }
 
 const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
-  const { config, updateProvider } = useAppStore()
+  const { confirm } = useDialog()
+  const { config, updateProvider, removeProvider } = useAppStore()
   const provider = config?.providers?.find(p => p.id === id)
   
   const [isFetching, setIsFetching] = useState(false)
   const [modelList, setModelList] = useState<string[]>([])
   const [showDropdown, setShowDropdown] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [jsonError, setJsonError] = useState<string | null>(null)
+  const [isAdvancedExpanded, setIsAdvancedExpanded] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   if (!provider) return null
+
+  const isChat = provider.type === 'chat' || !provider.type
+  const isEmbedding = provider.type === 'embedding'
+  const isTts = provider.type === 'tts'
 
   // 拉取模型列表逻辑
   const handleFetchModels = async () => {
@@ -26,245 +34,274 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
       setError("请先填写 API Key 和 Endpoint")
       return
     }
-
     setIsFetching(true)
     setError(null)
-    
     try {
-      // 适配标准 OpenAI /v1/models 路径
       const baseUrl = provider.endpoint.replace(/\/+$/, '')
       const response = await fetch(`${baseUrl}/models`, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${provider.apiKey}`,
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Authorization': `Bearer ${provider.apiKey}`, 'Content-Type': 'application/json' }
       })
-
-      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`)
-      
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
       const data = await response.json()
-      // 提取模型 ID (兼容 OpenAI 格式)
       const models = data.data?.map((m: any) => m.id) || []
       setModelList(models.sort())
       setShowDropdown(true)
-      if (models.length === 0) setError("未发现可用模型")
-    } catch (err: any) {
-      setError(err.message || "拉取失败，请检查网络或配置")
-    } finally {
-      setIsFetching(false)
+    } catch (err: any) { setError(err.message) }
+    finally { setIsFetching(false) }
+  }
+
+  const handleJsonChange = (val: string) => {
+    updateProvider(id, { customHeaders: val });
+    if (!val.trim()) {
+      setJsonError(null);
+      return;
+    }
+    try {
+      JSON.parse(val);
+      setJsonError(null);
+    } catch (e: any) {
+      setJsonError(e.message);
     }
   }
 
+  const roleTabs = [
+    { id: 'chat', label: 'Chat', icon: <MessageSquare size={10} /> },
+    { id: 'embedding', label: 'Embed', icon: <Brain size={10} /> },
+    { id: 'tts', label: 'TTS', icon: <Volume2 size={10} /> },
+  ]
+
   return (
-    <motion.div 
-      initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} 
-      className="p-8 space-y-10"
-    >
-      <div className="group">
-        <label className="text-[9px] tracking-wide text-gray-400 dark:text-gray-600 uppercase mb-3 block italic underline decoration-gray-100 dark:decoration-gray-800 underline-offset-8">Node Name // 节点名称</label>
-        <input 
-          type="text" 
-          value={provider.name} 
-          onChange={(e) => updateProvider(id, { name: e.target.value })} 
-          className="w-full bg-transparent border-b-0.5 border-gray-200 dark:border-gray-800 py-2 text-sm text-gray-600 dark:text-gray-300 focus:outline-none focus:border-gray-400 transition-colors" 
-        />
-      </div>
+    <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="flex flex-col h-full bg-transparent">
+      <div className="flex-1 overflow-y-auto p-8 space-y-8 no-scrollbar pb-32">
 
-      <div className="group">
-        <label className="text-[9px] tracking-wide text-gray-400 dark:text-gray-600 uppercase mb-3 block italic">API Format // 协议格式</label>
-        <select 
-          value={provider.apiFormat || 'openai'} 
-          onChange={(e) => updateProvider(id, { apiFormat: e.target.value as any })}
-          className="w-full bg-transparent border-b-0.5 border-gray-200 dark:border-gray-800 py-2 text-sm text-gray-600 dark:text-gray-300 focus:outline-none focus:border-gray-400 cursor-pointer appearance-none"
-        >
-          <option value="openai" className="bg-white dark:bg-[#121212]">OpenAI Standard</option>
-          <option value="anthropic" className="bg-white dark:bg-[#121212]">Anthropic Native</option>
-          <option value="gemini" className="bg-white dark:bg-[#121212]">Google Gemini Native</option>
-        </select>
-      </div>
-
-      <div className="group">
-        <label className="text-[9px] tracking-wide text-gray-400 dark:text-gray-600 uppercase mb-3 block italic">Endpoint URL // 接口地址</label>
-        <input 
-          type="text" 
-          value={provider.endpoint} 
-          onChange={(e) => updateProvider(id, { endpoint: e.target.value })} 
-          placeholder="https://api.openai.com/v1" 
-          className="w-full bg-transparent border-b-0.5 border-gray-200 dark:border-gray-800 py-2 text-sm text-gray-600 dark:text-gray-300 focus:outline-none focus:border-gray-400 transition-colors" 
-        />
-      </div>
-
-      <div className="group">
-        <label className="text-[9px] tracking-wide text-gray-400 dark:text-gray-600 uppercase mb-3 block italic">Neural Token // API Key</label>
-        <input 
-          type="password" 
-          value={provider.apiKey} 
-          onChange={(e) => updateProvider(id, { apiKey: e.target.value })} 
-          placeholder="sk-..." 
-          className="w-full bg-transparent border-b-0.5 border-gray-200 dark:border-gray-800 py-2 text-sm text-gray-600 dark:text-gray-300 focus:outline-none focus:border-gray-400 transition-colors" 
-        />
-      </div>
-
-      <div className="group">
-        <label className="text-[9px] tracking-wide text-gray-400 dark:text-gray-600 uppercase mb-3 block italic">Custom Headers // 自定义请求头 (JSON)</label>
-        <textarea 
-          value={provider.customHeaders || ''} 
-          onChange={(e) => updateProvider(id, { customHeaders: e.target.value })} 
-          placeholder='{ "HTTP-Referer": "https://echo.ai", "X-Title": "Echo" }' 
-          className="w-full bg-white/30 dark:bg-white/5 border-0.5 border-gray-100 dark:border-gray-800 rounded-xl p-4 text-[10px] text-gray-500 dark:text-gray-400 font-mono focus:outline-none focus:border-gray-300 min-h-[60px] resize-none no-scrollbar"
-        />
-      </div>
-
-      <div className="group">
-        <div className="flex justify-between items-center mb-3">
-            <label className="text-[9px] tracking-wide text-gray-400 dark:text-gray-600 uppercase italic">Model Identifier // 模型选择</label>
-            <button 
-                onClick={handleFetchModels}
-                disabled={isFetching}
-                className="flex items-center gap-1 text-[8px] uppercase tracking-widest text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors disabled:opacity-30"
-            >
-                <RefreshCw size={10} className={isFetching ? 'animate-spin' : ''} />
-                {isFetching ? 'Scanning...' : 'Fetch List'}
-            </button>
+        <div className="flex items-center justify-between">
+          <div className="flex gap-1 p-1 bg-gray-50 dark:bg-white/5 rounded-2xl border-0.5 border-gray-100 dark:border-white/5 w-fit">
+            {roleTabs.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => updateProvider(id, { type: t.id as any })}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[9px] uppercase tracking-widest transition-all ${provider.type === t.id || (!provider.type && t.id === 'chat') ? 'bg-blue-500 text-white shadow-md' : 'text-gray-400 hover:text-gray-600'}`}
+              >
+                {t.icon} {t.label}
+              </button>
+            ))}
+          </div>
+          
+          <button onClick={async () => { 
+            const ok = await confirm('确定要删除该 API 配置节点吗？所有的绑定关系将失效。', {
+              title: '确认删除节点？',
+              confirmText: '确认删除',
+              danger: true
+            });
+            if(ok) { removeProvider(id); onClose(); } 
+          }} className="p-3 bg-red-500/5 hover:bg-red-500/10 text-red-400/60 hover:text-red-500 rounded-2xl border-0.5 border-transparent hover:border-red-500/20 transition-all">
+            <Trash2 size={16} strokeWidth={1.5} />
+          </button>
         </div>
-        
-        <div className="relative">
-            <input
-                ref={inputRef}
-                type="text"
-                value={provider.model}
-                onChange={(e) => {
-                  updateProvider(id, { model: e.target.value })
-                  setShowDropdown(true)
-                }}
+
+        {/* 基础字段 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-8">
+          <div className="space-y-2">
+            <label className="text-[8px] uppercase tracking-widest text-gray-400 font-bold ml-1 italic">Node Identifier // 名称</label>
+            <input type="text" value={provider.name} onChange={(e) => updateProvider(id, { name: e.target.value })} 
+              className="w-full bg-white dark:bg-white/5 border-0.5 border-gray-100 dark:border-white/5 rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-blue-400 transition-all shadow-sm" />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[8px] uppercase tracking-widest text-gray-400 font-bold ml-1 italic">API Protocol // 协议</label>
+            <select value={provider.apiFormat || 'openai'} onChange={(e) => updateProvider(id, { apiFormat: e.target.value as any })}
+              className="w-full bg-white dark:bg-white/5 border-0.5 border-gray-100 dark:border-white/5 rounded-2xl px-4 py-3 text-xs focus:outline-none appearance-none cursor-pointer shadow-sm">
+              <option value="openai">OpenAI Standard</option>
+              <option value="anthropic">Anthropic Native</option>
+              <option value="gemini">Google Gemini</option>
+            </select>
+          </div>
+
+          <div className="md:col-span-2 space-y-2">
+            <label className="text-[8px] uppercase tracking-widest text-gray-400 font-bold ml-1 italic">Access Endpoint // 地址</label>
+            <input type="text" value={provider.endpoint} onChange={(e) => updateProvider(id, { endpoint: e.target.value })}
+              placeholder="https://api.openai.com/v1" 
+              className="w-full bg-white dark:bg-white/5 border-0.5 border-gray-100 dark:border-white/5 rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-blue-400 transition-all shadow-sm" />
+          </div>
+
+          <div className="md:col-span-2 space-y-2">
+            <label className="text-[8px] uppercase tracking-widest text-gray-400 font-bold ml-1 italic">Neural Token // API Key</label>
+            <input type="password" value={provider.apiKey} onChange={(e) => updateProvider(id, { apiKey: e.target.value })}
+              placeholder="sk-..." 
+              className="w-full bg-white dark:bg-white/5 border-0.5 border-gray-100 dark:border-white/5 rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-blue-400 transition-all shadow-sm" />
+          </div>
+
+          <div className="md:col-span-2 space-y-2">
+            <div className="flex justify-between items-center px-1">
+              <label className="text-[8px] uppercase tracking-widest text-gray-400 font-bold italic">Model ID // 模型名称</label>
+              <button onClick={handleFetchModels} disabled={isFetching} className="text-[8px] uppercase tracking-widest text-blue-500 hover:opacity-70 transition-opacity flex items-center gap-1">
+                <RefreshCw size={10} className={isFetching ? 'animate-spin' : ''} /> {isFetching ? 'Scanning...' : 'Fetch List'}
+              </button>
+            </div>
+            <div className="relative">
+              <input ref={inputRef} type="text" value={provider.model} 
+                onChange={(e) => { updateProvider(id, { model: e.target.value }); setShowDropdown(true); }}
                 onFocus={() => modelList.length > 0 && setShowDropdown(true)}
                 onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
-                placeholder="gpt-4o, claude-3..."
-                className="w-full bg-transparent border-b-0.5 border-gray-200 dark:border-gray-800 py-2 text-sm text-gray-600 dark:text-gray-300 focus:outline-none focus:border-gray-400 transition-colors"
-            />
+                placeholder="gpt-4o, tts-1, etc..."
+                className={`w-full bg-white dark:bg-white/5 border-0.5 ${error ? 'border-red-400' : 'border-gray-100 dark:border-white/5'} rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-blue-400 transition-all shadow-sm`} />
+              
+              {error && <p className="text-[7px] text-red-400 mt-1 ml-1 uppercase font-bold tracking-tighter italic animate-pulse">Error: {error}</p>}
 
-            {/* 模糊搜索下拉 */}
-            {showDropdown && modelList.length > 0 && (() => {
-              const q = provider.model.toLowerCase()
-              const filtered = q
-                ? modelList.filter(m => m.toLowerCase().includes(q))
-                : modelList
-              if (filtered.length === 0) return null
-              return (
-                <div className="absolute top-full left-0 right-0 z-20 mt-2 max-h-48 overflow-y-auto no-scrollbar glass-morphism rounded-2xl shadow-xl border-0.5 border-gray-100 dark:border-gray-800 bg-white/90 dark:bg-black/80">
-                  {filtered.map(m => {
-                    // 高亮匹配部分
-                    const idx = m.toLowerCase().indexOf(q)
-                    const before = m.slice(0, idx)
-                    const match = m.slice(idx, idx + q.length)
-                    const after = m.slice(idx + q.length)
-                    return (
-                      <div
-                        key={m}
-                        onMouseDown={() => { updateProvider(id, { model: m }); setShowDropdown(false); }}
-                        className={`px-5 py-3 text-[10px] cursor-pointer transition-colors border-b-0.5 border-gray-50 dark:border-gray-900 last:border-none uppercase tracking-widest ${m === provider.model ? 'text-gray-700 dark:text-gray-200 bg-gray-50/80 dark:bg-white/5' : 'text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}
-                      >
-                        {q && idx >= 0 ? (
-                          <>{before}<span className="text-blue-500 dark:text-blue-400">{match}</span>{after}</>
-                        ) : m}
-                      </div>
-                    )
-                  })}
+              {showDropdown && modelList.length > 0 && (
+                <div className="absolute top-full left-0 right-0 z-50 mt-2 max-h-48 overflow-y-auto no-scrollbar glass-morphism rounded-2xl shadow-xl border-0.5 border-gray-100 dark:border-white/5 bg-white/95 dark:bg-black/90">
+                  {modelList.map(m => (
+                    <div key={m} onMouseDown={() => { updateProvider(id, { model: m }); setShowDropdown(false); }}
+                      className={`px-5 py-3 text-[10px] cursor-pointer transition-colors border-b-0.5 border-gray-50 dark:border-gray-900 last:border-none uppercase tracking-widest ${m === provider.model ? 'text-blue-500 bg-blue-50/10' : 'text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5'}`}>{m}</div>
+                  ))}
                 </div>
-              )
-            })()}
+              )}
+            </div>
+          </div>
         </div>
 
-        {error && (
-            <div className="mt-2 flex items-center gap-2 text-[8px] text-red-300 uppercase tracking-widest italic">
-                <AlertCircle size={10} /> {error}
+        {/* 动态常规参数 */}
+        {isChat && (
+          <div className="pt-6 border-t-0.5 border-gray-100 dark:border-white/5 space-y-6">
+            <div className="flex justify-between items-center group cursor-pointer" onClick={() => updateProvider(id, { stream: provider.stream !== false ? false : true })}>
+              <label className="text-[9px] tracking-wide text-gray-400 uppercase italic cursor-pointer">Streaming // 流式传输</label>
+              <div className={`w-8 h-4 rounded-full flex items-center transition-colors px-0.5 ${provider.stream !== false ? 'bg-green-400/50' : 'bg-gray-300 dark:bg-gray-700'}`}>
+                <motion.div layout className="w-3 h-3 rounded-full bg-white shadow-sm" animate={{ x: provider.stream !== false ? 16 : 0 }} />
+              </div>
             </div>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <label className="text-[9px] tracking-wide text-gray-400 uppercase italic">Temperature // 发散度</label>
+                <span className="text-[10px] text-gray-500 font-mono">{provider.temperature ?? 0.7}</span>
+              </div>
+              <input type="range" min="0" max="2" step="0.1" value={provider.temperature ?? 0.7} onChange={(e) => updateProvider(id, { temperature: parseFloat(e.target.value) })} className="w-full accent-blue-500" />
+            </div>
+          </div>
         )}
-      </div>
 
-      {/* Advanced Parameters */}
-      <div className="space-y-6 pt-4 border-t-0.5 border-gray-100 dark:border-gray-800/50">
-        <div className="flex justify-between items-center group cursor-pointer" onClick={() => updateProvider(id, { stream: provider.stream !== false ? false : true })}>
-          <div className="flex flex-col">
-            <label className="text-[9px] tracking-wide text-gray-400 dark:text-gray-600 uppercase italic cursor-pointer">Streaming // 流式传输</label>
-            <span className="text-[7px] text-gray-400 mt-1">关闭后将等待完整响应</span>
+        {/* 核心高级设置入口 (找回消失的功能) */}
+        {isChat && (
+          <div className="pt-4">
+            <button 
+              onClick={() => setIsAdvancedExpanded(!isAdvancedExpanded)}
+              className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-gray-400 hover:text-blue-400 transition-colors px-1"
+            >
+              <Settings2 size={12} />
+              Advanced Settings // 高级参数
+              {isAdvancedExpanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+            </button>
+
+            <AnimatePresence>
+              {isAdvancedExpanded && (
+                <motion.div 
+                  initial={{ height: 0, opacity: 0 }} 
+                  animate={{ height: 'auto', opacity: 1 }} 
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden space-y-8 mt-6 px-1"
+                >
+                  {/* Top-P */}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[9px] text-gray-400 uppercase italic">Top-P // 核采样</label>
+                      <span className="text-[10px] text-gray-500 font-mono">{provider.topP ?? 1.0}</span>
+                    </div>
+                    <input type="range" min="0" max="1" step="0.05" value={provider.topP ?? 1.0} onChange={(e) => updateProvider(id, { topP: parseFloat(e.target.value) })} className="w-full accent-blue-400" />
+                  </div>
+
+                  {/* Context Window */}
+                  <div className="space-y-2">
+                    <label className="text-[9px] text-gray-400 uppercase italic">Context Tokens // 上下文上限</label>
+                    <div className="flex items-center gap-3">
+                      <input 
+                        type="number" 
+                        value={provider.contextWindow ?? 128000} 
+                        onChange={(e) => updateProvider(id, { contextWindow: parseInt(e.target.value) || 0 })}
+                        className="flex-1 bg-white dark:bg-white/5 border-0.5 border-gray-100 dark:border-white/5 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-blue-400"
+                      />
+                      <span className="text-[8px] text-gray-400 uppercase font-mono">Tokens</span>
+                    </div>
+                  </div>
+
+                  {/* Assistant Prefill */}
+                  <div className="space-y-2">
+                    <label className="text-[9px] text-gray-400 uppercase italic">Assistant Prefill // 助手引导语</label>
+                    <textarea 
+                      value={provider.assistantPrefill || ''} 
+                      onChange={(e) => updateProvider(id, { assistantPrefill: e.target.value })}
+                      placeholder="e.g. {char} 微微点头，轻声说道："
+                      className="w-full bg-white dark:bg-white/5 border-0.5 border-gray-100 dark:border-white/5 rounded-2xl p-4 text-xs font-serif leading-relaxed focus:outline-none focus:border-blue-400 min-h-[80px] resize-none"
+                    />
+                  </div>
+
+                  {/* Custom Headers */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center px-1">
+                      <label className="text-[9px] text-gray-400 uppercase italic">Custom Headers // 自定义请求头 (JSON)</label>
+                      {jsonError && <span className="text-[7px] text-red-400 font-bold uppercase animate-pulse">Invalid JSON Format</span>}
+                    </div>
+                    <textarea 
+                      value={provider.customHeaders || ''} 
+                      onChange={(e) => handleJsonChange(e.target.value)}
+                      placeholder='{"HTTP-Referer": "https://echo.vn"}'
+                      className={`w-full bg-white dark:bg-white/5 border-0.5 ${jsonError ? 'border-red-400/50' : 'border-gray-100 dark:border-white/5'} rounded-2xl p-4 text-[10px] font-mono leading-relaxed focus:outline-none focus:border-blue-400 min-h-[80px] resize-none transition-all shadow-sm`}
+                    />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
-          <div className={`w-8 h-4 rounded-full flex items-center transition-colors px-0.5 ${provider.stream !== false ? 'bg-green-400/50' : 'bg-gray-300 dark:bg-gray-700'}`}>
-            <motion.div layout className="w-3 h-3 rounded-full bg-white shadow-sm" animate={{ x: provider.stream !== false ? 16 : 0 }} />
-          </div>
-        </div>
+        )}
 
-        <div className="group">
-          <div className="flex justify-between items-center mb-2">
-            <label className="text-[9px] tracking-wide text-gray-400 dark:text-gray-600 uppercase italic">Temperature // 发散度</label>
-            <span className="text-[10px] text-gray-500 font-mono">{provider.temperature ?? 0.7}</span>
-          </div>
-          <input 
-            type="range" 
-            min="0" max="2" step="0.1" 
-            value={provider.temperature ?? 0.7} 
-            onChange={(e) => updateProvider(id, { temperature: parseFloat(e.target.value) })}
-            className="w-full accent-gray-500"
-          />
-        </div>
-
-        <details className="group">
-          <summary className="text-[9px] tracking-wide text-gray-500 dark:text-gray-600 uppercase italic cursor-pointer select-none list-none flex items-center gap-1">
-            <span>▶</span><span>高级参数</span>
-          </summary>
-          <div className="mt-3 space-y-4 pl-2 border-l border-white/10">
-            <div className="group">
-              <div className="flex justify-between items-center mb-2">
-                <label className="text-[9px] tracking-wide text-gray-400 dark:text-gray-600 uppercase italic">Top P // 核采样</label>
-                <span className="text-[10px] text-gray-500 font-mono">{provider.topP ?? 1.0}</span>
-              </div>
-              <input 
-                type="range" 
-                min="0" max="1" step="0.1" 
-                value={provider.topP ?? 1.0} 
-                onChange={(e) => updateProvider(id, { topP: parseFloat(e.target.value) })}
-                className="w-full accent-gray-500"
-              />
-            </div>
-
-            <div className="group">
-              <div className="flex justify-between items-center mb-2">
-                <label className="text-[9px] tracking-wide text-gray-400 dark:text-gray-600 uppercase italic">Context Capacity (Tokens) // 上下文容量</label>
-                <span className="text-[10px] text-gray-500 font-mono">{provider.contextWindow ? (provider.contextWindow >= 1000 ? (provider.contextWindow / 1000).toFixed(0) + 'k' : provider.contextWindow) : '32k'}</span>
-              </div>
-              <input
-                type="range"
-                min="4096" max="256000" step="4096"
-                value={provider.contextWindow || 32000}
-                onChange={(e) => updateProvider(id, { contextWindow: parseInt(e.target.value, 10) })}
-                className="w-full accent-gray-500"
-              />
-              <p className="text-[7px] text-gray-400 mt-1 uppercase tracking-widest">限制发送给模型的最大 Token 总数（包含历史与设定）</p>
-            </div>
-
-            <div className="group">
-              <label className="text-[9px] tracking-wide text-gray-400 dark:text-gray-600 uppercase italic mb-2 block">Assistant Prefill // 引导语</label>
+        {/* TTS 专用参数 */}
+        {isTts && (
+          <div className="pt-6 border-t-0.5 border-gray-100 dark:border-white/5 space-y-6">
+            <div className="space-y-2">
+              <label className="text-[9px] text-gray-400 uppercase italic">Default Voice // 默认音色 ID</label>
               <input
                 type="text"
-                value={provider.assistantPrefill ?? ''}
-                onChange={(e) => updateProvider(id, { assistantPrefill: e.target.value || undefined })}
-                placeholder='例如：" 或 *我'
-                className="w-full bg-transparent border-b border-gray-200 dark:border-gray-800 py-1.5 text-sm text-gray-600 dark:text-gray-300 focus:outline-none focus:border-gray-400 transition-colors font-mono"
+                value={provider.ttsVoice || ''}
+                onChange={(e) => updateProvider(id, { ttsVoice: e.target.value })}
+                placeholder="alloy / nova / shimmer ..."
+                className="w-full bg-white dark:bg-white/5 border-0.5 border-gray-100 dark:border-white/5 rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-blue-400 transition-all shadow-sm"
               />
-              <p className="text-[7px] text-gray-400 mt-1 uppercase tracking-widest">注入为最后一条 assistant 消息，引导模型输出格式</p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[9px] text-gray-400 uppercase italic">Audio Format // 音频格式</label>
+              <select
+                value={provider.ttsFormat || 'mp3'}
+                onChange={(e) => updateProvider(id, { ttsFormat: e.target.value as any })}
+                className="w-full bg-white dark:bg-white/5 border-0.5 border-gray-100 dark:border-white/5 rounded-2xl px-4 py-3 text-xs focus:outline-none appearance-none cursor-pointer shadow-sm"
+              >
+                <option value="mp3">MP3</option>
+                <option value="opus">Opus</option>
+                <option value="aac">AAC</option>
+                <option value="flac">FLAC</option>
+              </select>
             </div>
           </div>
-        </details>
+        )}
 
+        {/* Embedding 专用参数 */}
+        {isEmbedding && (
+          <div className="pt-6 border-t-0.5 border-gray-100 dark:border-white/5 space-y-6">
+            <div className="space-y-2">
+              <label className="text-[9px] text-gray-400 uppercase italic">Dimensions // 向量维度（留空使用模型默认）</label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  value={provider.embeddingDimensions ?? ''}
+                  onChange={(e) => updateProvider(id, { embeddingDimensions: e.target.value ? parseInt(e.target.value) : undefined })}
+                  placeholder="1536"
+                  className="flex-1 bg-white dark:bg-white/5 border-0.5 border-gray-100 dark:border-white/5 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-blue-400"
+                />
+                <span className="text-[8px] text-gray-400 uppercase font-mono">Dims</span>
+              </div>
+              <p className="text-[8px] text-gray-400 italic ml-1">text-embedding-3 系列支持降维以节省存储</p>
+            </div>
+          </div>
+        )}
       </div>
-
-      <button 
-        onClick={onClose} 
-        className="w-full py-4 border-0.5 border-gray-200 dark:border-gray-800 text-gray-400 dark:text-gray-500 rounded-full text-[10px] tracking-[0.4em] text-gray-400 uppercase hover:bg-white dark:hover:bg-gray-900 transition-all mt-10 shadow-sm"
-      >
-        Done // Save
-      </button>
     </motion.div>
   )
 }

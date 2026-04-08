@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { User, Plus, Edit3, Trash2, Check, Upload, Globe, Camera } from 'lucide-react'
 import { useAppStore } from '../../store/useAppStore'
-import type { WorldBookEntry } from '../../store/useAppStore'
+import type { WorldBook } from '../../types/store'
 import { imageDb } from '../../utils/imageDb'
 
 const PersonaManager: React.FC = () => {

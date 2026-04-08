@@ -11,19 +11,21 @@ export const DEFAULT_CHARACTERS: CharacterCard[] = [
   }
 ]
 
-// 核心渲染引擎格式强制约定 (Immutable System Prompt)
-// 优先级最高，不可被用户配置覆盖，用于确保前端 NovelParser 正常工作
-export const CORE_FORMATTING_RULES = `
-### CORE RESPONSE FORMATTING (SYSTEM IMMUTABLE)
-To ensure the rendering engine works correctly, you MUST strictly follow these formatting rules for EVERY response:
-1. **Thoughts**: MUST be enclosed in (parentheses). Example: (I need to think about this...)
-2. **Actions/Narration**: MUST be enclosed in *asterisks*. Example: *He sighed heavily.*
-3. **Dialogues**: MUST follow the novel format using a colon and quotes. 
-   - Format: SpeakerName: "Spoken content" or SpeakerName：“Spoken content”. 
-   - Example: Echo: "I am listening."
-   - The colon and quotes are STRICT anchors. Do not omit them.
-4. **UI Cards**: Use {{card_type|data}} only if explicitly instructed by a tool or skill.
-`;
+// 动态生成核心渲染引擎格式指令
+export const generateFormattingPrompt = (quotes: string, actions: string, thoughts: string): string => {
+  const q = quotes || '""';
+  const a = (actions || '**').split('');
+  const t = (thoughts || '()').split('');
+  
+  return `
+### CORE RESPONSE FORMATTING (DYNAMIC)
+To ensure the rendering engine works correctly, you MUST strictly follow these formatting rules:
+1. **Dialogues**: MUST be enclosed in quotes. Format: Speaker: ${q[0]}Spoken content${q[1] || q[0]}.
+2. **Actions/Narration**: MUST be enclosed in markers. Format: ${a[0]}Action description${a[1] || a[0]}.
+3. **Thoughts**: MUST be enclosed in markers. Format: ${t[0]}Internal monologue${t[1] || t[0]}.
+Do not use these markers for any other purpose.
+`.trim();
+};
 
 export const INITIAL_DIRECTIVES: Directive[] = [
   {
@@ -40,6 +42,9 @@ export const INITIAL_DIRECTIVES: Directive[] = [
 
 export const INITIAL_MISSIONS: Mission[] = []
 
+export const SAVE_KEY = 'echo-saves'
+export const MULTI_SAVE_KEY = 'echo-multi-saves'
+
 export const INITIAL_PROVIDERS: Provider[] = [
-  { id: 'default', name: 'OpenAI', apiKey: '', endpoint: 'https://api.openai.com/v1', model: '', temperature: 0.7, topP: 1.0, contextWindow: 10, stream: true }
+  { id: 'default', name: 'OpenAI', apiKey: '', endpoint: 'https://api.openai.com/v1', model: '', temperature: 0.7, topP: 1.0, contextWindow: 128000, stream: true }
 ]

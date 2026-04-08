@@ -1,26 +1,42 @@
-import type { TtsSettings } from '../store/useAppStore';
+import type { TtsSettings } from '../types/store';
+import { useAppStore } from '../store/useAppStore';
 
 class TtsService {
   private audio: HTMLAudioElement | null = null;
 
-  async speak(text: string, settings: TtsSettings, voiceId?: string) {
+  async speak(text: string, settings: TtsSettings, voiceId?: string, messageId?: string) {
     if (!settings.enabled) return;
     if (!text) return;
 
     this.stop();
+    if (messageId) useAppStore.getState().setActiveAudioId(messageId);
 
-    const provider = settings.provider;
-    const { speed, pitch, apiKey, endpoint, openaiModel, elevenlabsModel } = settings.globalSettings;
+    const providerType = settings.provider;
+    const { speed, pitch } = settings.globalSettings;
 
-    if (provider === 'browser') {
+    if (providerType === 'browser') {
       this.speakBrowser(text, voiceId, speed, pitch);
-    } else if (provider === 'openai') {
-      await this.speakOpenAI(text, voiceId, apiKey, endpoint, openaiModel, speed);
-    } else if (provider === 'elevenlabs') {
-      await this.speakElevenLabs(text, voiceId, apiKey, elevenlabsModel, speed);
-    } else if (provider === 'edge') {
-      // Edge TTS often requires a backend, but we can use a placeholder or 
-      // a public API if one is known. For now, fallback to browser.
+    } else if (providerType === 'openai') {
+      const state = useAppStore.getState();
+      const activeProvider = state.config.providers.find(p => p.id === state.config.activeTtsProviderId ?? state.activeTtsProviderId);
+      
+      if (activeProvider?.apiKey) {
+        await this.speakOpenAI(
+          text,
+          voiceId ?? activeProvider.ttsVoice,
+          activeProvider.apiKey,
+          activeProvider.endpoint,
+          activeProvider.model,
+          speed,
+          activeProvider.ttsFormat,
+        );
+      } else {
+        console.warn('[TTS] 未绑定有效的 TTS 供应商节点');
+      }
+    } else if (providerType === 'elevenlabs') {
+      // 保留原有的独立配置作为降级或后续也迁移到 Provider 体系
+      await this.speakElevenLabs(text, voiceId, settings.globalSettings.apiKey, settings.globalSettings.elevenlabsModel, speed);
+    } else if (providerType === 'edge') {
       this.speakBrowser(text, voiceId, speed, pitch);
     }
   }
@@ -31,9 +47,10 @@ class TtsService {
       this.audio = null;
     }
     window.speechSynthesis.cancel();
+    useAppStore.getState().setActiveAudioId(null);
   }
 
-  private speakBrowser(text: string, voiceId?: string, speed: number = 1, pitch: number = 1) {
+  private speakBrowser(text: string, voiceId?: string, speed: number = 1, pitch: number = 1, messageId?: string) {
     const utterance = new SpeechSynthesisUtterance(text);
     if (voiceId) {
       const voices = window.speechSynthesis.getVoices();
@@ -42,12 +59,22 @@ class TtsService {
     }
     utterance.rate = speed;
     utterance.pitch = pitch;
+    utterance.onend = () => useAppStore.getState().setActiveAudioId(null);
+    utterance.onerror = () => useAppStore.getState().setActiveAudioId(null);
     window.speechSynthesis.speak(utterance);
   }
 
-  private async speakOpenAI(text: string, voiceId?: string, apiKey?: string, endpoint?: string, model: string = 'tts-1', speed: number = 1) {
+  private async speakOpenAI(
+    text: string,
+    voiceId?: string,
+    apiKey?: string,
+    endpoint?: string,
+    model: string = 'tts-1',
+    speed: number = 1,
+    format: string = 'mp3',
+  ) {
     if (!apiKey) return;
-    const url = `${endpoint || 'https://api.openai.com/v1'}/audio/speech`;
+    const url = `${endpoint?.replace(/\/+$/, '') || 'https://api.openai.com/v1'}/audio/speech`;
     
     try {
       const response = await fetch(url, {
@@ -57,19 +84,18 @@ class TtsService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: model,
+          model,
           input: text,
           voice: voiceId || 'alloy',
-          speed: speed,
+          speed,
+          response_format: format,
         }),
       });
 
-      if (!response.ok) throw new Error('OpenAI TTS failed');
-
-      const blob = await response.blob();
-      this.playBlob(blob);
+      if (!response.ok) throw new Error(`OpenAI TTS failed: ${response.status}`);
+      this.playBlob(await response.blob());
     } catch (e) {
-      console.error(e);
+      console.error('[TTS] OpenAI error:', e);
     }
   }
 
@@ -85,29 +111,31 @@ class TtsService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          text: text,
+          text,
           model_id: model,
-          voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.5,
-          },
+          voice_settings: { stability: 0.5, similarity_boost: 0.5 },
+          // ElevenLabs v3 speed control
+          ...(speed !== 1 ? { pronunciation_dictionary_locators: [], speed } : {}),
         }),
       });
 
-      if (!response.ok) throw new Error('ElevenLabs TTS failed');
-
-      const blob = await response.blob();
-      this.playBlob(blob);
+      if (!response.ok) throw new Error(`ElevenLabs TTS failed: ${response.status}`);
+      this.playBlob(await response.blob());
     } catch (e) {
-      console.error(e);
+      console.error('[TTS] ElevenLabs error:', e);
     }
   }
 
   private playBlob(blob: Blob) {
     const url = URL.createObjectURL(blob);
     this.audio = new Audio(url);
+    const cleanup = () => {
+      URL.revokeObjectURL(url);
+      useAppStore.getState().setActiveAudioId(null);
+    };
+    this.audio.onended = cleanup;
+    this.audio.onerror = cleanup;
     this.audio.play();
-    this.audio.onended = () => URL.revokeObjectURL(url);
   }
 }
 

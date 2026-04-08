@@ -1,8 +1,10 @@
 import type { SkillModule, SkillExecuteResult } from './core/types';
 import { questSkill } from './quests';
+import { deviceSkill } from './device';
 
 export const registeredSkills: Record<string, SkillModule> = {
   [questSkill.name]: questSkill,
+  [deviceSkill.name]: deviceSkill,
 };
 
 export const getEnabledSkills = (enabledIds?: string[]) => {
@@ -22,11 +24,11 @@ export const getEnabledSkillPrompts = (enabledIds?: string[]) => {
     .join('\n\n');
 };
 
-export const executeSkill = (name: string, args: any): SkillExecuteResult => {
+export const executeSkill = async (name: string, args: any): Promise<SkillExecuteResult> => {
   const skill = registeredSkills[name];
   if (!skill) return { success: false, message: `Skill not found: ${name}` };
   try {
-    return skill.execute(args);
+    return await skill.execute(args);
   } catch (e: any) {
     console.error(`Skill ${name} failed:`, e);
     return { success: false, message: `Error: ${e?.message || 'unknown'}` };

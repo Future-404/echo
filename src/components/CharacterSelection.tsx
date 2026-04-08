@@ -1,10 +1,11 @@
 import React, { useRef, useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Edit2, FileUp } from 'lucide-react'
+import { Plus, Edit2, FileUp, Download, FileJson, Image as ImageIcon } from 'lucide-react'
 import { useAppStore } from '../store/useAppStore'
-import type { CharacterCard } from '../store/useAppStore'
+import type { CharacterCard } from '../types/chat'
 import CharacterEditor from './Config/CharacterEditor'
 import { extractPersonaFromPng } from '../utils/pngParser'
+import { exportCharacterAsJSON, exportCharacterAsPNG } from '../logic/characterExporter'
 
 const CharacterSelection: React.FC = () => {
   const { currentView, setCurrentView, characters, setSelectedCharacter, addCharacter, messages } = useAppStore()
@@ -14,6 +15,7 @@ const CharacterSelection: React.FC = () => {
   const [importStatus, setImportStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [importMsg, setImportMsg] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [exportMenu, setExportMenu] = useState<CharacterCard | null>(null)
   const [greetingPicker, setGreetingPicker] = useState<CharacterCard | null>(null)
 
   const showToast = (status: 'success' | 'error', msg: string) => {
@@ -240,7 +242,7 @@ const CharacterSelection: React.FC = () => {
              <span className="text-[25vh] font-serif font-black text-gray-200/20 dark:text-white/5 uppercase tracking-[0.3em]">Archive // 档案室</span>
           </div>
 
-          <div className="relative z-10 w-full max-w-7xl cursor-default safe-area-top">
+          <div className="relative z-10 w-full max-w-7xl cursor-default pt-[var(--sat)]">
             <header className="mb-12 md:mb-20 text-center">
               <motion.h2 initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-[12px] md:text-[14px] tracking-[0.8em] text-gray-500 dark:text-gray-400 uppercase mb-4 font-medium">Neural Identifiers</motion.h2>
               <div className="w-12 h-[1px] bg-gray-400 dark:bg-gray-700 mx-auto" />
@@ -263,13 +265,22 @@ const CharacterSelection: React.FC = () => {
                   }}
                   className="snap-center flex-shrink-0 w-64 md:w-72 h-[420px] md:h-[480px] bg-white/80 dark:bg-white/5 backdrop-blur-2xl border-0.5 border-gray-200 dark:border-white/10 rounded-[3rem] cursor-pointer group flex flex-col transition-all shadow-xl hover:shadow-2xl relative select-none"
                 >
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); setEditingId(char.id); }}
-                    className="absolute top-6 right-6 p-3 rounded-full hover:bg-black/5 dark:hover:bg-white/10 opacity-40 hover:opacity-100 group-hover:opacity-100 transition-all z-20"
-                    title="编辑角色"
-                  >
-                    <Edit2 size={16} strokeWidth={1.5} className="text-gray-500 dark:text-gray-400" />
-                  </button>
+                  <div className="absolute top-6 right-6 flex flex-col gap-2 z-20">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setEditingId(char.id); }}
+                      className="p-3 rounded-full hover:bg-black/5 dark:hover:bg-white/10 opacity-40 hover:opacity-100 group-hover:opacity-100 transition-all"
+                      title="编辑角色"
+                    >
+                      <Edit2 size={16} strokeWidth={1.5} className="text-gray-500 dark:text-gray-400" />
+                    </button>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setExportMenu(char); }}
+                      className="p-3 rounded-full hover:bg-black/5 dark:hover:bg-white/10 opacity-40 hover:opacity-100 group-hover:opacity-100 transition-all"
+                      title="导出角色"
+                    >
+                      <Download size={16} strokeWidth={1.5} className="text-gray-500 dark:text-gray-400" />
+                    </button>
+                  </div>
                   <div className="flex-1 flex flex-col items-center justify-center p-8 pointer-events-none">
                     <div className="w-28 h-28 md:w-32 md:h-32 mb-10 relative">
                         <div className="absolute inset-0 rounded-full border-0.5 border-gray-100 dark:border-white/5 scale-125 animate-pulse" />
@@ -338,6 +349,59 @@ const CharacterSelection: React.FC = () => {
 
           <AnimatePresence>
             {editingId && <CharacterEditor charId={editingId} onClose={() => setEditingId(null)} />}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {exportMenu && (
+              <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-sm flex items-end md:items-center justify-center p-4"
+                onClick={() => setExportMenu(null)}
+              >
+                <motion.div
+                  initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
+                  onClick={e => e.stopPropagation()}
+                  className="w-full max-w-sm bg-echo-white dark:bg-[#0d0d0d] rounded-[2.5rem] border-0.5 border-echo-border shadow-2xl overflow-hidden p-8 space-y-6"
+                >
+                  <div className="text-center space-y-2">
+                    <p className="text-[10px] tracking-[0.5em] text-gray-400 uppercase">数据导出 // EXPORT</p>
+                    <h4 className="text-lg font-serif text-gray-700 dark:text-gray-200">{exportMenu.name}</h4>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3">
+                    <button 
+                      onClick={() => { exportCharacterAsPNG(exportMenu); setExportMenu(null); }}
+                      className="flex items-center gap-5 p-5 rounded-3xl bg-blue-500/5 hover:bg-blue-500/10 border-0.5 border-blue-500/10 transition-all group"
+                    >
+                      <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
+                        <ImageIcon size={22} />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-serif text-gray-700 dark:text-gray-200">PNG 角色卡</p>
+                        <p className="text-[8px] text-gray-400 uppercase mt-1 tracking-widest">SillyTavern Standard</p>
+                      </div>
+                    </button>
+
+                    <button 
+                      onClick={() => { exportCharacterAsJSON(exportMenu); setExportMenu(null); }}
+                      className="flex items-center gap-5 p-5 rounded-3xl bg-gray-500/5 hover:bg-gray-500/10 border-0.5 border-gray-500/10 transition-all group"
+                    >
+                      <div className="w-12 h-12 rounded-2xl bg-gray-500/10 flex items-center justify-center text-gray-400 group-hover:scale-110 transition-transform">
+                        <FileJson size={22} />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-serif text-gray-700 dark:text-gray-200">JSON 档案</p>
+                        <p className="text-[8px] text-gray-400 uppercase mt-1 tracking-widest">Raw Data Backup</p>
+                      </div>
+                    </button>
+                  </div>
+
+                  <button onClick={() => setExportMenu(null)} className="w-full py-4 text-[9px] tracking-[0.4em] uppercase text-gray-400 hover:text-gray-600 transition-colors">
+                    Cancel // 取消
+                  </button>
+                </motion.div>
+              </motion.div>
+            )}
           </AnimatePresence>
 
           <AnimatePresence>

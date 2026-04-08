@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Check, Users } from 'lucide-react'
 import { useAppStore } from '../store/useAppStore'
-import type { CharacterCard } from '../store/useAppStore'
+import type { CharacterCard } from '../types/chat'
 
 const MultiCharSelection: React.FC = () => {
   const { currentView, setCurrentView, characters, selectedCharacter,

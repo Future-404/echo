@@ -1,132 +1,82 @@
-@import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Zhi+Mang+Xing&family=Liu+Jian+Mao+Cao&family=Long+Cang&family=Noto+Sans+SC:wght@100;300;400;500;700;900&family=Noto+Serif+SC:wght@200;300;400;500;600;700;900&family=ZCOOL+KuaiLe&family=ZCOOL+QingKe+HuangYou&family=ZCOOL+XiaoWei&family=Noto+Sans+Mono+SC:wght@100;300;400;500;700;900&display=swap');
 @import "tailwindcss";
 
-/* 使用 class 策略控制深色模式，而非 prefers-color-scheme media query */
-@variant dark (&:where(.dark, .dark *));
-
-@theme {
-  --color-echo-white: #FBFBFB;
-  --color-echo-base: #F5F5F7;
-  --color-echo-border: rgba(255, 255, 255, 0.2);
-
-  --font-serif: var(--app-font), "Noto Serif SC", "Source Han Serif SC", "STSong", "SimSun", serif;
-  --font-sans: var(--app-font), "Inter", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Source Han Sans SC", system-ui, sans-serif;
-  --font-mono: "Noto Sans Mono SC", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-
-  /* Font classes for AppearanceEditor preview */
-  --font-noto-sans: "Noto Sans SC";
-  --font-noto-serif: "Noto Serif SC";
-  --font-zcool-kuaile: "ZCOOL KuaiLe";
-  --font-zcool-huangyou: "ZCOOL QingKe HuangYou";
-  --font-zcool-xiaowei: "ZCOOL XiaoWei";
-  --font-mashanzheng: "Ma Shan Zheng";
-  --font-zhimangxing: "Zhi Mang Xing";
-  --font-liujianmaocao: "Liu Jian Mao Cao";
-  --font-longcang: "Long Cang";
-  --font-noto-mono: "Noto Sans Mono SC";
-
-  --border-width-0.5: 0.5px;
-  --backdrop-blur-xs: 2px;
-}
-
 :root {
-  --app-font: "Noto Sans SC";
+  /* 全局安全区域变量 */
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  
+  /* 基础配色 */
+  --echo-base: #fdfdfd;
+  --echo-white: #ffffff;
+  --echo-border: rgba(0, 0, 0, 0.08);
+  
+  /* 对话框背景（可通过 Custom CSS 覆盖） */
+  --dialogue-bg: rgba(255, 255, 255, 0.75);
+  --dialogue-backdrop: blur(24px) saturate(1.4);
 
-  /* 对话框 — 亮色模式默认值 */
-  --dialogue-bg: rgba(255, 255, 255, 0.70);
-  --dialogue-border: rgba(255, 255, 255, 0.20);
-  --dialogue-text-dialogue: #000000;
-  --dialogue-text-narration: #6b7280;
-  --dialogue-text-thought: #6b7280;
-  --dialogue-text-action: #4b5563;
+  /* 对话文本配色 */
+  --dialogue-text-narration: #666666;
+  --dialogue-text-dialogue: #1a1a1a;
+  --dialogue-text-thought: #8e8e8e;
+  --dialogue-text-action: #4a5568;
 
-  /* 状态栏进度条颜色 */
+  /* 状态条颜色（可通过 Custom CSS 覆盖任意 key） */
   --stat-color-love: #f43f5e;
   --stat-color-hate: #9333ea;
-  --stat-color-value: #fbbf24;
   --stat-color-hp: #ef4444;
   --stat-color-mana: #3b82f6;
-  --stat-color-favor: #fb7185;
+  --stat-color-favor: #f59e0b;
   --stat-color-default: #94a3b8;
+
+  /* 双角色颜色 */
+  --char-a-color: #60a5fa;
+  --char-b-color: #c084fc;
 }
 
-/* 深色模式默认值（可被自定义 CSS 覆盖） */
-:root.dark {
-  --dialogue-bg: rgba(0, 0, 0, 0.45);
-  --dialogue-border: rgba(255, 255, 255, 0.10);
-  --dialogue-text-dialogue: #ffffff;
-  --dialogue-text-narration: #6b7280;
-  --dialogue-text-thought: #6b7280;
-  --dialogue-text-action: #9ca3af;
+/* 深色模式适配 */
+.dark {
+  --echo-base: #0a0a0a;
+  --echo-white: #121212;
+  --echo-border: rgba(255, 255, 255, 0.1);
+
+  --dialogue-bg: rgba(10, 10, 10, 0.80);
+  --dialogue-backdrop: blur(24px) saturate(1.2);
+  
+  --dialogue-text-narration: #999999;
+  --dialogue-text-dialogue: #e2e8f0;
+  --dialogue-text-thought: #a0aec0;
+  --dialogue-text-action: #cbd5e0;
 }
 
-/* 双角色模式颜色 */
-:root {
-  --char-a-color: #60a5fa;  /* blue-400 */
-  --char-b-color: #c084fc;  /* purple-400 */
+@theme {
+  --color-echo-base: var(--echo-base);
+  --color-echo-white: var(--echo-white);
+  --color-echo-border: var(--echo-border);
 }
 
 @layer base {
-  /* 基础模式：确保 light 模式下背景是白的 */
-  :root, html, body {
-    background-color: #F5F5F7 !important;
-    @apply text-gray-800 antialiased overflow-hidden transition-colors duration-700;
-    font-family: var(--app-font), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
-    height: 100dvh;
-    width: 100vw;
-  }
-
-  /* 深色模式：修正选择器，确保正确覆盖 */
-  :root.dark, :root.dark html, :root.dark body {
-    background-color: #0a0a0a !important;
-    @apply text-gray-200;
-  }
-
-  /* ── Light 模式：提升低对比度颜色的可读性 ── */
-  /* 只作用于 .theme-surface 区域（ConfigPanel、游戏HUD），不影响全屏黑色背景的 MainMenu/SaveScreen */
-  :root:not(.dark) .theme-surface .text-gray-200 { color: #6b7280; }  /* → gray-500 */
-  :root:not(.dark) .theme-surface .text-gray-300 { color: #4b5563; }  /* → gray-600 */
-  :root:not(.dark) .theme-surface .text-gray-400 { color: #374151; }  /* → gray-700 */
-  :root:not(.dark) .theme-surface .border-gray-700 { border-color: #d1d5db; }
-  :root:not(.dark) .theme-surface .border-gray-800 { border-color: #e5e7eb; }
-
-  /* 对话框深色模式适配 */
-  .dark .glass-morphism {
-    background-color: var(--dialogue-bg, rgba(0, 0, 0, 0.45));
-    border-color: var(--dialogue-border, rgba(255, 255, 255, 0.1));
-  }
-
   body {
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+    @apply bg-echo-base text-gray-900 dark:text-gray-100 antialiased;
+    font-feature-settings: "cv11", "ss01";
+    background-color: var(--echo-base) !important;
+    margin: 0;
+    padding: 0;
   }
-  
-  p, span, div {
-    line-height: 1.8;
-    letter-spacing: 0.02em;
-  }
+}
 
-  .no-scrollbar::-webkit-scrollbar { display: none; }
-  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-  /* 全局按钮点击反馈：scale down + 透明度变化，已有 framer whileTap 的用 no-tap-css 排除 */
-  button:not(:disabled):not(.no-tap-css) {
-    @apply transition-transform duration-75 active:scale-95 active:opacity-70;
-  }
-
-  /* 安全区域适配 */
+@layer components {
+  /* 兼容 iOS 安全区域的工具类 */
   .safe-area-padding {
     padding-left: max(env(safe-area-inset-left), 0px);
     padding-right: max(env(safe-area-inset-right), 0px);
   }
 
   .safe-area-top {
-    padding-top: max(env(safe-area-inset-top), 0px);
+    padding-top: var(--sat);
   }
 
   .safe-area-bottom {
-    padding-bottom: max(env(safe-area-inset-bottom), 0px);
+    padding-bottom: var(--sab);
   }
 
   /* 触摸优化 */
@@ -135,31 +85,34 @@
     -webkit-tap-highlight-color: transparent;
   }
 
-  /* 移动端滚动优化 */
-  @supports (-webkit-overflow-scrolling: touch) {
-    .overflow-y-auto {
-      -webkit-overflow-scrolling: touch;
-    }
+  /* 隐藏滚动条但保留滚动功能 */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
-}
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 
-@layer components {
+  /* 毛玻璃对话框（可通过 --dialogue-bg / --dialogue-backdrop 覆盖） */
   .glass-morphism {
-    background-color: var(--dialogue-bg, rgba(255,255,255,0.70));
-    border-color: var(--dialogue-border, rgba(255,255,255,0.20));
-    @apply backdrop-blur-2xl border-0.5 shadow-lg transition-all duration-700;
+    background: var(--dialogue-bg);
+    backdrop-filter: var(--dialogue-backdrop);
+    -webkit-backdrop-filter: var(--dialogue-backdrop);
+    border: 1px solid var(--echo-border);
   }
 }
 
-/* Markdown 渲染样式 */
-.md-body h1,.md-body h2,.md-body h3,.md-body h4 { font-weight: bold; margin: 0.6em 0 0.3em; line-height: 1.3; }
-.md-body h1 { font-size: 1.3em; }
-.md-body h2 { font-size: 1.15em; }
-.md-body h3 { font-size: 1em; }
-.md-body p { margin: 0.4em 0; }
-.md-body ul,.md-body ol { padding-left: 1.4em; margin: 0.4em 0; }
-.md-body li { margin: 0.2em 0; }
-.md-body strong { font-weight: bold; }
-.md-body em { font-style: italic; }
-.md-body hr { border: none; border-top: 1px solid currentColor; opacity: 0.2; margin: 0.6em 0; }
-.md-body code { font-family: monospace; font-size: 0.85em; background: rgba(128,128,128,0.15); padding: 0.1em 0.3em; border-radius: 3px; }
+/* Markdown 内容样式补全 */
+.md-body {
+  @apply text-sm leading-relaxed;
+}
+.md-body p { @apply mb-4 last:mb-0; }
+.md-body strong { @apply font-bold text-gray-900 dark:text-gray-100; }
+.md-body em { @apply italic opacity-90; }
+.md-body ul, .md-body ol { @apply mb-4 ml-6 list-disc; }
+.md-body li { @apply mb-1; }
+.md-body h1, .md-body h2, .md-body h3 { @apply font-bold mt-6 mb-3; }
+.md-body h1 { @apply text-2xl; }
+.md-body h2 { @apply text-xl; }
+.md-body h3 { @apply text-lg; }

@@ -1,6 +1,13 @@
-import type { CharacterCard, UserPersona, Directive, Mission, WorldBook, WorldBookEntry, Message } from '../store/useAppStore';
+import type { CharacterCard } from '../types/chat';
 import { getEnabledSkillPrompts } from '../skills';
 import { estimateTokens } from '../utils/tokenCounter';
+import { generateFormattingPrompt } from '../store/constants';
+import { db } from '../storage/db';
+import type { DBMessage } from '../storage/db';
+import { vectorMath } from '../utils/vectorMath';
+import { memoryDistiller } from './memoryDistiller';
+import { useAppStore } from '../store/useAppStore';
+
 
 export interface PromptContext {
   character: CharacterCard;
@@ -10,7 +17,8 @@ export interface PromptContext {
   missions: Mission[];
   userName: string;
   enabledSkillIds?: string[];
-  recentMessages: Message[];
+  slotId?: string; // 支持从数据库异步拉取
+  recentMessages?: Message[]; // 向后兼容
   isMultiChar?: boolean;
   otherCharName?: string;
 }
@@ -50,20 +58,26 @@ export const replaceMacros = (text: string, userName: string, charName: string, 
 };
 
 /**
- * 递归扫描并激活世界书条目 (1:1 复刻 ST 高级匹配算法)
+ * 递归扫描并激活世界书条目 (高性能异步版)
  */
-export const scanActiveWorldInfo = (ctx: PromptContext): WorldBookEntry[] => {
-  const { character, worldBookLibrary, recentMessages } = ctx;
+export const scanActiveWorldInfo = async (ctx: PromptContext): Promise<WorldBookEntry[]> => {
+  const { character, recentMessages } = ctx;
   
+  // 1. 确定搜索范围：当前角色 ID + 绑定的书库 IDs
   const boundBookIds = character.extensions?.worldBookIds || [];
-  const allAvailableEntries = [
-    ...(worldBookLibrary || []).filter(book => boundBookIds.includes(book.id)).flatMap(b => b.entries || []),
-    ...(character.extensions?.worldBook || [])
-  ].filter(e => e.enabled);
+  const validOwnerIds = [character.id, ...boundBookIds];
+
+  // 2. 从数据库拉取所有潜在条目 (仅限当前对话相关的 owner)
+  // 这是性能优化的核心：不再读取不相关的世界书
+  const allAvailableEntries = await db.worldEntries
+    .where('ownerId')
+    .anyOf(validOwnerIds)
+    .filter(e => e.enabled)
+    .toArray();
 
   const activatedEntries = new Map<string, WorldBookEntry>();
   
-  // 1. 获取初始扫描文本 (最近的聊天记录)
+  // 3. 获取初始扫描文本 (最近的聊天记录)
   const scanDepth = 3; 
   const messageContext = recentMessages.slice(-scanDepth).map(m => m.content).join('\n').toLowerCase();
 
@@ -79,16 +93,19 @@ export const scanActiveWorldInfo = (ctx: PromptContext): WorldBookEntry[] => {
         continue;
       }
 
-      // 关键词匹配：支持 /regex/flags 格式或普通字符串
+      // 关键词匹配
       const matched = entry.keys.some(k => {
         const trimmed = k.trim();
         if (!trimmed) return false;
+        // 支持正则格式 /regex/flags
         const reMatch = trimmed.match(/^\/(.+)\/([gimsuy]*)$/);
         if (reMatch) {
           try { return new RegExp(reMatch[1], reMatch[2]).test(text); } catch { return false; }
         }
+        // 普通字符串匹配 (全字匹配转义)
         const lower = trimmed.toLowerCase();
-        return new RegExp(`\\b${lower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(text);
+        const escaped = lower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return new RegExp(`\\b${escaped}\\b`, 'i').test(text);
       });
 
       if (matched) {
@@ -102,23 +119,33 @@ export const scanActiveWorldInfo = (ctx: PromptContext): WorldBookEntry[] => {
   // 第一轮：基于消息内容扫描
   performScan(messageContext);
 
-  // 递归扫描：基于已激活条目的内容扫描 (最大深度 2 层，即 A -> B -> C)
+  // 递归扫描：基于已激活条目的内容扫描 (最大深度 2 层)
   for (let i = 0; i < 2; i++) {
     const currentActiveContent = Array.from(activatedEntries.values()).map(e => e.content).join('\n').toLowerCase();
-    if (!performScan(currentActiveContent)) break;
+    if (currentActiveContent && performScan(currentActiveContent)) {
+      continue;
+    } else {
+      break;
+    }
   }
 
-  return Array.from(activatedEntries.values()).sort((a, b) => (a.insertionOrder ?? 0) - (b.insertionOrder ?? 0));
+  // 排序规则：角色私设优先 (insertionOrder + 权重)
+  return Array.from(activatedEntries.values()).sort((a, b) => {
+    // 角色私设 (ownerId === char.id) 赋予微弱的排序优势
+    const weightA = (a as any).ownerId === character.id ? -1000 : 0;
+    const weightB = (b as any).ownerId === character.id ? -1000 : 0;
+    return (weightA + (a.insertionOrder ?? 0)) - (weightB + (b.insertionOrder ?? 0));
+  });
 };
 
 /**
- * 构建符合 SillyTavern 逻辑的消息数组 (Token 驱动 + 权重裁剪)
+ * 构建符合 SillyTavern 逻辑的消息数组 (异步驱动)
  */
-export const buildPromptMessages = (ctx: PromptContext, contextWindow: number = 32000): any[] => {
+export const buildPromptMessages = async (ctx: PromptContext, contextWindow: number = 128000): Promise<any[]> => {
   const { 
     character, persona, directives, 
     missions, userName, enabledSkillIds, recentMessages,
-    isMultiChar, otherCharName,
+    isMultiChar, otherCharName, slotId
   } = ctx;
 
   const actualUserName = persona?.name || userName || 'User';
@@ -132,10 +159,53 @@ export const buildPromptMessages = (ctx: PromptContext, contextWindow: number = 
     userNickname: persona?.nickname,
   });
 
-  // 1. 递归扫描获取所有激活条目
-  const rawActiveEntries = scanActiveWorldInfo(ctx);
+  // 0. 加载全量历史 (真分页支持)
+  let fullHistory: Message[] = recentMessages || [];
+  if (slotId) {
+    fullHistory = await db.getMessagesBySlot(slotId);
+  }
 
-  // 2. 预估基础 Token 消耗 (System, Scenario, Persona)
+  // 1. 递归扫描获取所有激活条目 (异步)
+  const rawActiveEntries = await scanActiveWorldInfo(ctx);
+
+  // --- 记忆召回层 (Project Hippocampus) ---
+  let recallContext = '';
+  // 仅在有 slotId 且用户发了新消息的情况下尝试召回
+  if (slotId && recentMessages && recentMessages.length > 0) {
+    const lastUserMsg = recentMessages[recentMessages.length - 1];
+    if (lastUserMsg.role === 'user') {
+      try {
+        // 1. 获取 Embedding Provider
+        const storeState = useAppStore.getState();
+        const embProvider = storeState.config.providers.find(p => p.id === storeState.activeEmbeddingProviderId);
+        
+        if (embProvider && embProvider.apiKey) {
+          // --- 性能防火墙：1.5s 强制超时 ---
+          const recallData = await Promise.race([
+            (async () => {
+              // 2. 将输入向量化
+              const queryVec = await memoryDistiller.callEmbeddingAPI(embProvider, lastUserMsg.content);
+              // 3. 从数据库检索所有结晶 (该存档下)
+              const allEpisodes = await db.memoryEpisodes.where('slotId').equals(slotId).toArray();
+              // 4. 寻找最相关的 Top 3 (异步 Worker 检索)
+              return await vectorMath.findBestMatches(vectorMath.ensureFloat32(queryVec), allEpisodes, 3, 0.72);
+            })(),
+            new Promise<any[]>((_, reject) => setTimeout(() => reject(new Error('Recall Timeout')), 1500))
+          ]).catch(e => {
+            console.warn('[Recall] 联想被强行中断 (超时或错误):', e.message);
+            return [];
+          });
+          
+          if (recallData && recallData.length > 0) {
+            recallContext = `\n### LONG-TERM MEMORY RECALL (Associative)\nBased on the current input, you recall the following fragments from your past interactions with the user:\n` + 
+              recallData.map(m => `- [Recall Similarity: ${(m.sim * 100).toFixed(0)}%] ${m.ep.narrative}`).join('\n');
+          }
+        }
+      } catch (e) { console.warn('[Recall] 召回失败:', e); }
+    }
+  }
+
+  // 2. 预估基础 Token 消耗
   const enabledDirectives = (directives || []).filter(d => d.enabled).map(d => `[Protocol: ${d.title}]\n${fastReplace(d.content)}`).join('\n\n');
   const currentAttributes = character.attributes || {};
   const attributeContext = Object.keys(currentAttributes).length > 0 ? `\n### STATE\n${Object.entries(currentAttributes).map(([k, v]) => `- ${k}: ${v}`).join('\n')}` : '';
@@ -143,20 +213,21 @@ export const buildPromptMessages = (ctx: PromptContext, contextWindow: number = 
   const skillSection = skillPrompts ? `\n\n### MODULES\n${fastReplace(skillPrompts).replace(/\[角色名\]/g, charName)}` : '';
   const missionStatus = (missions || []).filter(m => m.status === 'ACTIVE').map(m => `- ${m.title}: (${m.progress}%)`).join('\n');
 
-  const systemBase = `### CORE IDENTITY\n${fastReplace(character.systemPrompt)}\n${character.scenario ? '\n### SCENARIO\n' + fastReplace(character.scenario) : ''}${attributeContext}${skillSection}\n\n### PARTNER: ${actualUserName}\n${fastReplace(persona?.background || '')}\n\n### OBJECTIVE\n${missionStatus || 'Narrative exploration.'}`.trim();
+  const systemBase = `### CORE IDENTITY\n${fastReplace(character.systemPrompt)}\n${character.scenario ? '\n### SCENARIO\n' + fastReplace(character.scenario) : ''}${attributeContext}${recallContext}${skillSection}\n\n### PARTNER: ${actualUserName}\n${fastReplace(persona?.background || '')}\n\n### OBJECTIVE\n${missionStatus || 'Narrative exploration.'}`.trim();
   
   const RESPONSE_RESERVE = 1024;
   const baseTokens = estimateTokens(systemBase) + estimateTokens(enabledDirectives) + 100;
 
-  // 3. 基于权重裁剪世界书 (World Info Budgeting)
-  // 规则：世界书最多占用总预算的 35%，按 insertionOrder 优先级填入，常驻条目豁免裁剪
+  // 3. 基于权重裁剪世界书 (角色私设享有豁免权或高优先级)
   const WI_BUDGET = contextWindow * 0.35;
   const budgetedEntries: WorldBookEntry[] = [];
   let currentWiTokens = 0;
 
   for (const entry of rawActiveEntries) {
     const tokens = estimateTokens(entry.content) + 10;
-    if (currentWiTokens + tokens > WI_BUDGET && !entry.constant) continue; // 预算满且非必需，则裁剪
+    const isPrivate = (entry as any).ownerId === character.id;
+    // 预算满且非私设且非必需，则裁剪
+    if (currentWiTokens + tokens > WI_BUDGET && !entry.constant && !isPrivate) continue; 
     currentWiTokens += tokens;
     budgetedEntries.push(entry);
   }
@@ -184,17 +255,21 @@ export const buildPromptMessages = (ctx: PromptContext, contextWindow: number = 
   const historyBudget = contextWindow - totalFixedTokens - RESPONSE_RESERVE;
 
   const eligibleMessages: any[] = [];
+  const discardedMessageIds: number[] = [];
   let usedHistoryTokens = 0;
-  for (let i = recentMessages.length - 1; i >= 0; i--) {
-    const msg = recentMessages[i];
-    // 基础文字消耗
+
+  for (let i = fullHistory.length - 1; i >= 0; i--) {
+    const msg = fullHistory[i];
     let t = estimateTokens(msg.content) + 10;
-    // 图片消耗估算：每个图片大致按 200 token 计算
     if (msg.images?.length) t += msg.images.length * 200;
 
-    if (usedHistoryTokens + t > historyBudget) break;
+    if (usedHistoryTokens + t > historyBudget) {
+      // 记录被裁切掉的消息 ID (仅限有 ID 的 DB 记录)
+      if ((msg as any).id) discardedMessageIds.push((msg as any).id);
+      continue;
+    }
+    
     usedHistoryTokens += t;
-
     const charForMsg = msg.speakerId === character.id ? character : (isMultiChar && otherCharName ? { name: otherCharName } : undefined);
     eligibleMessages.unshift({ 
       role: msg.role as any, 
@@ -202,6 +277,27 @@ export const buildPromptMessages = (ctx: PromptContext, contextWindow: number = 
       name: msg.role === 'user' ? actualUserName : (charForMsg?.name || undefined),
       images: msg.images
     });
+  }
+
+  // --- 记忆交换区：静默标记裁切消息 ---
+  // 仅在空闲时段或异步处理，避免阻塞 Prompt 生成
+  if (discardedMessageIds.length > 0) {
+    const MAX_PENDING = 100; // 安全阈值：待向量区最大容量
+    setTimeout(async () => {
+      try {
+        // 1. 检查当前待处理数量
+        const pendingCount = await db.messages.where('vState').equals(1).count();
+        if (pendingCount < MAX_PENDING) {
+          // 2. 仅标记最靠近活跃窗口的裁切消息（最具召回价值）
+          const toMark = discardedMessageIds.slice(0, MAX_PENDING - pendingCount);
+          await db.messages.where('id').anyOf(toMark).modify(m => {
+            if (m.vState === 0 || m.vState === undefined) m.vState = 1;
+          });
+        }
+      } catch (e) {
+        console.warn('[VectorQueue] 标记失败:', e);
+      }
+    }, 1000);
   }
 
   // 6. 最终合成
@@ -221,7 +317,7 @@ export const buildPromptMessages = (ctx: PromptContext, contextWindow: number = 
   return result;
 };
 
-export const buildSystemPrompt = (ctx: PromptContext): string => {
-  const msgs = buildPromptMessages(ctx);
+export const buildSystemPrompt = async (ctx: PromptContext): Promise<string> => {
+  const msgs = await buildPromptMessages(ctx);
   return msgs.filter(m => m.role === 'system').map(m => m.content).join('\n\n');
 };

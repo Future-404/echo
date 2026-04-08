@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAppStore } from '../store/useAppStore'
-import { ChevronLeft, ToggleLeft, ToggleRight } from 'lucide-react'
+import { ChevronLeft, ToggleLeft, ToggleRight, Brain } from 'lucide-react'
 
 // 子组件
 import Luminescence from './Config/Luminescence'
@@ -17,21 +17,30 @@ import PersonaManager from './Config/PersonaManager'
 import DebugConsole from './Config/DebugConsole'
 import StorageSettings from './Config/StorageSettings'
 import TtsSettings from './Config/TtsSettings'
+import RegexManager from './Config/RegexManager'
+import RegexEditor from './Config/RegexEditor'
+import MemoryPalace from './Config/MemoryPalace'
 
-type SubView = 'main' | 'advanced' | 'gateway' | 'world' | 'prompt' | 'provider-edit' | 'directive-edit' | 'skills' | 'persona' | 'debug' | 'appearance' | 'storage' | 'tts'
+type SubView = 'main' | 'advanced' | 'gateway' | 'world' | 'prompt' | 'provider-edit' | 'directive-edit' | 'skills' | 'persona' | 'debug' | 'appearance' | 'storage' | 'tts' | 'regex' | 'regex-edit' | 'memory-palace' | 'global-management'
 
 const MAIN_ITEMS = [
   { id: 'gateway', label: 'API 参数', icon: 'G', sub: 'API Gateway' },
+  { id: 'memory-palace', label: '记忆宫殿', icon: 'M', sub: 'Memory Palace' },
   { id: 'persona', label: '身份管理', icon: 'U', sub: 'User Persona' },
+  { id: 'global-management', label: '全局管理', icon: 'L', sub: 'World · Rules · Skills' },
+  { id: 'appearance', label: 'DIY 界面', icon: 'A', sub: 'Themes · Aesthetics' },
+  { id: 'tts',     label: '语音合成', icon: 'V', sub: 'Voice Synthesis' },
+]
+
+const GLOBAL_ITEMS = [
   { id: 'world',   label: '世界设定', icon: 'W', sub: 'World Context' },
   { id: 'prompt',  label: 'Prompt 注入', icon: 'P', sub: 'Directives' },
-  { id: 'tts',     label: '语音合成', icon: 'V', sub: 'Voice Synthesis' },
+  { id: 'regex',   label: '全局正则', icon: 'R', sub: 'Regex Rules' },
   { id: 'skills',  label: '技能扩展', icon: 'S', sub: 'Extensions' },
 ]
 
 const ADVANCED_ITEMS = [
-  { id: 'appearance', label: '视觉风格', icon: 'A', sub: 'Appearance' },
-  { id: 'storage',    label: '云端同步', icon: 'C', sub: 'Cloud Sync' },
+  { id: 'storage',    label: '数据管理', icon: 'C', sub: 'Archive & Backup' },
   { id: 'debug',      label: '调试日志', icon: 'D', sub: 'Debug' },
 ]
 
@@ -39,6 +48,8 @@ const ADVANCED_ITEMS = [
 const getBackTarget = (view: SubView): SubView => {
   if (view === 'provider-edit') return 'gateway'
   if (view === 'directive-edit') return 'prompt'
+  if (view === 'regex-edit') return 'regex'
+  if (GLOBAL_ITEMS.some(i => i.id === view)) return 'global-management'
   if (ADVANCED_ITEMS.some(i => i.id === view)) return 'advanced'
   return 'main'
 }
@@ -68,8 +79,10 @@ const ConfigPanel: React.FC = () => {
         <>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsConfigOpen(false)} className="fixed inset-0 z-[100] bg-white/10 dark:bg-black/20 backdrop-blur-md cursor-pointer" />
           <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="theme-surface fixed right-0 top-0 bottom-0 w-full max-w-sm z-[101] bg-echo-white/95 dark:bg-[#0a0a0a]/98 backdrop-blur-3xl border-l-0.5 border-echo-border flex flex-col shadow-2xl">
-
-            <header className="p-8 pb-6 safe-area-top flex items-center justify-between border-b-0.5 border-gray-100/50 dark:border-gray-800/50">
+            {/* iOS 状态栏占位 */}
+            <div className="h-[var(--sat)] min-h-[env(safe-area-inset-top)] w-full" />
+            
+            <header className="p-8 pb-6 flex items-center justify-between border-b-0.5 border-gray-100/50 dark:border-gray-800/50">
               {activeView !== 'main' && (
                 <button onClick={() => setActiveView(getBackTarget(activeView))} className="text-gray-400 hover:text-gray-600 dark:text-gray-600 transition-colors">
                   <ChevronLeft size={20} strokeWidth={1} />
@@ -171,7 +184,21 @@ const ConfigPanel: React.FC = () => {
                   </motion.div>
                 )}
 
-                {activeView === 'gateway' && <ProviderManager onEdit={(id) => { setEditingId(id); setActiveView('provider-edit') }} onAdd={() => { const newId = `provider-${Date.now()}`; addProvider({ id: newId, name: '新节点', apiKey: '', endpoint: 'https://api.openai.com/v1', model: 'gpt-4o' }); setEditingId(newId); setActiveView('provider-edit') }} />}
+                {/* 全局管理菜单 */}
+                {activeView === 'global-management' && (
+                  <motion.div key="global-management" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="p-6 space-y-4">
+                    <div className="space-y-1">
+                      <label className="text-[9px] tracking-widest text-gray-400 dark:text-gray-600 uppercase italic px-4 underline decoration-gray-100 dark:decoration-gray-800 underline-offset-8">Global Controls</label>
+                      {GLOBAL_ITEMS.map(item => (
+                        <NavItem key={item.id} {...item} onClick={() => setActiveView(item.id as SubView)} />
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+
+                {activeView === 'gateway' && <ProviderManager 
+                  onEdit={(id) => { setEditingId(id); setActiveView('provider-edit') }} 
+                />}
                 {activeView === 'provider-edit' && editingId && <ProviderEditor id={editingId} onClose={() => setActiveView('gateway')} />}
                 {activeView === 'prompt' && <DirectiveManager onEdit={(id) => { setEditingId(id); setActiveView('directive-edit') }} onAdd={() => { const newId = `dir-${Date.now()}`; addDirective({ id: newId, title: '新指令', content: '', enabled: true }); setEditingId(newId); setActiveView('directive-edit') }} />}
                 {activeView === 'directive-edit' && editingId && <DirectiveEditor id={editingId} onClose={() => setActiveView('prompt')} />}
@@ -180,8 +207,11 @@ const ConfigPanel: React.FC = () => {
                 {activeView === 'persona' && <PersonaManager />}
                 {activeView === 'debug' && <DebugConsole />}
                 {activeView === 'appearance' && <AppearanceEditor />}
+                {activeView === 'regex' && <RegexManager onEdit={(id) => { setEditingId(id); setActiveView('regex-edit') }} onAdd={() => { const newId = `regex-${Date.now()}`; addRegexRule({ id: newId, name: '新正则规则', regex: '', replacement: '', flags: 'gi', enabled: true, runOn: ['ui'] }); setEditingId(newId); setActiveView('regex-edit') }} />}
+                {activeView === 'regex-edit' && editingId && <RegexEditor id={editingId} onClose={() => setActiveView('regex')} />}
                 {activeView === 'storage' && <StorageSettings />}
                 {activeView === 'tts' && <TtsSettings />}
+                {activeView === 'memory-palace' && <MemoryPalace />}
 
               </AnimatePresence>
             </div>

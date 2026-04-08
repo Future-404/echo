@@ -1,7 +1,7 @@
 import React from 'react'
 import { Sun, Moon, Monitor } from 'lucide-react'
 import { useAppStore } from '../../store/useAppStore'
-import type { ThemeMode } from '../../store/useAppStore'
+import type { ThemeMode } from '../../types/store'
 
 const Luminescence: React.FC = () => {
   const { config, updateConfig } = useAppStore()
