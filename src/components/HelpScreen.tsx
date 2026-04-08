@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, BookOpen, Layers, Database, Cpu, Info, ChevronRight, BarChart2, MessageCircle, Paintbrush, Users, Rocket } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
@@ -32,7 +32,12 @@ const HELP_SECTIONS = [
 
 const HelpScreen: React.FC = () => {
   const { setCurrentView } = useAppStore();
-  const [activeTab, setActiveTab] = useState(HELP_SECTIONS[0].id);
+  const [activeTab, setActiveTab] = React.useState(HELP_SECTIONS[0].id);
+  const activeTabRef = React.useRef<HTMLButtonElement>(null);
+
+  React.useEffect(() => {
+    activeTabRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }, [activeTab]);
 
   const activeSection = HELP_SECTIONS.find(s => s.id === activeTab) || HELP_SECTIONS[0];
 
@@ -64,14 +69,15 @@ const HelpScreen: React.FC = () => {
             {HELP_SECTIONS.map((section) => (
               <button
                 key={section.id}
+                ref={activeTab === section.id ? activeTabRef : undefined}
                 onClick={() => setActiveTab(section.id)}
-                className={`flex-shrink-0 flex items-center gap-2 md:gap-4 px-4 md:px-5 py-2 md:py-4 rounded-xl md:rounded-2xl transition-all ${
+                className={`flex-shrink-0 flex items-center gap-2 md:gap-4 px-3 md:px-5 py-2 md:py-4 rounded-xl md:rounded-2xl transition-all ${
                   activeTab === section.id 
                     ? 'bg-blue-500/10 text-blue-500 font-bold' 
                     : 'text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5'
                 }`}
               >
-                <span className={`${activeTab === section.id ? 'text-blue-500' : 'text-gray-400'} scale-90 md:scale-100`}>
+                <span className={`${activeTab === section.id ? 'text-blue-500' : 'text-gray-400'} scale-90 md:scale-100 shrink-0`}>
                   {section.icon}
                 </span>
                 <span className="text-[10px] md:text-xs tracking-widest uppercase whitespace-nowrap">{section.title}</span>

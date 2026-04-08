@@ -107,9 +107,9 @@ export class VectorService {
             const s = useAppStore.getState();
             const llmProvider = s.config.providers.find(p => p.id === s.config.activeProviderId);
             const embProvider = s.config.providers.find(p => p.id === s.activeEmbeddingProviderId);
-            if (llmProvider && embProvider) {
+            if (llmProvider && embProvider && s.selectedCharacter) {
               memoryDistiller.crystallize(slotId, msgs, s.selectedCharacter.name, llmProvider, embProvider)
-                .catch(err => console.error(`[VectorService][${slotId}] 空闲结晶失败:`, err));
+                .catch(err => console.error(`[VectorService][${slotId}] idle crystallize failed:`, err));
             }
           });
         }

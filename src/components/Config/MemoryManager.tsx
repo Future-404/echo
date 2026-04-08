@@ -5,19 +5,19 @@ import { useAppStore } from '../../store/useAppStore'
 import { db } from '../../storage/db'
 import type { DBMemoryEpisode } from '../../storage/db'
 import { memoryDistiller } from '../../logic/memoryDistiller'
+import { vectorMath } from '../../utils/vectorMath'
 import { useDialog } from '../GlobalDialog'
 
-const MemoryPalace: React.FC = () => {
+const MemoryManager: React.FC = () => {
   const { currentAutoSlotId, config, activeEmbeddingProviderId, setActiveEmbeddingProviderId } = useAppStore()
   const { confirm } = useDialog()
   const [episodes, setEpisodes] = useState<DBMemoryEpisode[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [editingId, setEditingId] = useState<number | null>(null)
-  const [editContent, setEditEditContent] = useState('')
+  const [editContent, setEditContent] = useState('')
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // 加载碎片数据
   const loadData = async () => {
     if (!currentAutoSlotId) return
     const data = await db.memoryEpisodes
@@ -31,8 +31,8 @@ const MemoryPalace: React.FC = () => {
   useEffect(() => { loadData() }, [currentAutoSlotId])
 
   const handleDelete = async (id: number) => {
-    const ok = await confirm('确定要删除这段记忆碎片吗？此操作不可撤销。', {
-      title: '确认删除记忆？',
+    const ok = await confirm('确定要删除这段记忆片段吗？此操作不可撤销。', {
+      title: '确认删除',
       confirmText: '确认删除',
       danger: true
     })
@@ -44,15 +44,14 @@ const MemoryPalace: React.FC = () => {
 
   const handleStartEdit = (ep: DBMemoryEpisode) => {
     setEditingId(ep.id!)
-    setEditEditContent(ep.narrative)
+    setEditContent(ep.narrative)
   }
 
   const handleSaveEdit = async (ep: DBMemoryEpisode) => {
-    const embProvider = config.providers.find(p => p.id === config.activeEmbeddingProviderId)
-    if (!embProvider) return alert('请先配置默认嵌入模型')
+    const embProvider = config.providers.find(p => p.id === activeEmbeddingProviderId)
+    if (!embProvider) { alert('请先配置并选择 Embedding 模型'); return }
 
     try {
-      // 重新生成向量
       const newVector = await memoryDistiller.callEmbeddingAPI(embProvider, editContent)
       await db.memoryEpisodes.update(ep.id!, {
         narrative: editContent,
@@ -61,11 +60,11 @@ const MemoryPalace: React.FC = () => {
       setEditingId(null)
       loadData()
     } catch (e) {
-      alert('同步记忆失败，请检查网络或配置')
+      alert('更新失败，请检查网络或配置')
     }
   }
 
-  const filteredEpisodes = episodes.filter(ep => 
+  const filteredEpisodes = episodes.filter(ep =>
     ep.narrative.toLowerCase().includes(searchQuery.toLowerCase()) ||
     ep.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()))
   )
@@ -82,17 +81,17 @@ const MemoryPalace: React.FC = () => {
               <Brain size={24} strokeWidth={1.5} />
             </div>
             <div>
-              <h3 className="text-sm font-serif tracking-wide text-gray-700 dark:text-gray-200 font-bold italic">意识存档馆 // PALACE</h3>
+              <h3 className="text-sm font-serif tracking-wide text-gray-700 dark:text-gray-200 font-bold italic">记忆管理 // MEMORY</h3>
               <p className="text-[9px] text-gray-400 dark:text-gray-500 uppercase mt-1 tracking-widest font-mono">
-                S-{currentAutoSlotId?.slice(0, 8)} // {episodes.length} SHARDS STORED
+                S-{currentAutoSlotId?.slice(0, 8)} // {episodes.length} EPISODES
               </p>
             </div>
           </div>
 
-          {/* 引擎绑定选择器 */}
+          {/* Embedding 模型选择 */}
           <div className="pt-4 border-t-0.5 border-gray-100 dark:border-white/5">
             <div className="flex justify-between items-center mb-3 px-1">
-              <label className="text-[8px] uppercase tracking-[0.2em] text-gray-400 font-bold">Memory Engine // 记忆引擎绑定</label>
+              <label className="text-[8px] uppercase tracking-[0.2em] text-gray-400 font-bold">Embedding 模型</label>
               <Zap size={10} className={activeEmbeddingProviderId ? 'text-blue-400' : 'text-gray-300'} />
             </div>
             <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
@@ -118,7 +117,7 @@ const MemoryPalace: React.FC = () => {
           <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-400 transition-colors" size={14} />
           <input
             type="text"
-            placeholder="搜索语义或标签..."
+            placeholder="搜索内容或标签..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-white/50 dark:bg-white/5 border-0.5 border-gray-100 dark:border-gray-800 rounded-2xl py-3 pl-12 pr-4 text-xs text-gray-600 dark:text-gray-300 focus:outline-none focus:border-blue-300 dark:focus:border-blue-900 transition-all shadow-sm"
@@ -126,14 +125,14 @@ const MemoryPalace: React.FC = () => {
         </div>
       </div>
 
-      {/* 碎片列表 */}
+      {/* 片段列表 */}
       <div className="flex-1 overflow-y-auto px-6 pb-10 space-y-4 no-scrollbar">
         {isLoading ? (
-          <div className="flex justify-center py-20 animate-pulse text-gray-400 font-mono text-[10px] uppercase tracking-widest">Constructing Palace...</div>
+          <div className="flex justify-center py-20 animate-pulse text-gray-400 font-mono text-[10px] uppercase tracking-widest">Loading...</div>
         ) : filteredEpisodes.length === 0 ? (
           <div className="flex flex-col items-center py-20 text-gray-300 dark:text-gray-700">
             <Brain size={48} strokeWidth={0.5} className="mb-4 opacity-20" />
-            <p className="text-[10px] uppercase tracking-widest">尚未产生远期记忆结晶</p>
+            <p className="text-[10px] uppercase tracking-widest">暂无记忆片段</p>
           </div>
         ) : (
           filteredEpisodes.map((ep) => (
@@ -164,14 +163,14 @@ const MemoryPalace: React.FC = () => {
                 <div className="space-y-3">
                   <textarea
                     value={editContent}
-                    onChange={(e) => setEditEditContent(e.target.value)}
+                    onChange={(e) => setEditContent(e.target.value)}
                     className="w-full bg-white dark:bg-black/20 border-0.5 border-blue-200 dark:border-blue-900 rounded-xl p-3 text-xs text-gray-600 dark:text-gray-300 focus:outline-none min-h-[80px] resize-none font-serif leading-relaxed"
                   />
                   <button
                     onClick={() => handleSaveEdit(ep)}
                     className="w-full py-2 bg-blue-500 text-white rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2"
                   >
-                    <Save size={12} /> Sync to Memory
+                    <Save size={12} /> 保存并重新向量化
                   </button>
                 </div>
               ) : (
@@ -179,22 +178,22 @@ const MemoryPalace: React.FC = () => {
                   <p className="text-xs text-gray-600 dark:text-gray-300 font-serif leading-relaxed line-clamp-3 group-hover:line-clamp-none transition-all">
                     {ep.narrative}
                   </p>
-                  
+
                   {/* 原子命题详情 */}
                   <div className="pt-2 border-t-0.5 border-gray-100 dark:border-white/5">
-                    <button 
+                    <button
                       onClick={() => setExpandedId(expandedId === ep.id ? null : ep.id!)}
                       className="flex items-center gap-2 text-[8px] uppercase tracking-widest text-gray-400 hover:text-gray-600"
                     >
                       {expandedId === ep.id ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
-                      {expandedId === ep.id ? 'Hide Atomic Facts' : 'Reveal Atomic Facts'}
+                      {expandedId === ep.id ? '收起原子命题' : '展开原子命题'}
                     </button>
-                    
+
                     <AnimatePresence>
                       {expandedId === ep.id && (
-                        <motion.div 
-                          initial={{ height: 0, opacity: 0 }} 
-                          animate={{ height: 'auto', opacity: 1 }} 
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
                           className="overflow-hidden space-y-2 mt-3"
                         >
@@ -203,7 +202,7 @@ const MemoryPalace: React.FC = () => {
                               <span className={`w-1 h-1 rounded-full mt-1.5 shrink-0 ${at.importance === '高' ? 'bg-amber-400' : at.importance === '中' ? 'bg-blue-400' : 'bg-gray-300'}`} />
                               <div className="flex-1">
                                 <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-normal">{at.text}</p>
-                                <span className="text-[7px] uppercase text-gray-400 mt-1 block opacity-50">Priority: {at.importance}</span>
+                                <span className="text-[7px] uppercase text-gray-400 mt-1 block opacity-50">重要性: {at.importance}</span>
                               </div>
                             </div>
                           ))}
@@ -215,8 +214,8 @@ const MemoryPalace: React.FC = () => {
               )}
 
               <div className="mt-4 text-[7px] text-gray-300 dark:text-gray-600 uppercase tracking-[0.2em] font-mono flex justify-between">
-                <span>Stored: {new Date(ep.timestamp).toLocaleDateString()}</span>
-                <span className="flex items-center gap-1"><Info size={8} /> Semantic crystallized</span>
+                <span>{new Date(ep.timestamp).toLocaleDateString()}</span>
+                <span className="flex items-center gap-1"><Info size={8} /> 已向量化</span>
               </div>
             </motion.div>
           ))
@@ -226,4 +225,4 @@ const MemoryPalace: React.FC = () => {
   )
 }
 
-export default MemoryPalace
+export default MemoryManager

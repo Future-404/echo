@@ -19,13 +19,13 @@ import StorageSettings from './Config/StorageSettings'
 import TtsSettings from './Config/TtsSettings'
 import RegexManager from './Config/RegexManager'
 import RegexEditor from './Config/RegexEditor'
-import MemoryPalace from './Config/MemoryPalace'
+import MemoryManager from './Config/MemoryManager'
 
 type SubView = 'main' | 'advanced' | 'gateway' | 'world' | 'prompt' | 'provider-edit' | 'directive-edit' | 'skills' | 'persona' | 'debug' | 'appearance' | 'storage' | 'tts' | 'regex' | 'regex-edit' | 'memory-palace' | 'global-management'
 
 const MAIN_ITEMS = [
   { id: 'gateway', label: 'API 参数', icon: 'G', sub: 'API Gateway' },
-  { id: 'memory-palace', label: '记忆宫殿', icon: 'M', sub: 'Memory Palace' },
+  { id: 'memory-palace', label: '记忆管理', icon: 'M', sub: 'Memory Manager' },
   { id: 'persona', label: '身份管理', icon: 'U', sub: 'User Persona' },
   { id: 'global-management', label: '全局管理', icon: 'L', sub: 'World · Rules · Skills' },
   { id: 'appearance', label: 'DIY 界面', icon: 'A', sub: 'Themes · Aesthetics' },
@@ -211,7 +211,7 @@ const ConfigPanel: React.FC = () => {
                 {activeView === 'regex-edit' && editingId && <RegexEditor id={editingId} onClose={() => setActiveView('regex')} />}
                 {activeView === 'storage' && <StorageSettings />}
                 {activeView === 'tts' && <TtsSettings />}
-                {activeView === 'memory-palace' && <MemoryPalace />}
+                {activeView === 'memory-palace' && <MemoryManager />}
 
               </AnimatePresence>
             </div>

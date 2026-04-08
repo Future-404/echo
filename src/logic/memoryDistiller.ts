@@ -34,14 +34,20 @@ export const memoryDistiller = {
         const response = await fetch(url, { ...options, signal: controller.signal });
         clearTimeout(id);
         if (response.ok) return response;
-        if (response.status === 429) await new Promise(r => setTimeout(r, 2000 * (i + 1))); 
+        // Non-ok and non-retryable: throw immediately with status info
+        if (response.status !== 429) {
+          const text = await response.text().catch(() => '');
+          throw new Error(`HTTP ${response.status}: ${text.slice(0, 200)}`);
+        }
+        // 429: wait and retry
+        await new Promise(r => setTimeout(r, 2000 * (i + 1)));
       } catch (err: any) {
         clearTimeout(id);
         if (i === retries) throw err;
         await new Promise(r => setTimeout(r, 1000 * (i + 1))); 
       }
     }
-    throw new Error('RobustFetch Failed after retries');
+    throw new Error('Request failed after retries');
   },
 
   buildDistillPrompt(charName: string, messages: Message[]): string {
@@ -113,7 +119,7 @@ ${chatTranscript}
 
       return true;
     } catch (e) {
-      console.error('[Hippocampus] 结晶失败:', e);
+      console.error('[MemoryDistiller] crystallize failed:', e);
       return false;
     }
   },
@@ -126,14 +132,16 @@ ${chatTranscript}
           .where('slotId').equals(slotId)
           .sortBy('timestamp');
         
-        const deleteIds = (toDelete.slice(0, count - this.MAX_EPISODES_PER_SLOT) as any[]).map(e => e.id);
+        const deleteIds = (toDelete.slice(0, count - this.MAX_EPISODES_PER_SLOT) as any[])
+          .map(e => e.id)
+          .filter((id): id is number => id != null);
         await db.memoryEpisodes.bulkDelete(deleteIds);
-        console.log(`[Hippocampus] 已清理 ${deleteIds.length} 条陈旧记忆片段`);
+        console.log(`[MemoryDistiller] pruned ${deleteIds.length} old episodes`);
       }
     } catch (e) { console.error('Pruning failed:', e); }
   },
 
-  async callDistillLLM(provider: any, prompt: string): Promise<any> {
+  async callDistillLLM(provider: any, prompt: string): Promise<DistillationResult | null> {
     const response = await this.robustFetch(`${provider.endpoint}/chat/completions`, {
       method: 'POST',
       headers: { 
@@ -149,7 +157,13 @@ ${chatTranscript}
     });
 
     const data = await response.json();
-    return JSON.parse(data.choices[0]?.message?.content);
+    const raw = data.choices?.[0]?.message?.content;
+    if (!raw) throw new Error('LLM returned empty content');
+    try {
+      return JSON.parse(raw) as DistillationResult;
+    } catch {
+      throw new Error(`LLM returned non-JSON: ${raw.slice(0, 200)}`);
+    }
   },
 
   async callEmbeddingAPI(provider: any, text: string): Promise<number[]> {
@@ -173,7 +187,14 @@ ${chatTranscript}
     });
 
     const data = await response.json();
-    return isGemini ? data.embedding.values : data.data[0].embedding;
+    if (isGemini) {
+      const values = data?.embedding?.values;
+      if (!Array.isArray(values)) throw new Error(`Gemini embedding missing values: ${JSON.stringify(data).slice(0, 200)}`);
+      return values;
+    }
+    const embedding = data?.data?.[0]?.embedding;
+    if (!Array.isArray(embedding)) throw new Error(`Embedding missing data[0].embedding: ${JSON.stringify(data).slice(0, 200)}`);
+    return embedding;
   },
 
   calculateGlobalImportance(atomic: any[]): number {
