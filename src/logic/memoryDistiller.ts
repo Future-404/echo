@@ -56,17 +56,22 @@ export const memoryDistiller = {
       .join('\n');
 
     return `
-你现在是【记忆结晶师】。请对以下对话片段进行三层提炼，以角色 [${charName}] 的视角进行记录。
+You are a memory extraction system. Analyze the following conversation and extract structured memory from the perspective of [${charName}].
 
-### 待处理片段：
+### Conversation:
 ${chatTranscript}
 
-### 提炼任务：
-1. **原子命题层 (Atomic Propositions)**：把核心事实、决定或关键情感拆成最小的、相互独立的陈述句（3-8条）。每条必须自包含（提及具体人名/物名），禁用代词。
-2. **叙事块层 (Narrative Chunk)**：把上述原子命题合并成 1 段高密度的叙事，保留情感弧线和伏笔。
-3. **主题标签层 (Tags)**：提取 3-6 个精确标签（人物、地点、情绪、意图、时间锚点等）。
+### Task:
+Extract the following three components:
 
-要求：严格 JSON 格式，不得有额外文字。
+1. **atomic** — Decompose key facts, decisions, and emotional turning points into minimal, self-contained propositions (3–8 items). Each must be fully explicit (use proper names, no pronouns). Assign importance: "高" (plot-critical), "中" (contextually relevant), "低" (background detail).
+2. **narrative** — Synthesize the atomic propositions into one dense paragraph. Preserve emotional arc and unresolved threads.
+3. **tags** — Extract 3–6 precise labels (characters, locations, emotions, intentions, time anchors).
+
+Respond with strict JSON only. No explanation, no markdown.
+
+Expected format:
+{"atomic":[{"text":"...","importance":"高|中|低"}],"narrative":"...","tags":["..."]}
 `.trim();
   },
 
