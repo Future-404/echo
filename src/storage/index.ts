@@ -11,6 +11,10 @@ export function getSavedToken(): string {
   return localStorage.getItem(BOOTSTRAP_KEY) ?? ''
 }
 
+export function isCloudConnected(): boolean {
+  return !!API_BASE && !!getSavedToken()
+}
+
 function saveToken(token: string) {
   localStorage.setItem(BOOTSTRAP_KEY, token)
 }

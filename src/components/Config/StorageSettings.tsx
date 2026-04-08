@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAppStore } from '../../store/useAppStore';
-import { authenticateWithPassword, getSavedToken, resetStorageAdapter } from '../../storage';
+import { authenticateWithPassword, getSavedToken, isCloudConnected, resetStorageAdapter } from '../../storage';
 import { backupService } from '../../utils/backupService';
 import { 
   Cloud, CloudOff, Loader2, CheckCircle2, AlertCircle, 
@@ -27,6 +27,7 @@ const StorageSettings: React.FC = () => {
   }, []);
 
   const currentToken = getSavedToken();
+  const cloudConnected = isCloudConnected();
 
   const handleConnect = async () => {
     if (!password) return;
@@ -150,7 +151,7 @@ const StorageSettings: React.FC = () => {
           <label className="text-[10px] uppercase tracking-widest text-gray-400 font-bold italic">云端实时同步 // CLOUD SYNC</label>
         </div>
 
-        {currentToken ? (
+        {cloudConnected ? (
           <div className="space-y-4">
             <div className="p-6 rounded-[2rem] bg-green-500/5 border-0.5 border-green-500/20 flex items-center gap-5">
               <div className="w-12 h-12 rounded-2xl bg-green-500/10 flex items-center justify-center text-green-500 shadow-inner">
