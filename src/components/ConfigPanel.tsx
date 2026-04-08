@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAppStore } from '../store/useAppStore'
 import { ChevronLeft, ToggleLeft, ToggleRight, Brain } from 'lucide-react'
@@ -72,6 +72,16 @@ const ConfigPanel: React.FC = () => {
 
   const activeView = configSubView as SubView
   const setActiveView = (view: SubView) => setConfigSubView(view as any)
+
+  // ConfigPanel이 열릴 때 edit 서브뷰에 editingId가 없으면 부모 뷰로 리셋
+  useEffect(() => {
+    if (isConfigOpen && !editingId) {
+      const editViews = ['provider-edit', 'directive-edit', 'regex-edit']
+      if (editViews.includes(activeView)) {
+        setActiveView(getBackTarget(activeView))
+      }
+    }
+  }, [isConfigOpen])
 
   return (
     <AnimatePresence>
