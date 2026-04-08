@@ -1,9 +1,8 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
-import { Trash2, Download } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { useDialog } from './GlobalDialog';
-import { backupService } from '../utils/backupService';
 
 const LoadScreen: React.FC = () => {
   const { saveSlots, loadGame, deleteSaveSlot, setCurrentView, characters } = useAppStore();
@@ -23,15 +22,6 @@ const LoadScreen: React.FC = () => {
   const manualSlots = saveSlots
     .filter(s => !s.id.startsWith('auto_'))
     .sort((a, b) => b.timestamp - a.timestamp);
-
-  const handleExportSlot = async (e: React.MouseEvent, slot: ReturnType<typeof useAppStore.getState>['saveSlots'][0]) => {
-    e.stopPropagation();
-    try {
-      await backupService.exportSingleSlot(slot);
-    } catch (err: any) {
-      alert(`导出失败: ${err?.message ?? err}`);
-    }
-  };
 
   const handleLoad = async (slotId: string) => {
     const confirmed = await confirm('确定要加载此存档吗？当前未保存的进度将会丢失。', {
@@ -83,13 +73,6 @@ const LoadScreen: React.FC = () => {
                       {new Date(slot.timestamp).toLocaleTimeString()}
                     </span>
                     <button
-                      onClick={(e) => handleExportSlot(e, slot)}
-                      className="p-2 -m-1 text-blue-400/50 md:text-blue-400/30 hover:text-blue-400 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
-                      title="下载此存档 (.echo-slot)"
-                    >
-                      <Download size={14} />
-                    </button>
-                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         confirm('确定删除此自动存档吗？', { confirmText: '删除', danger: true }).then(ok => {
@@ -137,13 +120,6 @@ const LoadScreen: React.FC = () => {
                     <span className="text-xs text-white/40 font-mono">
                       {new Date(slot.timestamp).toLocaleString()}
                     </span>
-                    <button
-                      onClick={(e) => handleExportSlot(e, slot)}
-                      className="p-2 -m-1 text-blue-400/60 md:text-blue-400/50 hover:text-blue-400 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
-                      title="下载此存档 (.echo-slot)"
-                    >
-                      <Download size={16} />
-                    </button>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
