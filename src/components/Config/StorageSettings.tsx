@@ -5,7 +5,7 @@ import { backupService } from '../../utils/backupService';
 import { 
   Cloud, CloudOff, Loader2, CheckCircle2, AlertCircle, 
   ShieldCheck, ShieldAlert, Download, Upload, RefreshCw, 
-  Database, HardDrive, Info
+  Database, HardDrive, Info, Lock, Unlock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDialog } from '../GlobalDialog';
@@ -217,8 +217,138 @@ const StorageSettings: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {/* App Lock */}
+      <AppLockSettings />
     </div>
   );
 };
+
+const AppLockSettings: React.FC = () => {
+  const { config, updateConfig } = useAppStore()
+  const appLock = config?.appLock ?? { enabled: false, pinHash: '', timeoutMinutes: 5 }
+  const [newPin, setNewPin] = useState('')
+  const [confirmPin, setConfirmPin] = useState('')
+  const [pinError, setPinError] = useState('')
+  const [saved, setSaved] = useState(false)
+
+  const sha256hex = async (text: string) => {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('')
+  }
+
+  const handleToggle = async () => {
+    if (appLock.enabled) {
+      updateConfig({ appLock: { ...appLock, enabled: false, pinHash: '' } })
+      sessionStorage.removeItem('echo-unlocked-at')
+    } else {
+      // require setting a PIN first
+    }
+  }
+
+  const handleSavePin = async () => {
+    setPinError('')
+    if (newPin.length < 4) { setPinError('PIN 至少 4 位'); return }
+    if (newPin !== confirmPin) { setPinError('两次输入不一致'); return }
+    const hash = await sha256hex(newPin)
+    updateConfig({ appLock: { ...appLock, enabled: true, pinHash: hash } })
+    sessionStorage.setItem('echo-unlocked-at', String(Date.now()))
+    setNewPin(''); setConfirmPin('')
+    setSaved(true); setTimeout(() => setSaved(false), 2000)
+  }
+
+  return (
+    <section className="space-y-6">
+      <div className="flex items-center gap-2 px-1">
+        <label className="text-[10px] uppercase tracking-widest text-gray-400 font-bold italic">应用锁 // APP LOCK</label>
+      </div>
+
+      <div className="bg-gray-50/50 dark:bg-white/5 p-6 rounded-[2.5rem] border-0.5 border-gray-100 dark:border-white/5 space-y-6">
+        {/* 开关状态 */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {appLock.enabled
+              ? <Lock size={16} className="text-blue-500" />
+              : <Unlock size={16} className="text-gray-400" />}
+            <div>
+              <p className="text-xs font-bold text-gray-700 dark:text-gray-200">
+                {appLock.enabled ? '已启用' : '未启用'}
+              </p>
+              <p className="text-[8px] text-gray-400 uppercase tracking-widest mt-0.5">
+                {appLock.enabled ? `超时 ${appLock.timeoutMinutes} 分钟后锁屏` : '任何人拿起设备均可直接访问'}
+              </p>
+            </div>
+          </div>
+          {appLock.enabled && (
+            <button
+              onClick={handleToggle}
+              className="text-[9px] uppercase tracking-widest text-red-400 hover:text-red-500 font-mono transition-all"
+            >
+              关闭
+            </button>
+          )}
+        </div>
+
+        {/* 超时设置 */}
+        {appLock.enabled && (
+          <div className="space-y-2">
+            <label className="text-[8px] uppercase tracking-widest text-gray-400 font-bold">锁屏超时</label>
+            <div className="flex gap-2 flex-wrap">
+              {[0, 1, 5, 15, 30].map(m => (
+                <button
+                  key={m}
+                  onClick={() => updateConfig({ appLock: { ...appLock, timeoutMinutes: m } })}
+                  className={`px-3 py-1.5 rounded-xl text-[9px] font-mono uppercase tracking-widest transition-all ${
+                    appLock.timeoutMinutes === m
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                  }`}
+                >
+                  {m === 0 ? '每次' : `${m}分钟`}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 设置/修改 PIN */}
+        <div className="space-y-3">
+          <label className="text-[8px] uppercase tracking-widest text-gray-400 font-bold">
+            {appLock.enabled ? '修改 PIN' : '设置 PIN 以启用'}
+          </label>
+          <input
+            type="password"
+            inputMode="numeric"
+            value={newPin}
+            onChange={e => setNewPin(e.target.value)}
+            placeholder="新 PIN（至少 4 位）"
+            className="w-full bg-white dark:bg-black/20 border-0.5 border-gray-200 dark:border-white/5 rounded-2xl px-5 py-3 text-xs focus:outline-none focus:border-blue-400 transition-all font-mono tracking-widest"
+          />
+          <input
+            type="password"
+            inputMode="numeric"
+            value={confirmPin}
+            onChange={e => setConfirmPin(e.target.value)}
+            placeholder="确认 PIN"
+            onKeyDown={e => e.key === 'Enter' && handleSavePin()}
+            className="w-full bg-white dark:bg-black/20 border-0.5 border-gray-200 dark:border-white/5 rounded-2xl px-5 py-3 text-xs focus:outline-none focus:border-blue-400 transition-all font-mono tracking-widest"
+          />
+          {pinError && <p className="text-[9px] text-red-400 font-mono">{pinError}</p>}
+          <button
+            onClick={handleSavePin}
+            disabled={!newPin || !confirmPin}
+            className="w-full py-3 bg-blue-500 hover:bg-blue-600 disabled:opacity-30 text-white rounded-2xl text-[10px] uppercase tracking-widest font-bold transition-all flex items-center justify-center gap-2"
+          >
+            {saved ? <><CheckCircle2 size={14} /> 已保存</> : <><Lock size={14} /> {appLock.enabled ? '更新 PIN' : '启用应用锁'}</>}
+          </button>
+        </div>
+
+        <p className="text-[8px] text-gray-400 leading-relaxed opacity-60">
+          PIN 以 SHA-256 哈希存储，明文不落地。忘记 PIN 可清除浏览器数据重置。
+        </p>
+      </div>
+    </section>
+  )
+}
 
 export default StorageSettings;

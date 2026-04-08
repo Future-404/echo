@@ -71,6 +71,7 @@ const INITIAL_CONFIG = {
   customCss: '',
   customBg: false,
   regexRules: [],
+  appLock: { enabled: false, pinHash: '', timeoutMinutes: 5 },
 };
 
 export const useAppStore = create<AppState>()(

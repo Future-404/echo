@@ -21,6 +21,11 @@ export interface ConfigSlice {
     actionMarkers?: string;
     thoughtMarkers?: string;
     regexRules: RegexRule[];
+    appLock: {
+      enabled: boolean;
+      pinHash: string;       // SHA-256 of PIN, empty = not set
+      timeoutMinutes: number; // 0 = lock on every page load
+    };
   };
   
   updateConfig: (newConfig: Partial<ConfigSlice['config']>) => void;

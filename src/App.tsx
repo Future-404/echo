@@ -9,6 +9,7 @@ import { useCustomCss } from './hooks/useCustomCss'
 import { useCustomBg } from './hooks/useCustomBg'
 import { useKeyboard } from './hooks/useKeyboardHeight'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { LockScreen } from './components/LockScreen'
 
 // 核心/重型组件：改回静态导入以确保 WebGL 上下文稳定
 import Stage from './engine/Stage'
@@ -42,6 +43,38 @@ const App: React.FC = () => {
     isDialogueFullscreen, config, messages, missions
   } = useAppStore()
   const setSelectedCharacter = useAppStore(s => s.setSelectedCharacter)
+
+  // ── App Lock ──────────────────────────────────────────────────────────────
+  const appLock = config?.appLock
+  const [locked, setLocked] = React.useState(() => {
+    if (!appLock?.enabled || !appLock?.pinHash) return false
+    // timeoutMinutes=0 → lock on every page load
+    if (appLock.timeoutMinutes === 0) return true
+    const lastUnlock = Number(sessionStorage.getItem('echo-unlocked-at') || 0)
+    return Date.now() - lastUnlock > appLock.timeoutMinutes * 60_000
+  })
+
+  // Re-lock when returning from background after timeout
+  React.useEffect(() => {
+    if (!appLock?.enabled || !appLock?.pinHash) return
+    const handleVisibility = () => {
+      if (document.visibilityState !== 'visible') return
+      if (appLock.timeoutMinutes === 0) { setLocked(true); return }
+      const lastUnlock = Number(sessionStorage.getItem('echo-unlocked-at') || 0)
+      if (Date.now() - lastUnlock > appLock.timeoutMinutes * 60_000) setLocked(true)
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [appLock])
+
+  const handleUnlock = React.useCallback(async (pin: string): Promise<boolean> => {
+    const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pin))
+    const hex = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('')
+    if (hex !== appLock?.pinHash) return false
+    sessionStorage.setItem('echo-unlocked-at', String(Date.now()))
+    setLocked(false)
+    return true
+  }, [appLock?.pinHash])
   
   // 1. 初始化应用生命周期
   React.useEffect(() => {
@@ -119,6 +152,7 @@ const App: React.FC = () => {
 
   return (
     <ErrorBoundary>
+    {locked && <LockScreen onUnlock={handleUnlock} />}
     <div 
       className="relative w-screen h-[100dvh] overflow-hidden font-sans cursor-crosshair select-none transition-colors duration-700"
       onMouseDown={handleStart}
