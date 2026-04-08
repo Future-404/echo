@@ -75,7 +75,7 @@ const StorageSettings: React.FC = () => {
     setBackupLoading(true);
     try {
       await backupService.importFullBackup(file);
-      alert('重构成功，系统即将重启以同步意识。');
+      alert('导入成功，即将重新加载。');
       window.location.reload();
     } catch (err: any) {
       alert(`导入失败: ${err.message}`);
@@ -94,7 +94,7 @@ const StorageSettings: React.FC = () => {
         </div>
         <div>
           <h3 className="text-sm font-serif tracking-[0.2em] text-gray-700 dark:text-gray-200 uppercase font-bold italic">数据管理 // DATA</h3>
-          <p className="text-[9px] text-gray-400 dark:text-gray-500 uppercase mt-1 tracking-widest font-mono">Archive & Consciousness Portability</p>
+          <p className="text-[9px] text-gray-400 dark:text-gray-500 uppercase mt-1 tracking-widest font-mono">Archive & Portability</p>
         </div>
       </div>
 
@@ -116,7 +116,7 @@ const StorageSettings: React.FC = () => {
                 <Download size={20} />
               </div>
               <div>
-                <p className="text-xs font-serif font-bold text-gray-700 dark:text-gray-200">导出意识数据</p>
+                <p className="text-xs font-serif font-bold text-gray-700 dark:text-gray-200">导出备份</p>
                 <p className="text-[8px] text-gray-400 uppercase mt-1 tracking-tighter">打包角色、记忆与配置为 .echo 文件</p>
               </div>
             </div>
@@ -135,7 +135,7 @@ const StorageSettings: React.FC = () => {
                 <Upload size={20} />
               </div>
               <div>
-                <p className="text-xs font-serif font-bold text-gray-700 dark:text-gray-200">重构意识数据</p>
+                <p className="text-xs font-serif font-bold text-gray-700 dark:text-gray-200">导入备份</p>
                 <p className="text-[8px] text-gray-400 uppercase mt-1 tracking-tighter">从本地文件恢复所有数据 (覆盖模式)</p>
               </div>
             </div>
@@ -157,12 +157,12 @@ const StorageSettings: React.FC = () => {
                 <ShieldCheck size={24} />
               </div>
               <div>
-                <p className="text-xs font-bold text-green-600 dark:text-green-400">同步链路已激活</p>
-                <p className="text-[8px] text-gray-400 mt-1 uppercase tracking-widest">Active Neural Link: R2 STORAGE</p>
+                <p className="text-xs font-bold text-green-600 dark:text-green-400">云端同步已连接</p>
+                <p className="text-[8px] text-gray-400 mt-1 uppercase tracking-widest">R2 STORAGE ACTIVE</p>
               </div>
             </div>
             <button onClick={() => { localStorage.removeItem('echo-storage-token'); resetStorageAdapter(); window.location.reload(); }} className="w-full py-4 text-[9px] uppercase tracking-[0.3em] text-red-400 hover:text-red-500 transition-all font-mono">
-              [ 断开云端链接 / SEVER NEURAL LINK ]
+              断开云端同步
             </button>
           </div>
         ) : (
@@ -177,7 +177,7 @@ const StorageSettings: React.FC = () => {
 
             <div className="space-y-4 px-2">
               <div className="space-y-2">
-                <label className="text-[8px] uppercase tracking-[0.2em] text-gray-400 font-bold ml-1 italic">Neural Token // 访问密码</label>
+                <label className="text-[8px] uppercase tracking-[0.2em] text-gray-400 font-bold ml-1 italic">访问密码 // Access Token</label>
                 <input
                   type="password"
                   value={password}
@@ -200,7 +200,7 @@ const StorageSettings: React.FC = () => {
                 className="w-full py-4 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white rounded-2xl text-[10px] uppercase tracking-[0.2em] font-bold shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-3"
               >
                 {loading ? <Loader2 className="animate-spin" size={14} /> : <Cloud size={14} />}
-                Establish Cloud Link
+                连接云端存储
               </button>
             </div>
           </div>
@@ -213,7 +213,7 @@ const StorageSettings: React.FC = () => {
         <div className="space-y-1">
           <p className="text-[9px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest italic">⚠ 注意事项 // CAUTION</p>
           <p className="text-[8px] text-gray-400 dark:text-amber-200/40 leading-relaxed uppercase tracking-tighter">
-            .echo 数据包是您意识的物理载体。请妥善保管此文件。导入操作将清除所有现有数据，确保您已在重构前完成了必要的备份。
+            导入操作将覆盖所有现有数据，请在导入前确认已完成备份。
           </p>
         </div>
       </div>
