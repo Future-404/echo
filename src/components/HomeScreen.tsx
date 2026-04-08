@@ -88,13 +88,21 @@ const HomeScreen: React.FC = () => {
       icon: '💾', label: '存档', color: '#6b7280',
       action: () => { setCurrentApp('vn'); useAppStore.getState().setIsConfigOpen(true, 'storage') }
     },
+    {
+      icon: '❓', label: '手册', color: '#0284c7',
+      action: () => { setCurrentApp('vn'); setCurrentView('help') }
+    },
+    {
+      icon: '🐛', label: '调试', color: '#dc2626',
+      action: () => { setCurrentApp('vn'); useAppStore.getState().setIsConfigOpen(true, 'debug') }
+    },
   ]
 
   const dock = [
     apps[0], // 剧场
     apps[1], // 聊天
     apps[2], // 图鉴
-    { icon: '⚙️', label: '设定', color: '#374151', action: () => { setCurrentApp('vn'); useAppStore.getState().setIsConfigOpen(true) } },
+    apps[6], // API
   ]
 
   const gridApps = apps.slice(2)
@@ -111,15 +119,8 @@ const HomeScreen: React.FC = () => {
         </span>
       </div>
 
-      {/* 主屏 Dock 快捷区 */}
-      <div className="flex justify-center gap-5 px-6 pt-6 pb-4 flex-shrink-0">
-        {[apps[0], apps[1]].map(app => (
-          <AppIcon key={app.label} icon={app.icon} label={app.label} color={app.color} onClick={app.action} />
-        ))}
-      </div>
-
       {/* App Grid */}
-      <div className="flex-1 overflow-y-auto no-scrollbar px-6 pt-2">
+      <div className="flex-1 overflow-y-auto no-scrollbar px-6 pt-4">
         <div className="grid grid-cols-3 gap-x-4 gap-y-6 pb-4">
           {gridApps.map(app => (
             <AppIcon key={app.label} icon={app.icon} label={app.label} color={app.color} onClick={app.action} />
