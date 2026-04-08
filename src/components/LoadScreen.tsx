@@ -24,6 +24,15 @@ const LoadScreen: React.FC = () => {
     .filter(s => !s.id.startsWith('auto_'))
     .sort((a, b) => b.timestamp - a.timestamp);
 
+  const handleExportSlot = async (e: React.MouseEvent, slotId: string) => {
+    e.stopPropagation();
+    try {
+      await backupService.exportSingleSlot(slotId);
+    } catch (err: any) {
+      alert(`导出失败: ${err?.message ?? err}`);
+    }
+  };
+
   const handleLoad = async (slotId: string) => {
     const confirmed = await confirm('确定要加载此存档吗？当前未保存的进度将会丢失。', {
       confirmText: '读取',
@@ -74,10 +83,7 @@ const LoadScreen: React.FC = () => {
                       {new Date(slot.timestamp).toLocaleTimeString()}
                     </span>
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        backupService.exportSingleSlot(slot.id);
-                      }}
+                      onClick={(e) => handleExportSlot(e, slot.id)}
                       className="p-2 -m-1 text-blue-400/50 md:text-blue-400/30 hover:text-blue-400 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                       title="下载此存档 (.echo-slot)"
                     >
@@ -132,10 +138,7 @@ const LoadScreen: React.FC = () => {
                       {new Date(slot.timestamp).toLocaleString()}
                     </span>
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        backupService.exportSingleSlot(slot.id);
-                      }}
+                      onClick={(e) => handleExportSlot(e, slot.id)}
                       className="p-2 -m-1 text-blue-400/60 md:text-blue-400/50 hover:text-blue-400 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                       title="下载此存档 (.echo-slot)"
                     >
