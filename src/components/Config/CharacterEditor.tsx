@@ -143,7 +143,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
       enabled: true,
       comment: '私人记忆'
     }
-    addPrivateWorldBookEntry(entry)
+    addPrivateWorldBookEntry(entry, charId)
     setNewKeys('')
     setNewContent('')
     setIsAddingPrivate(false)
@@ -379,7 +379,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
                       <div className="flex items-center gap-3">
                         {/* 改进开关按钮：使用 Switch 样式 */}
                         <button 
-                          onClick={() => updatePrivateWorldBookEntry(entry.id, { enabled: !entry.enabled })}
+                          onClick={() => updatePrivateWorldBookEntry(entry.id, { enabled: !entry.enabled }, charId)}
                           className={`w-8 h-4 rounded-full flex items-center px-0.5 transition-colors ${entry.enabled ? 'bg-orange-400/50' : 'bg-gray-300 dark:bg-gray-700'}`}
                         >
                           <motion.div 
@@ -390,7 +390,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
                         </button>
 
                         <div className="flex items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-all">
-                          <button onClick={() => removePrivateWorldBookEntry(entry.id)} className="p-1.5 text-gray-400 hover:text-red-400 transition-colors">
+                          <button onClick={() => removePrivateWorldBookEntry(entry.id, charId)} className="p-1.5 text-gray-400 hover:text-red-400 transition-colors">
                             <Trash2 size={12} />
                           </button>
                           <button onClick={() => setExpandedPrivateId(expandedPrivateId === entry.id ? null : entry.id)} className="p-1.5 text-gray-400">

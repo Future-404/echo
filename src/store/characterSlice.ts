@@ -14,9 +14,9 @@ export interface CharacterSlice {
   syncImagesFromDb: () => Promise<void>;
   updateAttributes: (charId: string, attributes: Record<string, any>) => void;
   addTagTemplate: (charId: string, template: any) => void;
-  addPrivateWorldBookEntry: (entry: WorldBookEntry) => Promise<void>;
-  updatePrivateWorldBookEntry: (id: string, updates: Partial<WorldBookEntry>) => Promise<void>;
-  removePrivateWorldBookEntry: (id: string) => Promise<void>;
+  addPrivateWorldBookEntry: (entry: WorldBookEntry, charId?: string) => Promise<void>;
+  updatePrivateWorldBookEntry: (id: string, updates: Partial<WorldBookEntry>, charId?: string) => Promise<void>;
+  removePrivateWorldBookEntry: (id: string, charId?: string) => Promise<void>;
 }
 
 export const createCharacterSlice = (set: any, get: any, DEFAULT_CHARACTERS: CharacterCard[]): CharacterSlice => ({
@@ -116,9 +116,11 @@ export const createCharacterSlice = (set: any, get: any, DEFAULT_CHARACTERS: Cha
     };
   }),
 
-  addPrivateWorldBookEntry: async (entry) => {
+  addPrivateWorldBookEntry: async (entry, charId) => {
     const state = get();
-    const char = state.selectedCharacter;
+    const char = charId
+      ? (state.characters || []).find((c: CharacterCard) => c.id === charId) ?? state.selectedCharacter
+      : state.selectedCharacter;
     const currentEntries = char.extensions?.worldBook || [];
     const updatedChar = { ...char, extensions: { ...char.extensions, worldBook: [...currentEntries, entry] } };
     
@@ -131,9 +133,11 @@ export const createCharacterSlice = (set: any, get: any, DEFAULT_CHARACTERS: Cha
     }));
   },
 
-  updatePrivateWorldBookEntry: async (id, updates) => {
+  updatePrivateWorldBookEntry: async (id, updates, charId) => {
     const state = get();
-    const char = state.selectedCharacter;
+    const char = charId
+      ? (state.characters || []).find((c: CharacterCard) => c.id === charId) ?? state.selectedCharacter
+      : state.selectedCharacter;
     const currentEntries = char.extensions?.worldBook || [];
     const entry = currentEntries.find((e: any) => e.id === id);
     if (!entry) return;
@@ -151,9 +155,11 @@ export const createCharacterSlice = (set: any, get: any, DEFAULT_CHARACTERS: Cha
     }));
   },
 
-  removePrivateWorldBookEntry: async (id) => {
+  removePrivateWorldBookEntry: async (id, charId) => {
     const state = get();
-    const char = state.selectedCharacter;
+    const char = charId
+      ? (state.characters || []).find((c: CharacterCard) => c.id === charId) ?? state.selectedCharacter
+      : state.selectedCharacter;
     const currentEntries = char.extensions?.worldBook || [];
     const updatedEntries = currentEntries.filter((e: any) => e.id !== id);
     const updatedChar = { ...char, extensions: { ...char.extensions, worldBook: updatedEntries } };
