@@ -15,9 +15,8 @@ export const backupService = {
     try {
       console.log('[Backup] 开始导出...');
       
-      // 1. 抓取 IndexedDB 所有表
+      // 1. 抓取 IndexedDB 所有表（saveSlots 在 Zustand，不在 Dexie，跳过）
       const messages = await db.messages.toArray();
-      const saveSlots = await db.saveSlots.toArray();
       const characters = await db.characters.toArray();
       const worldEntries = await db.worldEntries.toArray();
       const memoryEpisodes = await db.memoryEpisodes.toArray();
@@ -36,7 +35,6 @@ export const backupService = {
         timestamp: Date.now(),
         db: {
           messages,
-          saveSlots,
           characters,
           worldEntries,
           memoryEpisodes,
@@ -130,50 +128,49 @@ export const backupService = {
 
           // --- 处理单存档导入 (增量合并) ---
           if (data.type === 'SINGLE_SLOT' && data.slot) {
-            console.log('[Backup] 检测到单存档包，正在合并...');
-            await db.transaction('rw', [db.messages, db.saveSlots, db.characters, db.memoryEpisodes], async () => {
-              // 合并元数据
-              await db.saveSlots.put(data.slot);
-              // 合并消息 (先清理旧的该 Slot 消息，防止重复)
+            await db.transaction('rw', [db.messages, db.characters, db.memoryEpisodes], async () => {
               await db.messages.where('slotId').equals(data.slot.id).delete();
-              await db.messages.bulkAdd(data.messages);
-              // 合并记忆结晶
+              await db.messages.bulkAdd(data.messages ?? []);
               await db.memoryEpisodes.where('slotId').equals(data.slot.id).delete();
-              await db.memoryEpisodes.bulkAdd(data.episodes);
-              // 合并关联角色 (put 会根据 ID 自动覆盖或新增)
+              await db.memoryEpisodes.bulkAdd(data.episodes ?? []);
               if (data.characters) await db.characters.bulkPut(data.characters);
             });
-
             // 合并图片
             if (data.images) {
               for (const img of data.images) {
                 if (img.base64) await imageDb.set(img.id, img.base64);
               }
             }
-            console.log('[Backup] 存档合并完成');
+            // 将 slot 元数据合并进 Zustand store
+            const raw = localStorage.getItem(STORE_KEY);
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              const state = parsed?.state ?? parsed;
+              const slots: any[] = state.saveSlots ?? [];
+              const idx = slots.findIndex((s: any) => s.id === data.slot.id);
+              if (idx >= 0) slots[idx] = data.slot; else slots.push(data.slot);
+              state.saveSlots = slots;
+              localStorage.setItem(STORE_KEY, JSON.stringify(parsed));
+            }
             resolve();
             return;
           }
 
           // --- 处理全量重构 (物理覆盖) ---
-          console.log('[Backup] 正在执行全量意识重构...');
-          await db.transaction('rw', [db.messages, db.saveSlots, db.characters, db.worldEntries, db.memoryEpisodes, db.kvStore], async () => {
+          await db.transaction('rw', [db.messages, db.characters, db.worldEntries, db.memoryEpisodes, db.kvStore], async () => {
             await Promise.all([
               db.messages.clear(),
-              db.saveSlots.clear(),
               db.characters.clear(),
               db.worldEntries.clear(),
               db.memoryEpisodes.clear(),
-              // 只清非图片 KV，图片在事务外单独处理
               db.kvStore.filter(r => !r.key.startsWith('img-')).delete(),
             ]);
             await Promise.all([
-              db.messages.bulkAdd(data.db.messages),
-              db.saveSlots.bulkAdd(data.db.saveSlots),
-              db.characters.bulkAdd(data.db.characters),
-              db.worldEntries.bulkAdd(data.db.worldEntries),
-              db.memoryEpisodes.bulkAdd(data.db.memoryEpisodes),
-              db.kvStore.bulkAdd(data.db.kvStore),
+              db.messages.bulkAdd(data.db.messages ?? []),
+              db.characters.bulkAdd(data.db.characters ?? []),
+              db.worldEntries.bulkAdd(data.db.worldEntries ?? []),
+              db.memoryEpisodes.bulkAdd(data.db.memoryEpisodes ?? []),
+              db.kvStore.bulkAdd(data.db.kvStore ?? []),
             ]);
           });
 
