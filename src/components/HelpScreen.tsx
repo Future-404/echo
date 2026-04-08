@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, BookOpen, Layers, Database, Cpu, Info, ChevronRight, BarChart2, MessageCircle, Paintbrush, Users, Rocket } from 'lucide-react';
+import { X, BookOpen, Layers, Database, Cpu, Info, ChevronRight, BarChart2, MessageCircle, Paintbrush, Users, Rocket, BrainCircuit } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 
 // Import sub-components
@@ -12,6 +12,7 @@ import MultiCharGuide from './Help/MultiCharGuide';
 import StatusProtocol from './Help/StatusProtocol';
 import CustomCssGuide from './Help/CustomCssGuide';
 import StorageGuide from './Help/StorageGuide';
+import MemoryGuide from './Help/MemoryGuide';
 import SecurityGuide from './Help/SecurityGuide';
 import ApiSpecs from './Help/ApiSpecs';
 import Feedback from './Help/Feedback';
@@ -25,6 +26,7 @@ const HELP_SECTIONS = [
   { id: 'status', title: '状态渲染协议', icon: <BarChart2 size={18} />, component: <StatusProtocol /> },
   { id: 'customcss', title: '自定义样式', icon: <Paintbrush size={18} />, component: <CustomCssGuide /> },
   { id: 'storage', title: '存储与存档', icon: <Database size={18} />, component: <StorageGuide /> },
+  { id: 'memory', title: '记忆管理', icon: <BrainCircuit size={18} />, component: <MemoryGuide /> },
   { id: 'security', title: '安全与部署', icon: <Info size={18} />, component: <SecurityGuide /> },
   { id: 'api', title: 'API 规范', icon: <Cpu size={18} />, component: <ApiSpecs /> },
   { id: 'feedback', title: '交流与反馈', icon: <MessageCircle size={18} />, component: <Feedback /> },
