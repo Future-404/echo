@@ -85,7 +85,7 @@ const ECHO_API = '<script>' +
 })();` +
 '<\/script>'
 
-function buildHtml(html: string, id: string, charData?: Record<string, any>, userName: string = 'User', persona?: any): string {
+function buildHtml(html: string, id: string, charData?: Record<string, any>, userName: string = 'User', persona?: any, iframeCss: string = ''): string {
   // 1. 运行宏替换
   const processedHtml = replaceMacros(html, userName, charData?.name || 'AI', {
     userDescription: persona?.description,
@@ -98,20 +98,27 @@ function buildHtml(html: string, id: string, charData?: Record<string, any>, use
   const syncScript = '<script>' +
     'var _lastH=0;' +
     'function syncH(){' +
-    '  var h = Math.max(' +
-    '    document.body.scrollHeight, document.documentElement.scrollHeight,' +
-    '    document.body.offsetHeight, document.documentElement.offsetHeight,' +
-    '    document.body.clientHeight, document.documentElement.clientHeight' +
-    '  );' +
-    '  h = Math.min(h, window.innerHeight * 5 || 8000);' +
-    '  if(Math.abs(h - _lastH) < 2) return;' +
-    '  _lastH = h;' +
-    '  if(h > 0) parent.postMessage({type:\'ECHO_H\',id:window.__echoId__,h:h},\'*\');' +
+    // 取 body 所有直接子元素中最大的 offsetTop + offsetHeight，排除 min-height 干扰
+    '  var h=0,ch=document.body.children;' +
+    '  for(var i=0;i<ch.length;i++){var el=ch[i];h=Math.max(h,el.offsetTop+el.offsetHeight);}' +
+    '  if(h===0) h=document.body.scrollHeight;' +
+    '  if(window.innerHeight===0){if(_lastH!==0){_lastH=0;parent.postMessage({type:\'ECHO_H\',id:window.__echoId__,h:0},\'*\');}return;}' +
+    '  if(Math.abs(h-_lastH)<2)return;' +
+    '  _lastH=h;' +
+    '  if(h>0)parent.postMessage({type:\'ECHO_H\',id:window.__echoId__,h:h},\'*\');' +
     '}' +
-    'window.addEventListener(\'load\', syncH);' +
-    'new ResizeObserver(function(){clearTimeout(window._sht);window._sht=setTimeout(syncH,50);}).observe(document.body);' +
-    'setTimeout(syncH, 100);' +
-    'setTimeout(syncH, 500);' +
+    'window.addEventListener(\'load\',syncH);' +
+    // 观察 body 直接子元素（折叠容器），class/style 变化时重新测量
+    'function observeChildren(){' +
+    '  var ro=new ResizeObserver(function(){clearTimeout(window._sht);window._sht=setTimeout(syncH,50);});' +
+    '  ro.observe(document.body);' +
+    '  var ch=document.body.children;' +
+    '  for(var i=0;i<ch.length;i++) ro.observe(ch[i]);' +
+    '  new MutationObserver(function(){clearTimeout(window._mot);window._mot=setTimeout(syncH,80);})' +
+    '  .observe(document.body,{subtree:true,attributes:true,attributeFilter:[\'class\',\'style\']});' +
+    '}' +
+    'if(document.readyState===\'loading\'){document.addEventListener(\'DOMContentLoaded\',observeChildren);}else{observeChildren();}' +
+    'setTimeout(syncH,100);setTimeout(syncH,500);' +
     '<\/script>'
   
   // 完整 HTML 文档直接注入脚本，不再套壳
@@ -135,7 +142,7 @@ function buildHtml(html: string, id: string, charData?: Record<string, any>, use
       '<\/script>'
 
     return fixed
-      .replace(/<head>/i, `<head><base target="_blank">${overrideStyle}${SANDBOX_POLYFILL}${dataScript}${ECHO_API}`)
+      .replace(/<head>/i, `<head><base target="_blank">${overrideStyle}${iframeCss ? `<style>${iframeCss}</style>` : ''}${SANDBOX_POLYFILL}${dataScript}${ECHO_API}`)
       .replace(/<\/body>/i, `${antiNestScript}${syncScript}</body>`)
   }
 
@@ -147,6 +154,7 @@ function buildHtml(html: string, id: string, charData?: Record<string, any>, use
 *,*::before,*::after{box-sizing:border-box}
 html,body{margin:0;padding:6px;background:transparent;overflow:hidden}
 img{max-width:100%;height:auto}table{width:100%}
+${iframeCss}
 </style>
 ${SANDBOX_POLYFILL}
 ${dataScript}
@@ -169,6 +177,7 @@ export const IframeBlock = memo<IframeBlockProps>(({ html, charData, isFullScree
   const id = useRef(`ib${_id++}`).current
   const [height, setHeight] = useState(120)
   const iframeRef = useRef<HTMLIFrameElement>(null)
+  const wrapRef = useRef<HTMLDivElement>(null)
 
   const config = useAppStore(s => s.config)
   const selectedCharacter = useAppStore(s => s.selectedCharacter)
@@ -179,12 +188,17 @@ export const IframeBlock = memo<IframeBlockProps>(({ html, charData, isFullScree
   , [config.personas, config.activePersonaId])
   const userName = activePersona?.name || config.userName || 'User'
 
+  const iframeCss = useMemo(() => {
+    const match = (config.customCss || '').match(/\/\*\s*@iframe-start\s*\*\/([\s\S]*?)\/\*\s*@iframe-end\s*\*\//);
+    return match ? match[1].trim() : '';
+  }, [config.customCss])
+
   const selectedCharacterRef = useRef(selectedCharacter)
   const updateAttributesRef = useRef(updateAttributes)
   useEffect(() => { selectedCharacterRef.current = selectedCharacter }, [selectedCharacter])
   useEffect(() => { updateAttributesRef.current = updateAttributes }, [updateAttributes])
 
-  const srcDoc = useMemo(() => buildHtml(html, id, charData, userName, activePersona), [html, id, charData, userName, activePersona])
+  const srcDoc = useMemo(() => buildHtml(html, id, charData, userName, activePersona, iframeCss), [html, id, charData, userName, activePersona, iframeCss])
 
   useEffect(() => {
     const reply = (reqId: string, value?: any) =>
@@ -197,8 +211,8 @@ export const IframeBlock = memo<IframeBlockProps>(({ html, charData, isFullScree
 
       switch (d.type) {
         case 'ECHO_H':
-          if (d.h > 0 && !isFullScreen) {
-            setHeight(d.h + 12)
+          if (!isFullScreen) {
+            setHeight(d.h > 0 ? d.h + 12 : 0)
           }
           break
         case 'ECHO_GET':
@@ -230,15 +244,15 @@ export const IframeBlock = memo<IframeBlockProps>(({ html, charData, isFullScree
   }, [id, isFullScreen])
 
   return (
-    <iframe
-      ref={iframeRef}
-      srcDoc={srcDoc}
-      // 安全加固：移除 allow-same-origin，使 iframe 处于完全隔离状态
-      // 脚本依然可以通过 postMessage 与父窗口通信，但无法直接访问父窗口的 DOM 或存储
-      sandbox="allow-scripts allow-forms allow-popups allow-modals allow-downloads"
-      className={`w-full border-0 block ${isFullScreen ? 'h-full' : 'transition-[height] duration-200'}`}
-      style={isFullScreen ? { height: '100%' } : { height }}
-      scrolling={isFullScreen ? 'yes' : 'no'}
-    />
+    <div ref={wrapRef} className="w-full">
+      <iframe
+        ref={iframeRef}
+        srcDoc={srcDoc}
+        sandbox="allow-scripts allow-forms allow-popups allow-modals allow-downloads"
+        className={`w-full border-0 block ${isFullScreen ? 'h-full' : 'transition-[height] duration-200'}`}
+        style={isFullScreen ? { height: '100%' } : { height }}
+        scrolling={isFullScreen ? 'yes' : 'no'}
+      />
+    </div>
   )
 })

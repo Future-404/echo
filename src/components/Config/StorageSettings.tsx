@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { authenticateWithPassword, getSavedToken, isCloudConnected, resetStorageAdapter } from '../../storage';
 import { backupService } from '../../utils/backupService';
+import { pinHash } from '../../utils/pinHash';
 import { 
   Cloud, CloudOff, Loader2, CheckCircle2, AlertCircle, 
   ShieldCheck, ShieldAlert, Download, Upload, RefreshCw, 
@@ -13,7 +14,7 @@ import { useDialog } from '../GlobalDialog';
 const IS_SAFARI = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
 
 const StorageSettings: React.FC = () => {
-  const { confirm } = useDialog();
+  const { confirm, alert } = useDialog();
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [backupLoading, setBackupLoading] = useState(false);
@@ -62,7 +63,7 @@ const StorageSettings: React.FC = () => {
     try {
       await backupService.exportFullBackup();
     } catch (e: any) {
-      alert(`导出失败: ${e?.message ?? e}`);
+      alert(`导出失败: ${e?.message ?? e}`)
     } finally {
       setBackupLoading(false);
     }
@@ -86,7 +87,7 @@ const StorageSettings: React.FC = () => {
     setBackupLoading(true);
     try {
       await backupService.importFullBackup(file);
-      alert('导入成功，即将重新加载。');
+      await alert('导入成功，即将重新加载。');
       window.location.reload();
     } catch (err: any) {
       alert(`导入失败: ${err.message}`);
@@ -282,10 +283,7 @@ const AppLockSettings: React.FC = () => {
   const [pinError, setPinError] = useState('')
   const [saved, setSaved] = useState(false)
 
-  const sha256hex = async (text: string) => {
-    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))
-    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('')
-  }
+  const sha256hex = pinHash
 
   const handleToggle = async () => {
     if (appLock.enabled) {

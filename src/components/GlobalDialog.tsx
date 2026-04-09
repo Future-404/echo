@@ -29,7 +29,11 @@ export function useDialog() {
     _trigger?.({ message, input: true, inputDefault: defaultValue, confirmText: '确认', cancelText: '取消', ...opts }) ?? Promise.resolve(null)
   , [])
 
-  return { confirm, prompt }
+  const alert = useCallback((message: string, opts?: Partial<Omit<DialogOptions, 'cancelText'>>) =>
+    _trigger?.({ message, confirmText: '知道了', ...opts, cancelText: undefined }) ?? Promise.resolve(true)
+  , [])
+
+  return { confirm, prompt, alert }
 }
 
 export const GlobalDialog: React.FC = () => {
@@ -69,7 +73,7 @@ export const GlobalDialog: React.FC = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[9998] bg-black/40 backdrop-blur-sm"
-            onClick={handleCancel}
+            onClick={state.cancelText ? handleCancel : handleConfirm}
           />
 
           {/* 弹窗主体 */}
@@ -112,12 +116,14 @@ export const GlobalDialog: React.FC = () => {
 
                 {/* 按钮组 */}
                 <div className="flex gap-3 pt-1">
-                  <button
-                    onClick={handleCancel}
-                    className="flex-1 py-3 rounded-2xl text-[11px] tracking-[0.3em] uppercase font-sans text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 transition-all"
-                  >
-                    {state.cancelText || '取消'}
-                  </button>
+                  {state.cancelText && (
+                    <button
+                      onClick={handleCancel}
+                      className="flex-1 py-3 rounded-2xl text-[11px] tracking-[0.3em] uppercase font-sans text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 transition-all"
+                    >
+                      {state.cancelText}
+                    </button>
+                  )}
                   <button
                     onClick={handleConfirm}
                     className={`flex-1 py-3 rounded-2xl text-[11px] tracking-[0.3em] uppercase font-sans transition-all ${

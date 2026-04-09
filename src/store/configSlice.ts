@@ -1,5 +1,13 @@
 import type { Provider, Directive, WorldBook, WorldBookEntry, UserPersona, ThemeMode, RegexRule, PromptPreset } from './useAppStore'
+import type { ModelConfig } from '../types/modelConfig'
 import { db } from '../storage/db'
+
+export interface CssPackage {
+  id: string
+  name: string
+  css: string
+  enabled: boolean
+}
 
 export interface ConfigSlice {
   config: {
@@ -7,7 +15,8 @@ export interface ConfigSlice {
     directives: Directive[];
     promptPresets: PromptPreset[];
     providers: Provider[];
-    activeProviderId: string;
+    activeProviderId: string; // @deprecated 迁移期兼容，请使用 modelConfig.chatProviderId
+    modelConfig: ModelConfig;
     theme: ThemeMode;
     enabledSkillIds: string[];
     personas: UserPersona[];
@@ -17,15 +26,17 @@ export interface ConfigSlice {
     fontFamily: string;
     fontSize: number;
     customCss: string;
+    cssPackages: CssPackage[];
     customBg: boolean;
+    themePreset?: string;
     dialogueQuotes?: string;
     actionMarkers?: string;
     thoughtMarkers?: string;
     regexRules: RegexRule[];
     appLock: {
       enabled: boolean;
-      pinHash: string;       // SHA-256 of PIN, empty = not set
-      timeoutMinutes: number; // 0 = lock on every page load
+      pinHash: string;
+      timeoutMinutes: number;
     };
   };
   
@@ -34,10 +45,16 @@ export interface ConfigSlice {
   updateFontSize: (size: number) => void;
   updateCustomCss: (css: string) => void;
   updateCustomBg: (hasImage: boolean) => void;
+  updateThemePreset: (presetId: string) => void;
+  addCssPackage: (pkg: CssPackage) => void;
+  updateCssPackage: (id: string, updates: Partial<CssPackage>) => void;
+  removeCssPackage: (id: string) => void;
+  reorderCssPackages: (packages: CssPackage[]) => void;
   addProvider: (provider: Provider) => void;
   updateProvider: (id: string, updates: Partial<Provider>) => void;
   removeProvider: (id: string) => void;
   setActiveProvider: (id: string) => void;
+  setModelConfig: (updates: Partial<ModelConfig>) => void;
   addWorldBook: (book: WorldBook) => Promise<void>;
   updateWorldBook: (id: string, updates: Partial<WorldBook>) => Promise<void>;
   removeWorldBook: (id: string) => Promise<void>;
@@ -84,6 +101,19 @@ export const createConfigSlice = (set: any, get: any, INITIAL_CONFIG: ConfigSlic
 
   updateCustomBg: (hasImage) => set((state: any) => ({ config: { ...state.config, customBg: hasImage } })),
 
+  updateThemePreset: (presetId) => set((state: any) => ({ config: { ...state.config, themePreset: presetId } })),
+
+  addCssPackage: (pkg) => set((state: any) => ({
+    config: { ...state.config, cssPackages: [...(state.config.cssPackages || []), pkg] }
+  })),
+  updateCssPackage: (id, updates) => set((state: any) => ({
+    config: { ...state.config, cssPackages: (state.config.cssPackages || []).map((p: CssPackage) => p.id === id ? { ...p, ...updates } : p) }
+  })),
+  removeCssPackage: (id) => set((state: any) => ({
+    config: { ...state.config, cssPackages: (state.config.cssPackages || []).filter((p: CssPackage) => p.id !== id) }
+  })),
+  reorderCssPackages: (packages) => set((state: any) => ({ config: { ...state.config, cssPackages: packages } })),
+
   addProvider: (provider) => {
     set((state: any) => ({ config: { ...state.config, providers: [...(state.config.providers || []), provider] } }))
   },
@@ -95,11 +125,22 @@ export const createConfigSlice = (set: any, get: any, INITIAL_CONFIG: ConfigSlic
 
   removeProvider: (id) => {
     const providers = (get().config.providers || []).filter((p: Provider) => p.id !== id)
+    const mc = get().config.modelConfig || {}
     const activeProviderId = get().config.activeProviderId === id ? 'default' : get().config.activeProviderId
-    set((state: any) => ({ config: { ...state.config, providers, activeProviderId } }))
+    const modelConfig = {
+      ...mc,
+      chatProviderId: mc.chatProviderId === id ? 'default' : mc.chatProviderId,
+      embeddingProviderId: mc.embeddingProviderId === id ? '' : mc.embeddingProviderId,
+      ttsProviderId: mc.ttsProviderId === id ? '' : mc.ttsProviderId,
+      routerProviderId: mc.routerProviderId === id ? '' : mc.routerProviderId,
+      summaryProviderId: mc.summaryProviderId === id ? '' : mc.summaryProviderId,
+    }
+    set((state: any) => ({ config: { ...state.config, providers, activeProviderId, modelConfig } }))
   },
 
-  setActiveProvider: (id) => set((state: any) => ({ config: { ...state.config, activeProviderId: id } })),
+  setActiveProvider: (id) => set((state: any) => ({ config: { ...state.config, activeProviderId: id, modelConfig: { ...state.config.modelConfig, chatProviderId: id } } })),
+
+  setModelConfig: (updates) => set((state: any) => ({ config: { ...state.config, modelConfig: { ...state.config.modelConfig, ...updates } } })),
 
   addWorldBook: async (book) => {
     if (book.entries?.length) {

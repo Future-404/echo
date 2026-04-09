@@ -31,6 +31,28 @@
   /* 双角色颜色 */
   --char-a-color: #60a5fa;
   --char-b-color: #c084fc;
+
+  /* DIY 布局变量默认值 */
+  --echo-dialogue-max-width: 56rem;
+  --echo-dialogue-padding-x: 0.5rem;
+  --echo-input-bottom-offset: 0px;
+  --echo-avatar-size: 2.25rem;
+
+  /* 全屏模式开关：设为 1 即可让对话容器铺满全屏（参考赛博沉浸主题）
+     用法：:root { --echo-fullscreen: 1; }
+     --------------------------------------------------------
+     --echo-fullscreen-top   : 对话容器距顶部偏移，默认 64px（header 高度）
+     --echo-fullscreen-bg    : 全屏时对话容器背景色
+  */
+  --echo-fullscreen: 0;
+  --echo-fullscreen-top: 64px;
+  --echo-fullscreen-bg: var(--dialogue-bg);
+
+  /* z-index 层级 */
+  --z-dialogue: 30;
+  --z-toolbar: 40;
+  --z-input: 50;
+  --z-overlay: 101;
 }
 
 /* 深色模式适配 */
@@ -100,6 +122,39 @@
     backdrop-filter: var(--dialogue-backdrop);
     -webkit-backdrop-filter: var(--dialogue-backdrop);
     border: 1px solid var(--echo-border);
+  }
+
+  /* --- ECHO 语义化组件 (DIY 锚点) --- */
+  .echo-dialogue-container {
+    max-width: var(--echo-dialogue-max-width) !important;
+    z-index: var(--z-dialogue) !important;
+  }
+  
+  .echo-dialogue-toolbar {
+    z-index: var(--z-toolbar) !important;
+  }
+  
+  .echo-message-list {
+    padding-left: var(--echo-dialogue-padding-x) !important;
+    padding-right: var(--echo-dialogue-padding-x) !important;
+  }
+  
+  .echo-message-avatar img,
+  .echo-message-avatar > div {
+    width: var(--echo-avatar-size) !important;
+    height: var(--echo-avatar-size) !important;
+  }
+  
+  .echo-input-container {
+    padding-bottom: var(--echo-input-bottom-offset) !important;
+  }
+
+  .echo-header-container {
+    z-index: var(--z-input) !important;
+  }
+
+  .echo-config-panel {
+    z-index: var(--z-overlay) !important;
   }
 }
 

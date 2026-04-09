@@ -30,9 +30,9 @@ const MessageRow = memo<{
   const isPlaying = activeAudioId === msg.content;
 
   return (
-    <div className={`flex gap-2 group relative w-full ${isAi ? 'flex-row' : 'flex-row-reverse'}`}>
+    <div className={`echo-message-row ${isAi ? 'echo-message-row-ai' : 'echo-message-row-user'} flex gap-2 group relative w-full ${isAi ? 'flex-row' : 'flex-row-reverse'}`}>
       {/* 头像部分 - 左右对等 */}
-      <div className="flex-shrink-0 mt-1">
+      <div className="echo-message-avatar flex-shrink-0 mt-1">
         {avatar ? (
           <img src={avatar} alt={name} className="w-9 h-9 rounded-full object-cover border border-black/10 dark:border-white/10 shadow-sm" />
         ) : (
@@ -43,7 +43,7 @@ const MessageRow = memo<{
       </div>
 
       {/* 内容区域 - 左右对等留白 */}
-      <div className={`flex flex-col gap-1 flex-1 min-w-0 ${isAi ? 'items-start' : 'items-end'}`}>
+      <div className={`echo-message-content flex flex-col gap-1 flex-1 min-w-0 ${isAi ? 'items-start' : 'items-end'}`}>
         <div className={`flex items-center gap-2 ${isAi ? 'flex-row' : 'flex-row-reverse'}`}>
           <span className="text-[10px] tracking-widest text-gray-500 dark:text-white/40 uppercase font-serif">
             {name}
@@ -80,7 +80,7 @@ const MessageRow = memo<{
           </AnimatePresence>
         </div>
 
-        <div className={`max-w-full`}>
+        <div className={`echo-message-bubble max-w-full`}>
           {isAi && isLatest && isTyping ? (
             <div className="font-serif leading-relaxed text-gray-700 dark:text-gray-300 whitespace-pre-wrap text-left" style={{ fontSize: 'var(--app-font-size, 1.125rem)' }}>{displayText}</div>
           ) : isAi && msg.content.startsWith('错误') ? (
@@ -271,10 +271,12 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
   const handleSpeak = (text: string, charId?: string, msgId?: string) => {
     const voiceId = charId ? ttsSettings.voiceMap[charId] : undefined
     ttsService.speak(text, ttsSettings, voiceId, msgId)
+    setActiveMenuIndex(null)
   }
 
   const handleStopAudio = () => {
     ttsService.stop()
+    setActiveMenuIndex(null)
   }
 
   const getStatusLight = () => {
@@ -294,11 +296,11 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
       initial={false}
       animate={{ y: isLoading ? 50 : 0, opacity: isLoading ? 0 : 1 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-      className={`relative w-[95%] h-full ${isMobile ? 'max-w-full' : 'max-w-4xl'} glass-morphism ${isMobile ? 'rounded-2xl' : 'rounded-3xl'} shadow-lg flex flex-col overflow-hidden select-text z-30 mx-auto safe-area-padding`}
+      className={`echo-dialogue-container relative h-full ${isMobile ? 'max-w-full' : 'max-w-4xl'} glass-morphism ${isMobile ? 'rounded-2xl' : 'rounded-3xl'} shadow-lg flex flex-col overflow-hidden select-text z-30 mx-auto safe-area-padding`}
       onClick={() => setActiveMenuIndex(null)}
     >
       {/* 恢复原来的状态条布局 */}
-      <div className="flex-shrink-0 z-40 border-b border-gray-300/10 dark:border-white/5 bg-echo-base/90 dark:bg-black/90 backdrop-blur-xl" onClick={e => e.stopPropagation()}>
+      <div className="echo-dialogue-toolbar flex-shrink-0 z-40 border-b border-gray-300/10 dark:border-white/5 bg-echo-base/90 dark:bg-black/90 backdrop-blur-xl" onClick={e => e.stopPropagation()}>
         <div className={`flex justify-between items-center ${isMobile ? 'px-4 py-2' : 'px-6 py-1.5'} min-h-[44px]`}>
           <span className="text-[9px] tracking-widest text-gray-400 uppercase font-serif">{selectedCharacter.name}</span>
           <div className={`flex ${isMobile ? 'gap-2' : 'gap-3'}`}>
@@ -322,8 +324,8 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
       {/* 消息列表 - 优化留白平衡 */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto no-scrollbar px-2 py-4 md:px-4"
-        onClick={e => e.stopPropagation()}
+        className="echo-message-list flex-1 overflow-y-auto no-scrollbar px-2 py-4 md:px-4"
+        onClick={e => { e.stopPropagation(); setActiveMenuIndex(null) }}
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {visibleMessages.length === 0 ? (

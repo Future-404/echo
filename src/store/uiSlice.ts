@@ -19,10 +19,7 @@ export interface UISlice {
   debugLogs: DebugEntry[];
   
   ttsSettings: TtsSettings;
-  activeEmbeddingProviderId: string;
-  activeTtsProviderId: string;
   secondaryCharacter: CharacterCard | null;
-  routerProviderId: string;
   multiCharMode: boolean;
   multiSaveSlots: SaveSlot[];
   
@@ -40,11 +37,8 @@ export interface UISlice {
   
   updateTtsSettings: (updates: Partial<TtsSettings>) => void;
   updateTtsVoice: (charId: string, voiceId: string) => void;
-  setActiveEmbeddingProviderId: (id: string) => void;
-  setActiveTtsProviderId: (id: string) => void;
   
   setSecondaryCharacter: (char: CharacterCard | null) => void;
-  setRouterProviderId: (id: string) => void;
   setMultiCharMode: (enabled: boolean) => void;
   
   saveMultiGame: (slotId: string, name?: string) => void;
@@ -70,10 +64,7 @@ export const createUISlice: StateCreator<UISlice & any, [], [], UISlice> = (set,
     voiceMap: {},
     globalSettings: { speed: 1.0, pitch: 1.0 }
   },
-  activeEmbeddingProviderId: '',
-  activeTtsProviderId: '',
   secondaryCharacter: null,
-  routerProviderId: '',
   multiCharMode: false,
   multiSaveSlots: [],
   
@@ -98,11 +89,7 @@ export const createUISlice: StateCreator<UISlice & any, [], [], UISlice> = (set,
   updateTtsSettings: (updates) => set((s) => ({ ttsSettings: { ...s.ttsSettings, ...updates } })),
   updateTtsVoice: (charId, voiceId) => set((s) => ({ ttsSettings: { ...s.ttsSettings, voiceMap: { ...s.ttsSettings.voiceMap, [charId]: voiceId } } })),
   
-  setActiveEmbeddingProviderId: (id) => set({ activeEmbeddingProviderId: id }),
-  setActiveTtsProviderId: (id) => set({ activeTtsProviderId: id }),
-  
   setSecondaryCharacter: (char) => set({ secondaryCharacter: char }),
-  setRouterProviderId: (id) => set({ routerProviderId: id }),
   setMultiCharMode: (enabled) => set({ multiCharMode: enabled }),
   
   setTokenStats: (last, max) => set({ lastTokenCount: last, maxContextTokens: max }),

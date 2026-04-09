@@ -3,8 +3,16 @@ import { useAppStore } from '../store/useAppStore'
 
 export const useCustomCss = () => {
   const customCss = useAppStore(state => state.config?.customCss || '')
+  // 序列化为字符串，避免数组引用变化触发无限循环
+  const cssPackagesJson = useAppStore(state => JSON.stringify(state.config?.cssPackages ?? []))
+  const charCssPackageIds = useAppStore(state =>
+    (state.selectedCharacter?.extensions?.cssPackageIds ?? []).join(',')
+  )
 
   useEffect(() => {
+    const cssPackages = JSON.parse(cssPackagesJson)
+    const boundIds = charCssPackageIds ? charCssPackageIds.split(',') : []
+
     const applyCss = () => {
       let el = document.getElementById('user-custom-css') as HTMLStyleElement
       if (!el) {
@@ -12,12 +20,28 @@ export const useCustomCss = () => {
         el.id = 'user-custom-css'
         document.head.appendChild(el)
       }
-      
-      if (el.textContent !== customCss) {
-        el.textContent = customCss
+
+      // 全局包：反转后注入，靠上的包后注入优先级更高
+      const globalCss = [...cssPackages]
+        .reverse()
+        .filter((p: any) => p.enabled && !boundIds.includes(p.id))
+        .map((p: any) => `/* [CSS包] ${p.name} */\n${p.css}`)
+        .join('\n\n')
+
+      // 角色绑定包：最后注入，优先级最高
+      const charCss = boundIds.length
+        ? cssPackages
+            .filter((p: any) => p.enabled && boundIds.includes(p.id))
+            .map((p: any) => `/* [CSS包·角色] ${p.name} */\n${p.css}`)
+            .join('\n\n')
+        : ''
+
+      const finalCss = [globalCss, charCss, customCss].filter(Boolean).join('\n\n')
+
+      if (el.textContent !== finalCss) {
+        el.textContent = finalCss
       }
 
-      // 确保它始终是 head 的最后一个元素，以便覆盖 Tailwind 的样式
       if (document.head.lastElementChild !== el) {
         document.head.appendChild(el)
       }
@@ -25,10 +49,9 @@ export const useCustomCss = () => {
 
     applyCss()
 
-    // 监听 head 的变化，防止其他插件或库覆盖我们的顺序
     const observer = new MutationObserver(applyCss)
     observer.observe(document.head, { childList: true })
 
     return () => observer.disconnect()
-  }, [customCss])
+  }, [customCss, cssPackagesJson, charCssPackageIds])
 }

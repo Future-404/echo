@@ -10,6 +10,7 @@ import { useCustomBg } from './hooks/useCustomBg'
 import { useKeyboard } from './hooks/useKeyboardHeight'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { LockScreen } from './components/LockScreen'
+import { pinHash } from './utils/pinHash'
 
 // 核心/重型组件：改回静态导入以确保 WebGL 上下文稳定
 import Stage from './engine/Stage'
@@ -67,9 +68,17 @@ const App: React.FC = () => {
     return () => document.removeEventListener('visibilitychange', handleVisibility)
   }, [appLock])
 
+  // hydrate 完成后重新评估锁状态（初始 useState 时 config 尚未恢复）
+  React.useEffect(() => {
+    if (!_hasHydrated) return
+    if (!appLock?.enabled || !appLock?.pinHash) { setLocked(false); return }
+    if (appLock.timeoutMinutes === 0) { setLocked(true); return }
+    const lastUnlock = Number(sessionStorage.getItem('echo-unlocked-at') || 0)
+    setLocked(Date.now() - lastUnlock > appLock.timeoutMinutes * 60_000)
+  }, [_hasHydrated])
+
   const handleUnlock = React.useCallback(async (pin: string): Promise<boolean> => {
-    const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pin))
-    const hex = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('')
+    const hex = await pinHash(pin)
     if (hex !== appLock?.pinHash) return false
     sessionStorage.setItem('echo-unlocked-at', String(Date.now()))
     setLocked(false)
@@ -154,7 +163,10 @@ const App: React.FC = () => {
     <ErrorBoundary>
     {locked && <LockScreen onUnlock={handleUnlock} />}
     <div 
-      className="relative w-screen h-[100dvh] overflow-hidden font-sans cursor-crosshair select-none transition-colors duration-700"
+      className="echo-app-root relative w-screen h-[100dvh] overflow-hidden font-sans cursor-crosshair select-none transition-colors duration-700"
+      data-view={currentView}
+      data-multi-char={multiCharMode}
+      data-fullscreen={isDialogueFullscreen}
       onMouseDown={handleStart}
       onMouseMove={handleMove}
       onMouseUp={handleStop}
@@ -213,13 +225,13 @@ const App: React.FC = () => {
             <FragmentNotification key="fragments" />
             
             {/* 对话框区域 */}
-            <div className="flex-1 min-h-0 flex flex-col items-center pointer-events-auto px-4 pt-4">
+            <div className="echo-dialogue-area flex-1 min-h-0 flex flex-col items-center pointer-events-auto px-4 pt-4">
               {!isDialogueFullscreen && (
-                <div className="mb-4 flex-shrink-0">
+                <div className="echo-char-avatar-wrapper mb-4 flex-shrink-0">
                   {multiCharMode ? <MultiCharAvatar activeSpeakerId={activeSpeakerId} /> : <CharacterAvatar />}
                 </div>
               )}
-              <div className="w-full flex-1 min-h-0 mb-4">
+              <div className="echo-dialogue-wrapper w-full flex-1 min-h-0 mb-4">
                 <DialogueBox 
                   displayText={displayText} 
                   isTyping={isTyping} 
@@ -232,7 +244,7 @@ const App: React.FC = () => {
             </div>
 
             {/* 输入框区域 */}
-            <div className={`w-full max-w-2xl mx-auto px-4 pointer-events-auto bg-gradient-to-t from-echo-base/95 dark:from-black/70 to-transparent pt-4 transition-all duration-200 ${isKeyboardVisible ? 'pb-1' : 'pb-4 md:pb-8 safe-area-bottom'}`}>
+            <div className={`echo-input-area w-full max-w-2xl mx-auto px-4 pointer-events-auto bg-gradient-to-t from-echo-base/95 dark:from-black/70 to-transparent pt-4 transition-all duration-200 ${isKeyboardVisible ? 'pb-1' : 'pb-4 md:pb-8 safe-area-bottom'}`}>
               <ChatInput 
                 onSend={sendMessage} 
                 disabled={isTyping || isWaitingForClick} 

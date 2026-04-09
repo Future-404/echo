@@ -18,7 +18,7 @@ class TtsService {
       this.speakBrowser(text, voiceId, speed, pitch);
     } else if (providerType === 'openai') {
       const state = useAppStore.getState();
-      const activeProvider = state.config.providers.find(p => p.id === state.config.activeTtsProviderId ?? state.activeTtsProviderId);
+      const activeProvider = state.config.providers.find(p => p.id === state.config.modelConfig?.ttsProviderId);
       
       if (activeProvider?.apiKey) {
         await this.speakOpenAI(

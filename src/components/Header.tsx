@@ -16,7 +16,7 @@ const Header: React.FC = () => {
   const tokenColorClass = tokenUsagePercent > 95 ? 'text-red-500' : tokenUsagePercent > 80 ? 'text-orange-400' : 'text-gray-400 dark:text-gray-500'
 
   return (
-    <header className="sticky top-0 z-50 pointer-events-none bg-echo-base/60 dark:bg-black/60 backdrop-blur-md border-b border-black/5 dark:border-white/5">
+    <header className="echo-header-container sticky top-0 z-50 pointer-events-none bg-echo-base/60 dark:bg-black/60 backdrop-blur-md border-b border-black/5 dark:border-white/5">
       {/* iOS 状态栏占位层 */}
       <div className="h-[var(--sat)] w-full" />
       
@@ -114,7 +114,7 @@ const Header: React.FC = () => {
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+        </div>
 
       <div className="flex gap-6 items-center">
          <MusicPlayer />

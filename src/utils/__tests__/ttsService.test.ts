@@ -22,9 +22,8 @@ vi.mock('../../store/useAppStore', () => ({
             ttsFormat: 'opus',
           },
         ],
-        activeTtsProviderId: 'p1',
+        modelConfig: { ttsProviderId: 'p1' },
       },
-      activeTtsProviderId: 'p1',
     }),
   },
 }))

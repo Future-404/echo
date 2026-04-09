@@ -30,7 +30,7 @@ export const useChat = () => {
     config, selectedCharacter, messages, missions,
     addMessage, isTyping, setIsTyping, addDebugLog,
     updateAttributes, isGreetingSession,
-    secondaryCharacter, multiCharMode, routerProviderId,
+    secondaryCharacter, multiCharMode,
     ttsSettings, setAbortController,
   } = useAppStore()
 
@@ -40,8 +40,8 @@ export const useChat = () => {
   const activePersona = config.personas?.find(p => p.id === config.activePersonaId) || config.personas?.[0]
 
   // 始终持有最新 state 的 ref，供 useCallback 内部读取，避免闭包旧值问题
-  const stateRef = useRef({ config, selectedCharacter, secondaryCharacter, activePersona, missions, ttsSettings, routerProviderId, multiCharMode })
-  stateRef.current = { config, selectedCharacter, secondaryCharacter, activePersona, missions, ttsSettings, routerProviderId, multiCharMode }
+  const stateRef = useRef({ config, selectedCharacter, secondaryCharacter, activePersona, missions, ttsSettings, multiCharMode })
+  stateRef.current = { config, selectedCharacter, secondaryCharacter, activePersona, missions, ttsSettings, multiCharMode }
 
   const skipGreeting = useCallback(() => {
     const firstMsg = messages[0]
@@ -77,7 +77,7 @@ export const useChat = () => {
     
     const char = charId === selectedCharacter.id ? selectedCharacter : secondaryCharacter
     if (!char) throw new Error(`[requestChar] 找不到角色 ${charId}`)
-    const provider = config.providers.find(p => p.id === char.providerId) || config.providers.find(p => p.id === config.activeProviderId) || config.providers[0]
+    const provider = config.providers.find(p => p.id === char.providerId) || config.providers.find(p => p.id === config.modelConfig?.chatProviderId || config.activeProviderId) || config.providers[0]
     if (!provider?.apiKey) {
       throw new Error(`[${char.name}] 未配置 API Key`)
     }
@@ -213,13 +213,14 @@ export const useChat = () => {
         await addMessage({ role: 'assistant', content: transformed, speakerId: charId }, requestSlotId);
       }
 
-      const embeddingProvider = config.providers.find(p => p.id === config.activeEmbeddingProviderId);
+      const embeddingProvider = config.providers.find(p => p.id === config.modelConfig?.embeddingProviderId);
       if (embeddingProvider && embeddingProvider.apiKey) {
         const chatProvider = config.providers.find(p => p.id === char.providerId) || provider;
+        const summaryProvider = config.providers.find(p => p.id === config.modelConfig?.summaryProviderId) || chatProvider;
         db.messages.where('slotId').equals(requestSlotId!).sortBy('timestamp').then(history => {
           const lastMsg = history[history.length - 1];
           if (lastMsg) {
-            vectorService.onMessageAdded(requestSlotId!, lastMsg, char.name, chatProvider, embeddingProvider);
+            vectorService.onMessageAdded(requestSlotId!, lastMsg, char.name, summaryProvider, embeddingProvider);
           }
         });
       }
@@ -245,8 +246,8 @@ export const useChat = () => {
     currentMessages: Message[],
     images?: string[],
   ): Promise<RouterAction[]> => {
-    const { config, selectedCharacter, secondaryCharacter, activePersona, routerProviderId } = stateRef.current
-    const routerProvider = config.providers.find(p => p.id === routerProviderId) || config.providers.find(p => p.id === config.activeProviderId) || config.providers[0]
+    const { config, selectedCharacter, secondaryCharacter, activePersona } = stateRef.current
+    const routerProvider = config.providers.find(p => p.id === config.modelConfig?.routerProviderId) || config.providers.find(p => p.id === config.modelConfig?.chatProviderId || config.activeProviderId) || config.providers[0]
     if (!routerProvider?.apiKey || !secondaryCharacter) {
       // fallback
       return [{ type: 'speak', speakerId: selectedCharacter.id }, { type: 'speak', speakerId: secondaryCharacter!.id }]
@@ -311,7 +312,7 @@ export const useChat = () => {
     setIsTyping(true)
     setDisplayText('')
 
-    const activeProvider = config.providers.find(p => p.id === config.activeProviderId) || config.providers[0]
+    const activeProvider = config.providers.find(p => p.id === (config.modelConfig?.chatProviderId || config.activeProviderId)) || config.providers[0]
     if (!activeProvider?.apiKey) {
       addMessage({ role: 'assistant', content: `Demo Mode: 请在配置面板设置 API Key。` })
       setIsTyping(false)

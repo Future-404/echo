@@ -178,7 +178,8 @@ export const buildPromptMessages = async (ctx: PromptContext, contextWindow: num
       try {
         // 1. 获取 Embedding Provider
         const storeState = useAppStore.getState();
-        const embProvider = storeState.config.providers.find(p => p.id === storeState.config.activeEmbeddingProviderId);
+        const mc = storeState.config.modelConfig;
+        const embProvider = storeState.config.providers.find(p => p.id === mc?.embeddingProviderId);
         
         if (embProvider && embProvider.apiKey) {
           // --- 性能防火墙：1.5s 强制超时 ---

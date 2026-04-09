@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Trash2, Check, Globe, Plus, Book, Settings2, Edit2, ChevronDown, ChevronUp, Key, Camera } from 'lucide-react'
+import { X, Trash2, Check, Globe, Plus, Book, Settings2, Edit2, ChevronDown, ChevronUp, Key, Camera, Palette } from 'lucide-react'
 import { useAppStore } from '../../store/useAppStore'
 import type { WorldBook } from '../../types/store'
 import TagTemplateEditor from './TagTemplateEditor'
@@ -134,6 +134,15 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
     const index = currentIds.indexOf(presetId)
     if (index > -1) { currentIds.splice(index, 1) } else { currentIds.push(presetId) }
     updateCharacter(charId, { extensions: { ...char.extensions, promptPresetIds: currentIds } })
+  }
+
+  // 3. CSS 包绑定逻辑
+  const boundCssPackageIds = char?.extensions?.cssPackageIds || []
+  const toggleCssPackageBinding = (pkgId: string) => {
+    const currentIds = [...boundCssPackageIds]
+    const index = currentIds.indexOf(pkgId)
+    if (index > -1) { currentIds.splice(index, 1) } else { currentIds.push(pkgId) }
+    updateCharacter(charId, { extensions: { ...char.extensions, cssPackageIds: currentIds } })
   }
 
   const handleAddPrivate = () => {
@@ -372,7 +381,34 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
             </div>
           </div>
 
-          {/* 3. 角色私设 (独有) - 全量注入逻辑 */}
+          {/* 3. CSS 包绑定 */}
+          <div className="space-y-6 pt-6 border-t-0.5 border-gray-100 dark:border-gray-800">
+            <div className="flex justify-between items-center px-2">
+              <label className="text-[10px] tracking-widest text-gray-400 uppercase italic flex items-center gap-2">
+                <Palette size={12} /> CSS Binding // 样式包绑定
+              </label>
+            </div>
+            <div className="grid grid-cols-1 gap-2">
+              {(config.cssPackages || []).length === 0 ? (
+                <p className="text-[9px] text-gray-400 italic text-center py-4 opacity-50">暂无样式包，请先在 DIY 界面创建</p>
+              ) : (
+                (config.cssPackages || []).map((pkg) => {
+                  const isBound = boundCssPackageIds.includes(pkg.id)
+                  return (
+                    <button key={pkg.id} onClick={() => toggleCssPackageBinding(pkg.id)} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${isBound ? 'bg-cyan-500/10 border-cyan-400/30 text-cyan-600 dark:text-cyan-400' : 'bg-transparent border-gray-100 dark:border-white/5 text-gray-400'}`}>
+                      <div className="flex items-center gap-3">
+                        <Palette size={14} className={isBound ? 'opacity-100' : 'opacity-40'} />
+                        <span className="text-[11px] font-serif font-bold">{pkg.name}</span>
+                      </div>
+                      {isBound ? <Check size={14} /> : <div className="w-3.5 h-3.5 rounded-full border border-gray-200 dark:border-white/10" />}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </div>
+
+          {/* 4. 角色私设 (独有) - 全量注入逻辑 */}
           <div className="space-y-6 pt-6 border-t-0.5 border-gray-100 dark:border-gray-800">
             <div className="flex justify-between items-center px-2">
               <label className="text-[10px] tracking-widest text-gray-400 uppercase italic flex items-center gap-2">

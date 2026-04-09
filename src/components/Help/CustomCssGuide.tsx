@@ -99,6 +99,41 @@ const CustomCssGuide: React.FC = () => {
             </div>
           </div>
         </div>
+
+        <div className="space-y-2">
+          <p className="text-[9px] text-teal-400/60 uppercase tracking-widest px-1 font-bold">5. 布局与尺寸 // Layout</p>
+          <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+            <div className="divide-y divide-white/5">
+              {[
+                ['--echo-dialogue-max-width', '56rem', '对话框最大宽度'],
+                ['--echo-dialogue-padding-x', '1rem', '对话框水平内边距'],
+                ['--echo-input-bottom-offset', '1rem', '输入框底部间距'],
+                ['--echo-avatar-size', '2.25rem', '聊天头像尺寸'],
+              ].map(([varName, defaultVal, desc]) => (
+                <div key={varName} className="grid grid-cols-[12rem_auto_1fr] gap-x-4 items-start px-4 py-2 text-[10px]">
+                  <code className="font-mono text-teal-400 shrink-0">{varName}</code>
+                  <code className="font-mono opacity-40 shrink-0">{defaultVal}</code>
+                  <span className="opacity-50">{desc}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-[9px] text-rose-400/60 uppercase tracking-widest px-1 font-bold">6. 语义化组件锚点 // Semantic Classes</p>
+          <div className="p-4 rounded-2xl border border-white/10 dark:border-white/5 text-[11px] leading-relaxed opacity-80 font-mono space-y-1">
+            <p className="text-rose-300">.echo-app-root <span className="text-gray-500 ml-2">// 根容器 (带 data-view 状态)</span></p>
+            <p className="text-rose-300">.echo-dialogue-container <span className="text-gray-500 ml-2">// 对话区域</span></p>
+            <p className="text-rose-300">.echo-dialogue-toolbar <span className="text-gray-500 ml-2">// 顶部工具栏</span></p>
+            <p className="text-rose-300">.echo-message-list <span className="text-gray-500 ml-2">// 消息列表</span></p>
+            <p className="text-rose-300">.echo-message-row <span className="text-gray-500 ml-2">// 独立消息行</span></p>
+            <p className="text-rose-300">.echo-message-bubble <span className="text-gray-500 ml-2">// 消息气泡容器</span></p>
+            <p className="text-rose-300">.echo-char-avatar-wrapper <span className="text-gray-500 ml-2">// 角色大头像容器</span></p>
+            <p className="text-rose-300">.echo-input-container <span className="text-gray-500 ml-2">// 底部输入区</span></p>
+            <p className="text-rose-300">.echo-config-panel <span className="text-gray-500 ml-2">// 侧边设置面板</span></p>
+          </div>
+        </div>
       </div>
 
       {/* 示例 */}
@@ -138,11 +173,39 @@ const CustomCssGuide: React.FC = () => {
   }
 }`}</pre>
         </div>
+
+        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+          <div className="px-4 py-2 bg-cyan-500/10">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-cyan-400">🖥️ 全屏对话容器（复制即用）</span>
+          </div>
+          <pre className="p-4 text-[10px] leading-relaxed opacity-70 overflow-x-auto whitespace-pre bg-black/5 dark:bg-black/20 font-mono">{`:root {
+  --echo-fullscreen-top: 64px;   /* header 高度 */
+  --echo-fullscreen-bg: #ededed; /* 背景色 */
+}
+.echo-dialogue-container {
+  position: fixed !important;
+  top: calc(var(--echo-fullscreen-top) + var(--sat, 0px)) !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  max-width: 100vw !important;
+  height: auto !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  background: var(--echo-fullscreen-bg) !important;
+}`}</pre>
+        </div>
       </div>
 
       <div className="p-3 rounded-2xl bg-amber-500/5 border border-amber-500/10 text-[10px] space-y-1">
-        <p className="font-bold text-amber-400 uppercase tracking-widest">⚠️ 样式隔离</p>
-        <p className="opacity-70 leading-relaxed">AI 生成的 <code className="bg-white/10 px-1 rounded">&lt;html&gt;</code> 内容运行在沙箱 iframe 中，不受此处 CSS 影响。如需定制 iframe 样式，请在角色卡 System Prompt 中引导 AI 输出内联样式。</p>
+        <p className="font-bold text-amber-400 uppercase tracking-widest">⚠️ 样式隔离与 Iframe 穿透</p>
+        <p className="opacity-70 leading-relaxed">AI 生成的 HTML 内容运行在沙箱 iframe 中。如需定制 iframe 内部样式，请在 CSS 面板中使用特定注释包裹：<br/>
+          <code className="text-amber-300 bg-black/20 px-1 py-0.5 rounded mt-1 inline-block">/* @iframe-start */<br/>body &#123; color: red; &#125;<br/>/* @iframe-end */</code>
+        </p>
       </div>
     </div>
   );

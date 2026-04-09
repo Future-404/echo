@@ -1,7 +1,9 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { STORE_KEY } from './persist'
+import { DEFAULT_CSS_PACKAGES } from '../styles/themePresets'
 import { DEFAULT_CHARACTERS, INITIAL_DIRECTIVES, INITIAL_PROVIDERS } from './constants'
+import { DEFAULT_MODEL_CONFIG } from '../types/modelConfig'
 import { getStorageAdapter } from '../storage'
 import { db } from '../storage/db'
 import { createChatSlice, type ChatSlice } from './chatSlice'
@@ -33,6 +35,11 @@ import type {
   PromptPreset
 } from '../types/store'
 
+import type { ModelConfig } from '../types/modelConfig'
+export type { ModelConfig }
+
+import type { CssPackage } from './configSlice'
+
 export type { 
   CharacterCard, 
   Message, 
@@ -49,7 +56,8 @@ export type {
   DebugEntry,
   SaveSlot,
   TtsSettings,
-  PromptPreset
+  PromptPreset,
+  CssPackage
 }
 
 interface AppState extends ChatSlice, CharacterSlice, ConfigSlice, SaveSlice, UISlice {
@@ -64,8 +72,7 @@ const INITIAL_CONFIG = {
   promptPresets: [],
   providers: INITIAL_PROVIDERS,
   activeProviderId: 'default',
-  activeEmbeddingProviderId: '',
-  activeTtsProviderId: '',
+  modelConfig: DEFAULT_MODEL_CONFIG,
   enabledSkillIds: [],
   personas: [{ id: 'p1', name: 'Observer', description: '最初的观察者', background: '你是一个意识，正在通过回声系统与外界通讯。' }],
   activePersonaId: 'p1',
@@ -73,6 +80,7 @@ const INITIAL_CONFIG = {
   fontFamily: 'Noto Sans SC',
   fontSize: 16,
   customCss: '',
+  cssPackages: DEFAULT_CSS_PACKAGES,
   customBg: false,
   regexRules: [],
   appLock: { enabled: false, pinHash: '', timeoutMinutes: 5 },
@@ -100,20 +108,43 @@ export const useAppStore = create<AppState>()(
       onRehydrateStorage: () => (state, error) => {
         if (error) console.error('[echo] rehydrate failed:', error)
         if (state) {
+          // 旧数据迁移：补全默认 CSS 包
+          const hasPresets = (state.config.cssPackages || []).some(
+            (p: any) => p.id === 'preset-cyber-echo' || p.id === 'preset-social-chat'
+          )
+          if (!hasPresets) {
+            state.config.cssPackages = [
+              ...DEFAULT_CSS_PACKAGES,
+              ...(state.config.cssPackages || []),
+            ]
+          }
+          // 旧数据迁移：将散落的 provider id 字段合并到 modelConfig
+          if (!state.config.modelConfig) {
+            const legacy = state as any
+            state.config.modelConfig = {
+              chatProviderId: state.config.activeProviderId || 'default',
+              embeddingProviderId: legacy.activeEmbeddingProviderId || state.config.activeEmbeddingProviderId || '',
+              ttsProviderId: legacy.activeTtsProviderId || state.config.activeTtsProviderId || '',
+              routerProviderId: legacy.routerProviderId || '',
+              summaryProviderId: '',
+            }
+          }
           state.setHasHydrated(true)
           
           Promise.all([
             loadSlotsFromStorage(SAVE_KEY),
             loadSlotsFromStorage(MULTI_SAVE_KEY),
-            // 恢复当前会话消息（从 db.messages 而非 KV）
+            // 有 slotId：从 db 恢复对话消息；无 slotId（开场白）：保留 KV 里的 messages
             state.currentAutoSlotId
               ? db.getMessagesBySlot(state.currentAutoSlotId)
               : Promise.resolve(null),
           ]).then(([saveSlots, multiSaveSlots, storedMessages]) => {
             const patch: Record<string, any> = { saveSlots, multiSaveSlots }
             if (storedMessages && storedMessages.length > 0) {
+              // 有 slotId：用 db 消息覆盖（去掉 db 专用字段）
               patch.messages = storedMessages.map(({ slotId, timestamp, id, ...m }: any) => m)
             }
+            // 无 storedMessages 且无 slotId：messages 已从 KV 恢复，不覆盖
             useAppStore.setState(patch)
           }).catch(err => console.error('[echo] async load failed:', err))
         }
@@ -124,9 +155,10 @@ export const useAppStore = create<AppState>()(
           characters: state.characters.map(c => c.id.startsWith('custom-') ? { ...c, image: '' } : c),
           selectedCharacter: state.selectedCharacter.id.startsWith('custom-') ? { ...state.selectedCharacter, image: '' } : state.selectedCharacter, 
           secondaryCharacter: state.secondaryCharacter ? (state.secondaryCharacter.id.startsWith('custom-') ? { ...state.secondaryCharacter, image: '' } : state.secondaryCharacter) : null,
-          routerProviderId: state.routerProviderId,
           multiCharMode: state.multiCharMode,
           isGreetingSession: state.isGreetingSession,
+          // 开场白阶段（无 slotId）消息只存内存，需要持久化以便刷新恢复
+          messages: state.currentAutoSlotId ? [] : state.messages,
           missions: state.missions, 
           fragments: state.fragments,
           currentAutoSlotId: state.currentAutoSlotId,

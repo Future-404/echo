@@ -10,7 +10,7 @@ vi.mock('../../storage/db', () => ({
 }));
 vi.mock('../../utils/vectorMath', () => ({ vectorMath: { findBestMatches: vi.fn(), ensureFloat32: vi.fn() } }));
 vi.mock('../memoryDistiller', () => ({ memoryDistiller: { callEmbeddingAPI: vi.fn() } }));
-vi.mock('../../store/useAppStore', () => ({ useAppStore: { getState: vi.fn(() => ({ config: { providers: [], activeEmbeddingProviderId: null } })) } }));
+vi.mock('../../store/useAppStore', () => ({ useAppStore: { getState: vi.fn(() => ({ config: { providers: [], modelConfig: { embeddingProviderId: null } } })) } }));
 
 import { replaceMacros, buildPromptMessages } from '../promptEngine';
 import { buildContextForChar } from '../multiChar';

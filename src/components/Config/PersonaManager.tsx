@@ -4,12 +4,14 @@ import { User, Plus, Edit3, Trash2, Check, Upload, Globe, Camera } from 'lucide-
 import { useAppStore } from '../../store/useAppStore'
 import type { WorldBook } from '../../types/store'
 import { imageDb } from '../../utils/imageDb'
+import { useDialog } from '../GlobalDialog'
 
 const PersonaManager: React.FC = () => {
   const { 
     config, addPersona, updatePersona, removePersona, setActivePersona,
     addPersonaWorldBookEntry, updatePersonaWorldBookEntry, removePersonaWorldBookEntry
   } = useAppStore()
+  const { alert } = useDialog()
   
   const personas = config?.personas || []
   const [editingId, setEditingId] = useState<string | null>(null)

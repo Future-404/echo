@@ -101,14 +101,14 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
       animate={{ opacity: 1, y: 0 }} 
       transition={{ delay: 0.8 }} 
       onClick={(e) => e.stopPropagation()}
-      className="w-full flex flex-col gap-2 relative"
+      className="echo-input-container w-full flex flex-col gap-2 relative"
     >
       {/* 附件预览区 */}
       <AnimatePresence>
         {attachedImages.length > 0 && (
           <motion.div 
             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-            className="flex gap-2 px-6 md:px-10 mb-2 overflow-x-auto no-scrollbar"
+            className="echo-input-attachments flex gap-2 px-6 md:px-10 mb-2 overflow-x-auto no-scrollbar"
           >
             {attachedImages.map((img, idx) => (
               <div key={idx} className="relative w-16 h-16 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden flex-shrink-0 group">
@@ -125,7 +125,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
         )}
       </AnimatePresence>
 
-      <div className="flex items-start gap-3 px-6 md:px-10">
+      <div className="echo-input-inner flex items-start gap-3 px-6 md:px-10">
         <div className="flex-1 relative group flex items-end">
           <input 
             type="file" 
@@ -150,7 +150,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
             onChange={(e) => setUserInput(e.target.value)} 
             onKeyDown={handleKeyDown}
             placeholder={attachedImages.length > 0 ? "Describe the image(s)..." : "Type your thought..."} 
-            className="w-full bg-transparent border-b-0.5 border-gray-200 dark:border-gray-800 py-1 pr-10 text-sm text-gray-500 dark:text-gray-400 focus:outline-none focus:border-gray-400 dark:focus:border-gray-600 transition-all placeholder:text-gray-400 dark:placeholder:text-gray-700 placeholder:italic resize-none overflow-y-auto no-scrollbar min-h-[32px] max-h-[200px]" 
+            className="echo-input-textarea w-full bg-transparent border-b-0.5 border-gray-200 dark:border-gray-800 py-1 pr-10 text-sm text-gray-500 dark:text-gray-400 focus:outline-none focus:border-gray-400 dark:focus:border-gray-600 transition-all placeholder:text-gray-400 dark:placeholder:text-gray-700 placeholder:italic resize-none overflow-y-auto no-scrollbar min-h-[32px] max-h-[200px]" 
           />
           
           <AnimatePresence mode="wait">
@@ -186,7 +186,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
         </div>
       </div>
       
-      <div className="px-6 md:px-10 flex justify-end">
+      <div className="echo-input-hint px-6 md:px-10 flex justify-end">
         <span className="text-[9px] text-gray-400 dark:text-gray-700 italic tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity">
           Enter to send, Shift+Enter for newline //
         </span>
@@ -196,3 +196,4 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
 }
 
 export default ChatInput
+

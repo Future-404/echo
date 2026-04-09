@@ -1,9 +1,10 @@
 import React, { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAppStore } from '../../store/useAppStore'
-import { Check, Upload, X } from 'lucide-react'
+import { Check, Upload, X, ChevronRight } from 'lucide-react'
 import { imageDb } from '../../utils/imageDb'
 import { BG_KEY } from '../../hooks/useCustomBg'
+import { useDialog } from '../GlobalDialog'
 
 const FONTS = [
   { id: 'Noto Sans SC', name: '思源黑体', sub: 'Noto Sans SC', class: 'font-noto-sans' },
@@ -18,45 +19,23 @@ const FONTS = [
   { id: 'Noto Sans Mono SC', name: '思源等宽', sub: 'Noto Sans Mono SC', class: 'font-noto-mono' },
 ]
 
-const AppearanceEditor: React.FC = () => {
-  const { config, updateFontFamily, updateFontSize, updateCustomCss, updateCustomBg } = useAppStore()
+interface Props {
+  onOpenCssPackages: () => void
+}
+
+const AppearanceEditor: React.FC<Props> = ({ onOpenCssPackages }) => {
+  const { config, updateFontFamily, updateFontSize, updateCustomBg } = useAppStore()
+  const { alert } = useDialog()
   const currentFont = config?.fontFamily || 'Noto Sans SC'
   const currentSize = config?.fontSize || 16
-  const [cssValue, setCssValue] = useState(config?.customCss || '')
   const [bgPreview, setBgPreview] = useState<string | null>(null)
   const [fontOpen, setFontOpen] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
-  const cssFileRef = useRef<HTMLInputElement>(null)
 
   // 初始化时加载预览
   React.useEffect(() => {
     if (config?.customBg) imageDb.get(BG_KEY).then(url => setBgPreview(url))
   }, [])
-
-  const handleCssBlur = () => updateCustomCss(cssValue)
-
-  const handleCssImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (ev) => {
-      const text = ev.target?.result as string
-      setCssValue(text)
-      updateCustomCss(text)
-    }
-    reader.readAsText(file)
-    e.target.value = ''
-  }
-
-  const handleCssExport = () => {
-    const blob = new Blob([cssValue], { type: 'text/css' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'echo-custom.css'
-    a.click()
-    URL.revokeObjectURL(url)
-  }
 
   const handleBgUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -86,9 +65,27 @@ const AppearanceEditor: React.FC = () => {
       animate={{ opacity: 1, x: 0 }} 
       className="p-6 space-y-8"
     >
+      {/* CSS 样式包入口 */}
+      <div className="px-4 space-y-3">
+        <label className="text-[10px] tracking-widest text-gray-400 uppercase">Custom CSS // 样式包管理</label>
+        <button
+          onClick={onOpenCssPackages}
+          className="w-full flex items-center justify-between p-4 rounded-2xl border-0.5 border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-white/5 hover:border-blue-400 transition-colors"
+        >
+          <div className="text-left">
+            <p className="text-sm font-serif text-gray-600 dark:text-gray-300">CSS 样式包</p>
+            <p className="text-[9px] text-gray-400 mt-0.5">
+              {(config.cssPackages || []).length === 0
+                ? '暂无样式包，点击创建'
+                : `${(config.cssPackages || []).filter(p => p.enabled).length} / ${(config.cssPackages || []).length} 个已启用`}
+            </p>
+          </div>
+          <ChevronRight size={16} className="text-gray-400" />
+        </button>
+      </div>
+
       <div className="px-4">
-        <h3 className="text-xs font-serif tracking-[0.3em] text-gray-400 uppercase mb-2">Typography // 字体系统</h3>
-        <p className="text-[9px] text-gray-500 tracking-widest leading-relaxed">选择最契合故事氛围的文字载体。不同字体会改变整体界面的排版厚度。</p>
+        <h3 className="text-xs font-serif tracking-[0.3em] text-gray-400 uppercase mb-2">Font // 字体排版</h3>
       </div>
 
       {/* Font Size Slider */}
@@ -229,58 +226,6 @@ const AppearanceEditor: React.FC = () => {
         )}
       </div>
 
-      {/* Custom CSS Editor */}
-      <div className="px-4 space-y-3">
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <label className="text-[10px] tracking-widest text-gray-400 uppercase">Custom CSS // 自定义样式</label>
-            <p className="text-[9px] text-gray-400 dark:text-gray-600 mt-1 leading-relaxed">
-              支持覆盖 CSS 变量与任意选择器。可用变量：<br />
-              <code className="font-mono text-blue-400">--dialogue-bg</code>、
-              <code className="font-mono text-blue-400">--dialogue-text-dialogue</code>、
-              <code className="font-mono text-blue-400">--dialogue-text-narration</code>、
-              <code className="font-mono text-blue-400">--dialogue-text-thought</code>、
-              <code className="font-mono text-blue-400">--dialogue-text-action</code>、
-              <code className="font-mono text-blue-400">--stat-color-love/hate/hp/mana/favor</code>、
-              <code className="font-mono text-blue-400">--char-a-color</code>、
-              <code className="font-mono text-blue-400">--char-b-color</code>
-            </p>
-          </div>
-          <div className="flex gap-2 shrink-0 mt-0.5">
-            {/* 导入 */}
-            <button
-              onClick={() => cssFileRef.current?.click()}
-              className="text-[9px] tracking-widest text-gray-400 hover:text-blue-400 uppercase transition-colors"
-              title="从文件导入"
-            >导入</button>
-            <input ref={cssFileRef} type="file" accept=".css,text/css" className="hidden" onChange={handleCssImport} />
-            {/* 导出 */}
-            {cssValue && (
-              <button
-                onClick={handleCssExport}
-                className="text-[9px] tracking-widest text-gray-400 hover:text-blue-400 uppercase transition-colors"
-                title="导出为 .css 文件"
-              >导出</button>
-            )}
-          </div>
-        </div>
-        <textarea
-          value={cssValue}
-          onChange={(e) => setCssValue(e.target.value)}
-          onBlur={handleCssBlur}
-          spellCheck={false}
-          placeholder={`:root {\n  --dialogue-bg: rgba(0, 0, 0, 0.6);\n  --dialogue-text-dialogue: #e2e8f0;\n  --stat-color-love: #ff6b9d;\n}`}
-          className="w-full h-48 bg-gray-50 dark:bg-black/30 border-0.5 border-gray-200 dark:border-gray-700 rounded-2xl p-4 font-mono text-[11px] text-gray-700 dark:text-gray-300 resize-none focus:outline-none focus:border-blue-400 dark:focus:border-blue-500 transition-colors leading-relaxed"
-        />
-        {cssValue && (
-          <button
-            onClick={() => { setCssValue(''); updateCustomCss('') }}
-            className="text-[9px] tracking-widest text-red-400 hover:text-red-500 uppercase transition-colors"
-          >
-            清除自定义样式
-          </button>
-        )}
-      </div>
     </motion.div>
   )
 }

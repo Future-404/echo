@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Volume2, VolumeX, Play, Settings2, ShieldCheck, Globe, Zap, Check, ChevronRight } from 'lucide-react'
+import { Volume2, VolumeX, Play, Settings2, ShieldCheck, Globe, ChevronRight } from 'lucide-react'
 import { useAppStore } from '../../store/useAppStore'
 import { ttsService } from '../../utils/ttsService'
 
 const TtsSettings: React.FC = () => {
-  const { config, ttsSettings, updateTtsSettings, activeTtsProviderId, setActiveTtsProviderId, selectedCharacter, secondaryCharacter, updateTtsVoice } = useAppStore()
+  const { config, ttsSettings, updateTtsSettings, selectedCharacter, secondaryCharacter, updateTtsVoice } = useAppStore()
   const [voices, setVoices] = useState<any[]>([])
   const [isTesting, setIsFetching] = useState(false)
 
   const ttsProviders = config.providers.filter(p => p.type === 'tts')
-  const activeProvider = ttsProviders.find(p => p.id === activeTtsProviderId)
 
   // 加载语音列表
   useEffect(() => {
@@ -109,44 +108,6 @@ const TtsSettings: React.FC = () => {
                 ))}
               </div>
             </div>
-
-            {/* Cloud Neural Binding */}
-            {ttsSettings.provider === 'openai' && (
-              <div className="space-y-6 bg-white/40 dark:bg-white/5 p-6 rounded-[2rem] border-0.5 border-gray-100 dark:border-white/5 shadow-sm">
-                <div className="flex justify-between items-center mb-2">
-                  <div className="flex flex-col">
-                    <label className="text-[9px] tracking-wide text-gray-400 uppercase italic">API Node Binding // 节点绑定</label>
-                    <span className="text-[7px] text-gray-500 uppercase mt-0.5 tracking-widest">选择已配置的 TTS 供应商</span>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  {ttsProviders.length === 0 ? (
-                    <div className="p-6 border-0.5 border-dashed border-gray-200 dark:border-gray-800 rounded-3xl flex flex-col items-center gap-3">
-                      <p className="text-[8px] text-gray-400 uppercase tracking-[0.3em]">未发现 TTS 类型节点</p>
-                      <p className="text-[7px] text-gray-500 text-center leading-relaxed">请前往 [API 参数] 添加类型为 TTS 的供应商</p>
-                    </div>
-                  ) : (
-                    ttsProviders.map(p => (
-                      <button
-                        key={p.id}
-                        onClick={() => setActiveTtsProviderId(p.id)}
-                        className={`w-full p-4 rounded-2xl border-0.5 transition-all flex items-center justify-between ${activeTtsProviderId === p.id ? 'bg-orange-500/10 border-orange-500/30 text-orange-600 dark:text-orange-400 shadow-inner' : 'bg-white/50 dark:bg-black/20 border-gray-100 dark:border-white/5 text-gray-400'}`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <Zap size={12} className={activeTtsProviderId === p.id ? 'text-orange-500' : 'opacity-30'} />
-                          <div className="text-left">
-                            <p className="text-[10px] font-bold tracking-wide">{p.name}</p>
-                            <p className="text-[7px] uppercase opacity-50">{p.model}</p>
-                          </div>
-                        </div>
-                        {activeTtsProviderId === p.id && <Check size={14} />}
-                      </button>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
 
             {/* Global Sliders */}
             <div className="space-y-8 px-2">

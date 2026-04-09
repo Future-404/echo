@@ -3,6 +3,7 @@ import { useAppStore } from '../../store/useAppStore';
 import type { RegexRule } from '../../types/chat';
 import { Plus, Trash2, Edit2, ToggleLeft, ToggleRight, ArrowUp, ArrowDown, Download, Upload } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useDialog } from '../GlobalDialog';
 
 interface RegexManagerProps {
   onEdit: (id: string) => void;
@@ -11,6 +12,7 @@ interface RegexManagerProps {
 
 const RegexManager: React.FC<RegexManagerProps> = ({ onEdit, onAdd }) => {
   const { config, updateRegexRule, removeRegexRule, reorderRegexRules, addRegexRule } = useAppStore();
+  const { alert } = useDialog();
   const rules = config.regexRules || [];
   const fileInputRef = useRef<HTMLInputElement>(null);
 

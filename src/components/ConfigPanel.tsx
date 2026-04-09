@@ -21,7 +21,10 @@ import RegexManager from './Config/RegexManager'
 import RegexEditor from './Config/RegexEditor'
 import MemoryManager from './Config/MemoryManager'
 
-type SubView = 'main' | 'advanced' | 'gateway' | 'world' | 'prompt' | 'provider-edit' | 'directive-edit' | 'skills' | 'persona' | 'debug' | 'appearance' | 'storage' | 'tts' | 'regex' | 'regex-edit' | 'memory-palace' | 'global-management'
+import CssPackageManager from './Config/CssPackageManager'
+import CssPackageEditor from './Config/CssPackageEditor'
+
+type SubView = 'main' | 'advanced' | 'gateway' | 'world' | 'prompt' | 'provider-edit' | 'directive-edit' | 'skills' | 'persona' | 'debug' | 'appearance' | 'storage' | 'tts' | 'regex' | 'regex-edit' | 'memory-palace' | 'global-management' | 'css-packages' | 'css-package-edit'
 
 const MAIN_ITEMS = [
   { id: 'gateway', label: 'API 参数', icon: 'G', sub: 'API Gateway' },
@@ -49,13 +52,15 @@ const getBackTarget = (view: SubView): SubView => {
   if (view === 'provider-edit') return 'gateway'
   if (view === 'directive-edit') return 'prompt'
   if (view === 'regex-edit') return 'regex'
+  if (view === 'css-packages') return 'appearance'
+  if (view === 'css-package-edit') return 'css-packages'
   if (GLOBAL_ITEMS.some(i => i.id === view)) return 'global-management'
   if (ADVANCED_ITEMS.some(i => i.id === view)) return 'advanced'
   return 'main'
 }
 
 const NavItem: React.FC<{ id: string; label: string; icon: string; sub: string; onClick: () => void }> = ({ label, icon, sub, onClick }) => (
-  <div onClick={onClick} className="w-full p-5 flex items-center gap-5 cursor-pointer hover:bg-white/50 dark:hover:bg-white/5 rounded-3xl transition-all group">
+  <div onClick={onClick} className="echo-config-nav-item w-full p-5 flex items-center gap-5 cursor-pointer hover:bg-white/50 dark:hover:bg-white/5 rounded-3xl transition-all group">
     <div className="w-9 h-9 rounded-2xl border-0.5 border-gray-100 dark:border-gray-800 flex items-center justify-center group-hover:border-gray-300 dark:group-hover:border-gray-600 shadow-sm shrink-0">
       <span className="text-gray-400 text-[10px] uppercase font-bold">{icon}</span>
     </div>
@@ -67,7 +72,7 @@ const NavItem: React.FC<{ id: string; label: string; icon: string; sub: string; 
 )
 
 const ConfigPanel: React.FC = () => {
-  const { isConfigOpen, setIsConfigOpen, setCurrentView, addProvider, addDirective, config, updateConfig, configSubView, setConfigSubView, multiCharMode, setMultiCharMode, routerProviderId, setRouterProviderId } = useAppStore()
+  const { isConfigOpen, setIsConfigOpen, setCurrentView, addProvider, addDirective, config, updateConfig, configSubView, setConfigSubView, multiCharMode, setMultiCharMode } = useAppStore()
   const [editingId, setEditingId] = useState<string | null>(null)
 
   const activeView = configSubView as SubView
@@ -88,7 +93,7 @@ const ConfigPanel: React.FC = () => {
       {isConfigOpen && (
         <>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsConfigOpen(false)} className="fixed inset-0 z-[100] bg-white/10 dark:bg-black/20 backdrop-blur-md cursor-pointer" />
-          <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="theme-surface fixed right-0 top-0 bottom-0 w-full max-w-sm z-[101] bg-echo-white/95 dark:bg-[#0a0a0a]/98 backdrop-blur-3xl border-l-0.5 border-echo-border flex flex-col shadow-2xl">
+          <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="echo-config-panel theme-surface fixed right-0 top-0 bottom-0 w-full max-w-sm z-[101] bg-echo-white/95 dark:bg-[#0a0a0a]/98 backdrop-blur-3xl border-l-0.5 border-echo-border flex flex-col shadow-2xl">
             {/* iOS 状态栏占位 */}
             <div className="h-[var(--sat)] min-h-[env(safe-area-inset-top)] w-full" />
             
@@ -162,22 +167,6 @@ const ConfigPanel: React.FC = () => {
                         onClick={() => { setIsConfigOpen(false); setTimeout(() => setCurrentView('multi-selection'), 300) }} />
                     )}
 
-                    {multiCharMode && (
-                      <div className="px-5 py-3 space-y-2">
-                        <p className="text-[9px] text-gray-400 dark:text-gray-600 uppercase tracking-widest">Router Provider</p>
-                        <select
-                          value={routerProviderId}
-                          onChange={e => setRouterProviderId(e.target.value)}
-                          className="w-full bg-transparent border-0.5 border-gray-200 dark:border-gray-700 rounded-2xl px-3 py-2 text-xs text-gray-500 dark:text-gray-400 focus:outline-none bg-white dark:bg-[#0a0a0a]"
-                        >
-                          <option value="">同全局 Provider</option>
-                          {config.providers.map(p => (
-                            <option key={p.id} value={p.id}>{p.name} — {p.model}</option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-
                     {/* 调试模式开关 */}
                     <div
                       className="flex justify-between items-center cursor-pointer px-5 py-4 rounded-3xl hover:bg-white/50 dark:hover:bg-white/5 transition-all"
@@ -216,7 +205,9 @@ const ConfigPanel: React.FC = () => {
                 {activeView === 'skills' && <SkillArsenal />}
                 {activeView === 'persona' && <PersonaManager />}
                 {activeView === 'debug' && <DebugConsole />}
-                {activeView === 'appearance' && <AppearanceEditor />}
+                {activeView === 'appearance' && <AppearanceEditor onOpenCssPackages={() => setActiveView('css-packages')} />}
+                {activeView === 'css-packages' && <CssPackageManager onEdit={(id) => { setEditingId(id); setActiveView('css-package-edit') }} />}
+                {activeView === 'css-package-edit' && editingId && <CssPackageEditor id={editingId} onClose={() => setActiveView('css-packages')} />}
                 {activeView === 'regex' && <RegexManager onEdit={(id) => { setEditingId(id); setActiveView('regex-edit') }} onAdd={() => { const newId = `regex-${Date.now()}`; addRegexRule({ id: newId, name: '新正则规则', regex: '', replacement: '', flags: 'gi', enabled: true, runOn: ['ui'] }); setEditingId(newId); setActiveView('regex-edit') }} />}
                 {activeView === 'regex-edit' && editingId && <RegexEditor id={editingId} onClose={() => setActiveView('regex')} />}
                 {activeView === 'storage' && <StorageSettings />}

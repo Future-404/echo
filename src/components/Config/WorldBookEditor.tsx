@@ -3,12 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Trash2, ChevronDown, ChevronUp, Book, Key, ArrowLeft, Edit3, Settings, Upload } from 'lucide-react'
 import { useAppStore } from '../../store/useAppStore'
 import type { WorldBook } from '../../types/store'
+import { useDialog } from '../GlobalDialog'
 
 const WorldBookEditor: React.FC = () => {
   const { 
     config, addWorldBook, updateWorldBook, removeWorldBook,
     addWorldBookEntry, updateWorldBookEntry, removeWorldBookEntry
   } = useAppStore()
+  const { alert } = useDialog()
   
   const library = config.worldBookLibrary || []
   const [selectedBookId, setSelectedBookId] = useState<string | null>(null)

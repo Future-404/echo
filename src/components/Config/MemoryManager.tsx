@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Brain, Trash2, Edit3, Save, X, ChevronDown, ChevronUp, Search, Info, Zap, Check } from 'lucide-react'
+import { Brain, Trash2, Edit3, Save, X, ChevronDown, ChevronUp, Search, Info } from 'lucide-react'
 import { useAppStore } from '../../store/useAppStore'
 import { db } from '../../storage/db'
 import type { DBMemoryEpisode } from '../../storage/db'
@@ -9,8 +9,8 @@ import { vectorMath } from '../../utils/vectorMath'
 import { useDialog } from '../GlobalDialog'
 
 const MemoryManager: React.FC = () => {
-  const { currentAutoSlotId, config, activeEmbeddingProviderId, setActiveEmbeddingProviderId } = useAppStore()
-  const { confirm } = useDialog()
+  const { currentAutoSlotId, config } = useAppStore()
+  const { confirm, alert } = useDialog()
   const [episodes, setEpisodes] = useState<DBMemoryEpisode[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -48,7 +48,7 @@ const MemoryManager: React.FC = () => {
   }
 
   const handleSaveEdit = async (ep: DBMemoryEpisode) => {
-    const embProvider = config.providers.find(p => p.id === activeEmbeddingProviderId)
+    const embProvider = config.providers.find(p => p.id === config.modelConfig?.embeddingProviderId)
     if (!embProvider) { alert('请先配置并选择 Embedding 模型'); return }
 
     try {
@@ -69,8 +69,6 @@ const MemoryManager: React.FC = () => {
     ep.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()))
   )
 
-  const embeddingProviders = config.providers.filter(p => p.type === 'embedding')
-
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col h-full bg-transparent">
       {/* 顶部统计与搜索 */}
@@ -85,30 +83,6 @@ const MemoryManager: React.FC = () => {
               <p className="text-[9px] text-gray-400 dark:text-gray-500 uppercase mt-1 tracking-widest font-mono">
                 S-{currentAutoSlotId?.slice(0, 8)} // {episodes.length} EPISODES
               </p>
-            </div>
-          </div>
-
-          {/* Embedding 模型选择 */}
-          <div className="pt-4 border-t-0.5 border-gray-100 dark:border-white/5">
-            <div className="flex justify-between items-center mb-3 px-1">
-              <label className="text-[8px] uppercase tracking-[0.2em] text-gray-400 font-bold">Embedding 模型</label>
-              <Zap size={10} className={activeEmbeddingProviderId ? 'text-blue-400' : 'text-gray-300'} />
-            </div>
-            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-              {embeddingProviders.length === 0 ? (
-                <div className="text-[8px] text-gray-400 uppercase italic py-2">请先在 API 参数中添加 Embedding 节点</div>
-              ) : (
-                embeddingProviders.map(p => (
-                  <button
-                    key={p.id}
-                    onClick={() => setActiveEmbeddingProviderId(p.id)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-[9px] uppercase tracking-wider transition-all whitespace-nowrap border-0.5 ${activeEmbeddingProviderId === p.id ? 'bg-blue-500 text-white border-blue-400 shadow-md shadow-blue-500/20' : 'bg-white/50 dark:bg-black/20 text-gray-400 border-gray-100 dark:border-white/5 hover:border-gray-200'}`}
-                  >
-                    {activeEmbeddingProviderId === p.id && <Check size={10} />}
-                    {p.name}
-                  </button>
-                ))
-              )}
             </div>
           </div>
         </div>
