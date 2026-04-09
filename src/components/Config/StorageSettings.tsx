@@ -52,7 +52,7 @@ const StorageSettings: React.FC = () => {
       await store.persist.rehydrate();
       store.getState().setHasHydrated(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : (String(err) || '连接失败，请检查密码或后端地址');
+      setError(err instanceof Error ? err.message : (String(err) || '连接失败，请检查密码或后端地址'));
     } finally {
       setLoading(false);
     }
