@@ -37,6 +37,8 @@ export class OpenAIProvider implements IChatProvider {
       ...(isStreaming && { stream_options: { "include_usage": true } }),
       temperature: provider.temperature ?? 0.7,
       ...(provider.topP != null && provider.topP !== 1.0 && { top_p: provider.topP }),
+      ...(provider.frequencyPenalty != null && provider.frequencyPenalty !== 0 && { frequency_penalty: provider.frequencyPenalty }),
+      ...(provider.presencePenalty != null && provider.presencePenalty !== 0 && { presence_penalty: provider.presencePenalty }),
     };
 
     const base = provider.endpoint.replace(/\/+$/, '');

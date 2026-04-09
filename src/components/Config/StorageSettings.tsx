@@ -10,6 +10,8 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDialog } from '../GlobalDialog';
 
+const IS_SAFARI = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+
 const StorageSettings: React.FC = () => {
   const { confirm } = useDialog();
   const [password, setPassword] = useState('');
@@ -18,11 +20,19 @@ const StorageSettings: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isPersistent, setIsPersistent] = useState<boolean | null>(null);
+  const [storageEstimate, setStorageEstimate] = useState<{ usage: number; quota: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (navigator.storage?.persisted) {
       navigator.storage.persisted().then(setIsPersistent)
+    }
+    if (navigator.storage?.estimate) {
+      navigator.storage.estimate().then(e => {
+        if (e.usage != null && e.quota != null) {
+          setStorageEstimate({ usage: e.usage, quota: e.quota })
+        }
+      })
     }
   }, []);
 
@@ -98,6 +108,45 @@ const StorageSettings: React.FC = () => {
           <p className="text-[9px] text-gray-400 dark:text-gray-500 uppercase mt-1 tracking-widest font-mono">Archive & Portability</p>
         </div>
       </div>
+
+      {/* 存储状态 */}
+      {(() => {
+        const fmt = (b: number) => b < 1024 * 1024 ? `${(b / 1024).toFixed(0)} KB` : `${(b / 1024 / 1024).toFixed(1)} MB`
+        const pct = storageEstimate ? Math.round(storageEstimate.usage / storageEstimate.quota * 100) : null
+        const isSafari = IS_SAFARI
+        const remaining = storageEstimate ? storageEstimate.quota - storageEstimate.usage : null
+        const warn = remaining != null && (
+          remaining < 200 * 1024 * 1024 ||
+          (isSafari && remaining < 300 * 1024 * 1024)
+        )
+        return (
+          <div className={`p-5 rounded-3xl border-0.5 flex flex-col gap-3 ${warn ? 'bg-red-500/5 border-red-400/20' : 'bg-gray-50/50 dark:bg-white/5 border-gray-100 dark:border-white/5'}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <HardDrive size={14} className={warn ? 'text-red-400' : 'text-gray-400'} />
+                <span className="text-[9px] uppercase tracking-widest text-gray-400 font-bold">本地存储 // Storage</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {isPersistent === true && <span className="text-[8px] text-green-500 uppercase tracking-widest flex items-center gap-1"><ShieldCheck size={10} /> 已持久化</span>}
+                {isPersistent === false && <span className="text-[8px] text-amber-500 uppercase tracking-widest flex items-center gap-1"><ShieldAlert size={10} /> 未持久化</span>}
+              </div>
+            </div>
+            {storageEstimate && (
+              <>
+                <div className="w-full h-1.5 rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden">
+                  <div className={`h-full rounded-full transition-all ${warn ? 'bg-red-400' : 'bg-blue-400'}`} style={{ width: `${Math.min(pct!, 100)}%` }} />
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[8px] font-mono text-gray-400">{fmt(storageEstimate.usage)} / {fmt(storageEstimate.quota)}</span>
+                  <span className={`text-[8px] font-mono font-bold ${warn ? 'text-red-400' : 'text-gray-400'}`}>{pct}%</span>
+                </div>
+                <p className="text-[7px] text-gray-400/50 uppercase tracking-widest">配额由浏览器按磁盘空间动态分配，剩余 {remaining != null ? fmt(remaining) : '...'}</p>
+                {warn && <p className="text-[8px] text-red-400 uppercase tracking-widest">⚠ 存储空间即将耗尽，请导出备份或清理数据</p>}
+              </>
+            )}
+          </div>
+        )
+      })()}
 
       {/* 离线数据包 (.echo) */}
       <section className="space-y-6">

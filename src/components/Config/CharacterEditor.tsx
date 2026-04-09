@@ -123,14 +123,17 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
   const toggleBookBinding = (bookId: string) => {
     const currentIds = [...boundBookIds]
     const index = currentIds.indexOf(bookId)
-    if (index > -1) {
-      currentIds.splice(index, 1)
-    } else {
-      currentIds.push(bookId)
-    }
-    updateCharacter(charId, { 
-      extensions: { ...char.extensions, worldBookIds: currentIds } 
-    })
+    if (index > -1) { currentIds.splice(index, 1) } else { currentIds.push(bookId) }
+    updateCharacter(charId, { extensions: { ...char.extensions, worldBookIds: currentIds } })
+  }
+
+  // 2. 預設包綁定邏輯
+  const boundPresetIds = char?.extensions?.promptPresetIds || []
+  const togglePresetBinding = (presetId: string) => {
+    const currentIds = [...boundPresetIds]
+    const index = currentIds.indexOf(presetId)
+    if (index > -1) { currentIds.splice(index, 1) } else { currentIds.push(presetId) }
+    updateCharacter(charId, { extensions: { ...char.extensions, promptPresetIds: currentIds } })
   }
 
   const handleAddPrivate = () => {
@@ -338,7 +341,38 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
             </div>
           </div>
 
-          {/* 2. 角色私设 (独有) - 全量注入逻辑 */}
+          {/* 2. 預設包綁定 */}
+          <div className="space-y-6 pt-6 border-t-0.5 border-gray-100 dark:border-gray-800">
+            <div className="flex justify-between items-center px-2">
+              <label className="text-[10px] tracking-widest text-gray-400 uppercase italic flex items-center gap-2">
+                <Settings2 size={12} /> Preset Binding // 預設包綁定
+              </label>
+            </div>
+            <div className="grid grid-cols-1 gap-2">
+              {(config.promptPresets || []).length === 0 ? (
+                <p className="text-[9px] text-gray-400 italic text-center py-4 opacity-50">暫無預設包，請先在全局管理中導入</p>
+              ) : (
+                (config.promptPresets || []).map((preset) => {
+                  const isBound = boundPresetIds.includes(preset.id)
+                  const enabledCount = preset.directives.filter(d => d.enabled).length
+                  return (
+                    <button key={preset.id} onClick={() => togglePresetBinding(preset.id)} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${isBound ? 'bg-purple-500/10 border-purple-400/30 text-purple-600 dark:text-purple-400' : 'bg-transparent border-gray-100 dark:border-white/5 text-gray-400'}`}>
+                      <div className="flex items-center gap-3">
+                        <Settings2 size={14} className={isBound ? 'opacity-100' : 'opacity-40'} />
+                        <div className="text-left">
+                          <span className="text-[11px] font-serif font-bold block">{preset.name}</span>
+                          <span className="text-[8px] opacity-60">{enabledCount}/{preset.directives.length} 已啟用</span>
+                        </div>
+                      </div>
+                      {isBound ? <Check size={14} /> : <div className="w-3.5 h-3.5 rounded-full border border-gray-200 dark:border-white/10" />}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </div>
+
+          {/* 3. 角色私设 (独有) - 全量注入逻辑 */}
           <div className="space-y-6 pt-6 border-t-0.5 border-gray-100 dark:border-gray-800">
             <div className="flex justify-between items-center px-2">
               <label className="text-[10px] tracking-widest text-gray-400 uppercase italic flex items-center gap-2">

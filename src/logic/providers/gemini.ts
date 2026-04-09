@@ -55,6 +55,8 @@ export class GeminiProvider implements IChatProvider {
         temperature: provider.temperature ?? 0.7,
         topP: provider.topP ?? 1.0,
         maxOutputTokens: provider.maxTokens || 8192,
+        ...(provider.frequencyPenalty != null && provider.frequencyPenalty !== 0 && { frequencyPenalty: provider.frequencyPenalty }),
+        ...(provider.presencePenalty != null && provider.presencePenalty !== 0 && { presencePenalty: provider.presencePenalty }),
         ...(stopSequences && stopSequences.length > 0 ? { stopSequences } : {}),
       }
     };

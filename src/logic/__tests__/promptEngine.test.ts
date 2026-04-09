@@ -5,6 +5,7 @@ vi.mock('../../storage/db', () => ({
     worldEntries: { where: vi.fn(() => ({ anyOf: vi.fn(() => ({ filter: vi.fn(() => ({ toArray: vi.fn().mockResolvedValue([]) })) })) })) },
     messages: { where: vi.fn(() => ({ equals: vi.fn(() => ({ count: vi.fn().mockResolvedValue(0), anyOf: vi.fn(() => ({ modify: vi.fn() })) })) })) },
     getMessagesBySlot: vi.fn().mockResolvedValue([]),
+    promptPresetEntries: { where: vi.fn(() => ({ anyOf: vi.fn(() => ({ toArray: vi.fn().mockResolvedValue([]) })) })) },
   }
 }));
 vi.mock('../../utils/vectorMath', () => ({ vectorMath: { findBestMatches: vi.fn(), ensureFloat32: vi.fn() } }));
@@ -165,5 +166,63 @@ describe('buildContextForChar', () => {
     expect(result[0].role).toBe('user');
     expect(result[1].role).toBe('assistant');
     expect(result[2].role).toBe('user');
+  });
+});
+
+// ── PromptPreset 綁定 ─────────────────────────────────────────────────────────
+describe('buildPromptMessages with promptPresets', () => {
+  it('includes preset directives in PROTOCOLS when char has promptPresetIds', async () => {
+    const { db } = await import('../../storage/db');
+    (db.promptPresetEntries.where as any).mockReturnValue({
+      anyOf: vi.fn(() => ({ toArray: vi.fn().mockResolvedValue([
+        { id: 'd1', presetId: 'preset-1', title: 'PresetRule', content: 'Follow preset.', enabled: true }
+      ])}))
+    });
+
+    const ctx = baseCtx();
+    ctx.character = { ...baseChar, extensions: { promptPresetIds: ['preset-1'] } } as any;
+    const msgs = await buildPromptMessages(ctx, 128000);
+    expect(msgs[0].content).toContain('### PROTOCOLS');
+    expect(msgs[0].content).toContain('Follow preset.');
+  });
+
+  it('excludes disabled preset directives', async () => {
+    const { db } = await import('../../storage/db');
+    (db.promptPresetEntries.where as any).mockReturnValue({
+      anyOf: vi.fn(() => ({ toArray: vi.fn().mockResolvedValue([
+        { id: 'd2', presetId: 'preset-2', title: 'DisabledRule', content: 'Should not appear.', enabled: false }
+      ])}))
+    });
+
+    const ctx = baseCtx();
+    ctx.character = { ...baseChar, extensions: { promptPresetIds: ['preset-2'] } } as any;
+    const msgs = await buildPromptMessages(ctx, 128000);
+    expect(msgs[0].content).not.toContain('Should not appear.');
+  });
+
+  it('preset directive with depth goes to depth injection, not PROTOCOLS', async () => {
+    const { db } = await import('../../storage/db');
+    (db.promptPresetEntries.where as any).mockReturnValue({
+      anyOf: vi.fn(() => ({ toArray: vi.fn().mockResolvedValue([
+        { id: 'd3', presetId: 'preset-3', title: 'DepthRule', content: 'DEPTH_CONTENT', enabled: true, depth: 1 }
+      ])}))
+    });
+
+    const ctx = baseCtx();
+    ctx.character = { ...baseChar, extensions: { promptPresetIds: ['preset-3'] } } as any;
+    ctx.recentMessages = [
+      { role: 'user', content: 'msg1' },
+      { role: 'assistant', content: 'msg2' },
+    ];
+    const msgs = await buildPromptMessages(ctx, 128000);
+    expect(msgs[0].content).not.toContain('DEPTH_CONTENT');
+    const hasDepth = msgs.slice(1).some(m => m.content?.includes('DEPTH_CONTENT'));
+    expect(hasDepth).toBe(true);
+  });
+
+  it('ignores presets when no promptPresetIds', async () => {
+    const ctx = baseCtx(); // 沒有 promptPresetIds
+    const msgs = await buildPromptMessages(ctx, 128000);
+    expect(msgs[0].content).not.toContain('### PROTOCOLS');
   });
 });

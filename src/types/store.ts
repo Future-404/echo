@@ -10,6 +10,12 @@ import type {
   CharacterAsset
 } from './chat';
 
+export interface PromptPreset {
+  id: string;
+  name: string;
+  directives: Directive[]; // 運行時從 DB 加載，persist 時為空陣列
+}
+
 export interface WorldBook {
   id: string;
   name: string;
@@ -26,6 +32,8 @@ export interface Provider {
   type: 'chat' | 'embedding' | 'tts'; 
   temperature?: number;
   topP?: number;
+  frequencyPenalty?: number;
+  presencePenalty?: number;
   contextWindow?: number;
   maxTokens?: number;
   stream?: boolean;

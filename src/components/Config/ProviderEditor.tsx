@@ -266,6 +266,24 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
                     <input type="range" min="0" max="1" step="0.05" value={provider.topP ?? 1.0} onChange={(e) => updateProvider(id, { topP: parseFloat(e.target.value) })} className="w-full accent-blue-400" />
                   </div>
 
+                  {/* Frequency Penalty */}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[9px] text-gray-400 uppercase italic">Frequency Penalty // 频率惩罚</label>
+                      <span className="text-[10px] text-gray-500 font-mono">{provider.frequencyPenalty ?? 0}</span>
+                    </div>
+                    <input type="range" min="-2" max="2" step="0.05" value={provider.frequencyPenalty ?? 0} onChange={(e) => updateProvider(id, { frequencyPenalty: parseFloat(e.target.value) })} className="w-full accent-purple-400" />
+                  </div>
+
+                  {/* Presence Penalty */}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[9px] text-gray-400 uppercase italic">Presence Penalty // 存在惩罚</label>
+                      <span className="text-[10px] text-gray-500 font-mono">{provider.presencePenalty ?? 0}</span>
+                    </div>
+                    <input type="range" min="-2" max="2" step="0.05" value={provider.presencePenalty ?? 0} onChange={(e) => updateProvider(id, { presencePenalty: parseFloat(e.target.value) })} className="w-full accent-pink-400" />
+                  </div>
+
                   {/* Context Window */}
                   <div className="space-y-2">
                     <label className="text-[9px] text-gray-400 uppercase italic">Context Tokens // 上下文上限</label>

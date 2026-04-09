@@ -16,7 +16,7 @@ export type CharacterAsset = {
 }
 
 export interface Mission { id: string; title: string; type: 'MAIN' | 'SIDE'; progress: number; status: 'ACTIVE' | 'COMPLETED' | 'FAILED'; description?: string }
-export interface Directive { id: string; title: string; content: string; enabled: boolean }
+export interface Directive { id: string; title: string; content: string; enabled: boolean; depth?: number; role?: 'system' | 'user' | 'assistant'; position?: 0 | 1 }
 export interface WorldBookEntry {
   id: string;
   keys: string[];
@@ -50,6 +50,7 @@ export type CharacterCard = {
     directives?: Directive[];
     worldBook?: WorldBookEntry[];
     worldBookIds?: string[];
+    promptPresetIds?: string[];
     tagTemplates?: TagTemplate[];
     luminescence?: any;
     assets?: CharacterAsset[];

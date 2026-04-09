@@ -11,13 +11,14 @@ const KnowledgeInjection: React.FC = () => {
         <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">Prompt 构建顺序</p>
         <div className="space-y-1.5">
           {[
-            ['1', '角色核心人格', '角色卡的 system_prompt 字段，支持 {{original}} 占位符引用全局设置'],
+            ['1', '角色核心人格', '角色卡的 system_prompt 字段'],
             ['2', '用户人格', '当前激活的 Persona 名称、背景描述及其私有世界书条目'],
-            ['3', '全局指令 Directive', '配置面板中启用的所有 Directive，对所有角色生效'],
-            ['4', '世界书 / 角色私设', '关键词命中的公共书库条目 + 角色私有条目，按 insertionOrder 排序'],
-            ['5', '属性状态槽', '角色当前的数值属性（由状态栏自动提取并同步）'],
-            ['6', '技能指令', '已启用技能的专属 Prompt（如任务追踪）'],
-            ['7', '格式规则', '渲染引擎强制约定，不可覆盖'],
+            ['3', '预设包指令', '角色卡绑定的预设包中 enabled 的 Directive（无 depth 的部分）'],
+            ['4', '全局指令 Directive', '配置面板手动添加的全局 Directive'],
+            ['5', '世界书 / 角色私设', '关键词命中的公共书库条目 + 角色私有条目，按 insertionOrder 排序'],
+            ['6', '属性状态槽', '角色当前的数值属性（由状态栏自动提取并同步）'],
+            ['7', '技能指令', '已启用技能的专属 Prompt（如任务追踪）'],
+            ['8', 'Depth 注入', '预设包中 depth > 0 的 Directive，插入到历史消息倒数第 N 条之前'],
           ].map(([num, title, desc]) => (
             <div key={num} className="flex gap-3 items-start">
               <span className="text-[9px] font-mono text-blue-400 opacity-60 mt-0.5 w-3 shrink-0">{num}</span>
@@ -27,6 +28,27 @@ const KnowledgeInjection: React.FC = () => {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* 预设包 */}
+      <div className="space-y-2">
+        <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">预设包 Prompt Preset</p>
+        <div className="grid grid-cols-1 gap-3">
+          <div className="p-3 rounded-2xl bg-purple-500/5 border border-purple-500/10 space-y-1.5 text-[10px]">
+            <p className="font-bold text-purple-400 uppercase tracking-widest">什么是预设包</p>
+            <p className="opacity-70 leading-relaxed">预设包是一组 Directive 的集合，可以从兼容的 Instruct 预设 JSON 文件导入。每个角色卡可以独立绑定不同的预设包，实现「不同角色使用不同写作风格指令」。</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-3 rounded-2xl bg-blue-500/5 border border-blue-500/10 space-y-1">
+              <p className="font-bold text-blue-400 text-[10px] uppercase tracking-widest">普通 Directive</p>
+              <p className="opacity-60 text-[10px] leading-relaxed">depth 为空，注入到 System Prompt 的 PROTOCOLS 段。</p>
+            </div>
+            <div className="p-3 rounded-2xl bg-green-500/5 border border-green-500/10 space-y-1">
+              <p className="font-bold text-green-400 text-[10px] uppercase tracking-widest">Depth Directive</p>
+              <p className="opacity-60 text-[10px] leading-relaxed">depth = N，插入到历史消息倒数第 N 条之前，紧贴最近对话。</p>
+            </div>
+          </div>
         </div>
       </div>
 

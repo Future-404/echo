@@ -43,6 +43,38 @@ describe('OpenAIProvider', () => {
     expect(result.content).toBe('Hello back!');
   });
 
+  it('sends frequency_penalty and presence_penalty when non-zero', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ choices: [{ message: { content: 'ok' } }], usage: {} })
+    });
+    global.fetch = mockFetch;
+    await provider.request({
+      messages: [],
+      provider: createMockProvider({ frequencyPenalty: 0.6, presencePenalty: 0.5 }),
+      isStreaming: false
+    });
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.frequency_penalty).toBe(0.6);
+    expect(body.presence_penalty).toBe(0.5);
+  });
+
+  it('omits frequency_penalty and presence_penalty when zero', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ choices: [{ message: { content: 'ok' } }], usage: {} })
+    });
+    global.fetch = mockFetch;
+    await provider.request({
+      messages: [],
+      provider: createMockProvider({ frequencyPenalty: 0, presencePenalty: 0 }),
+      isStreaming: false
+    });
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.frequency_penalty).toBeUndefined();
+    expect(body.presence_penalty).toBeUndefined();
+  });
+
   it('should throw error when response is not ok', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: false,

@@ -1,10 +1,11 @@
-import type { Provider, Directive, WorldBook, WorldBookEntry, UserPersona, ThemeMode, RegexRule } from './useAppStore'
+import type { Provider, Directive, WorldBook, WorldBookEntry, UserPersona, ThemeMode, RegexRule, PromptPreset } from './useAppStore'
 import { db } from '../storage/db'
 
 export interface ConfigSlice {
   config: {
     worldBookLibrary: WorldBook[];
     directives: Directive[];
+    promptPresets: PromptPreset[];
     providers: Provider[];
     activeProviderId: string;
     theme: ThemeMode;
@@ -47,6 +48,9 @@ export interface ConfigSlice {
   updateDirective: (id: string, updates: Partial<Directive>) => void;
   removeDirective: (id: string) => void;
   reorderDirectives: (directives: Directive[]) => void;
+  addPromptPreset: (preset: PromptPreset) => Promise<void>;
+  removePromptPreset: (id: string) => Promise<void>;
+  updatePromptPresetDirective: (presetId: string, directiveId: string, updates: Partial<Directive>) => Promise<void>;
   toggleSkill: (skillId: string) => void;
   addPersona: (persona: UserPersona) => void;
   updatePersona: (id: string, updates: Partial<UserPersona>) => void;
@@ -180,6 +184,27 @@ export const createConfigSlice = (set: any, get: any, INITIAL_CONFIG: ConfigSlic
   })),
 
   reorderDirectives: (directives) => set((state: any) => ({ config: { ...state.config, directives } })),
+
+  addPromptPreset: async (preset) => {
+    // 條目寫 DB，元數據（id+name）存 store
+    await db.promptPresetEntries.bulkPut(
+      preset.directives.map(d => ({ ...d, presetId: preset.id }))
+    );
+    set((state: any) => ({
+      config: { ...state.config, promptPresets: [...(state.config.promptPresets || []), { id: preset.id, name: preset.name, directives: [] }] }
+    }));
+  },
+
+  removePromptPreset: async (id) => {
+    await db.promptPresetEntries.where('presetId').equals(id).delete();
+    set((state: any) => ({
+      config: { ...state.config, promptPresets: (state.config.promptPresets || []).filter((p: PromptPreset) => p.id !== id) }
+    }));
+  },
+
+  updatePromptPresetDirective: async (presetId, directiveId, updates) => {
+    await db.promptPresetEntries.update(directiveId, updates);
+  },
 
   toggleSkill: (skillId) => set((state: any) => ({ 
     config: { 

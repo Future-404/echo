@@ -64,6 +64,16 @@ export interface DBWorldEntry {
   updatedAt: number;
 }
 
+export interface DBPresetEntry {
+  id: string;
+  presetId: string;
+  title: string;
+  content: string;
+  enabled: boolean;
+  depth?: number;
+  role?: 'system' | 'user' | 'assistant';
+}
+
 export interface DBCharacter extends CharacterCard {
   updatedAt: number;
 }
@@ -74,20 +84,30 @@ export class EchoDatabase extends Dexie {
   messages!: Table<DBMessage>;
   saveSlots!: Table<DBSaveSlot>;
   worldEntries!: Table<DBWorldEntry>;
-  memoryEpisodes!: Table<DBMemoryEpisode>; // 升级后的向量记忆表
+  memoryEpisodes!: Table<DBMemoryEpisode>;
   kvStore!: Table<DBKVStore>;
+  promptPresetEntries!: Table<DBPresetEntry>;
 
   constructor() {
     super('EchoDatabase');
     
-    // 版本 4 升级：引入高级叙事结晶存储
     this.version(4).stores({
       characters: 'id, name, updatedAt',
       messages: '++id, slotId, timestamp, vState',
       saveSlots: 'id, characterId, timestamp',
       worldEntries: 'id, ownerId, *keys', 
-      memoryEpisodes: '++id, slotId, timestamp, *tags', // *tags 支持多值索引过滤
+      memoryEpisodes: '++id, slotId, timestamp, *tags',
       kvStore: 'key'
+    });
+
+    this.version(5).stores({
+      characters: 'id, name, updatedAt',
+      messages: '++id, slotId, timestamp, vState',
+      saveSlots: 'id, characterId, timestamp',
+      worldEntries: 'id, ownerId, *keys',
+      memoryEpisodes: '++id, slotId, timestamp, *tags',
+      kvStore: 'key',
+      promptPresetEntries: 'id, presetId'
     });
   }
 

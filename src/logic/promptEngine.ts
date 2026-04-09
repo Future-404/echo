@@ -207,7 +207,12 @@ export const buildPromptMessages = async (ctx: PromptContext, contextWindow: num
   }
 
   // 2. 预估基础 Token 消耗
-  const enabledDirectives = (directives || []).filter(d => d.enabled).map(d => `[Protocol: ${d.title}]\n${fastReplace(d.content)}`).join('\n\n');
+  // 合併全局 directives + 角色卡綁定的預設包 directives（從 DB 讀）
+  const boundPresetIds = character.extensions?.promptPresetIds || []
+  const boundPresetDirectives: Directive[] = boundPresetIds.length > 0
+    ? await db.promptPresetEntries.where('presetId').anyOf(boundPresetIds).toArray()
+    : []
+  const allDirectives = [...(directives || []), ...boundPresetDirectives]
   const currentAttributes = character.attributes || {};
   const attributeContext = Object.keys(currentAttributes).length > 0 ? `\n### STATE\n${Object.entries(currentAttributes).map(([k, v]) => `- ${k}: ${v}`).join('\n')}` : '';
   const skillPrompts = getEnabledSkillPrompts(enabledSkillIds);
@@ -217,7 +222,8 @@ export const buildPromptMessages = async (ctx: PromptContext, contextWindow: num
   const systemBase = `### CORE IDENTITY\n${fastReplace(character.systemPrompt)}\n${character.scenario ? '\n### SCENARIO\n' + fastReplace(character.scenario) : ''}${attributeContext}${recallContext}${skillSection}\n\n### PARTNER: ${actualUserName}\n${fastReplace(persona?.background || '')}\n\n### OBJECTIVE\n${missionStatus || 'Narrative exploration.'}`.trim();
   
   const RESPONSE_RESERVE = 1024;
-  const baseTokens = estimateTokens(systemBase) + estimateTokens(enabledDirectives) + 100;
+  const allDirectivesText = allDirectives.filter(d => d.enabled && !d.depth).map(d => d.content).join('\n\n');
+  const baseTokens = estimateTokens(systemBase) + estimateTokens(allDirectivesText) + 100;
 
   // 3. 基于权重裁剪世界书 (角色私设享有豁免权或高优先级)
   const WI_BUDGET = contextWindow * 0.35;
@@ -235,14 +241,23 @@ export const buildPromptMessages = async (ctx: PromptContext, contextWindow: num
 
   // 4. 组装 System Content
   // position=0: before char def, position=1: after char def, depth>0: depth injection (handled separately)
-  const topInjections    = budgetedEntries.filter(e => !e.depth && e.position === 0).map(e => fastReplace(e.content)).join('\n\n');
-  const afterInjections  = budgetedEntries.filter(e => !e.depth && (e.position === 1 || e.position === undefined)).map(e => fastReplace(e.content)).join('\n\n');
+  const topInjections = [
+    ...budgetedEntries.filter(e => !e.depth && e.position === 0).map(e => fastReplace(e.content)),
+    ...allDirectives.filter(d => d.enabled && !d.depth && d.position === 0).map(d => fastReplace(d.content)),
+  ].join('\n\n');
+
+  const afterDirectives = allDirectives.filter(d => d.enabled && !d.depth && d.position !== 0)
+    .map(d => `[Protocol: ${d.title}]\n${fastReplace(d.content)}`).join('\n\n');
+
+  const afterInjections = [
+    ...budgetedEntries.filter(e => !e.depth && (e.position === 1 || e.position === undefined)).map(e => fastReplace(e.content)),
+  ].join('\n\n');
 
   const systemFinal = [
     topInjections,
     systemBase,
     afterInjections,
-    enabledDirectives ? `### PROTOCOLS\n${enabledDirectives}` : ''
+    afterDirectives ? `### PROTOCOLS\n${afterDirectives}` : ''
   ].filter(Boolean).join('\n\n').trim();
 
   // 5. 计算历史记录预算并加载
@@ -250,6 +265,11 @@ export const buildPromptMessages = async (ctx: PromptContext, contextWindow: num
   budgetedEntries.filter(e => e.depth && e.depth > 0).forEach(e => {
     const c = fastReplace(e.content);
     depthInjections.push({ content: c, depth: e.depth!, role: 'system', tokens: estimateTokens(c) + 10 });
+  });
+  // 預設包的 depth directives
+  allDirectives.filter(d => d.enabled && d.depth && d.depth > 0).forEach(d => {
+    const c = fastReplace(d.content);
+    depthInjections.push({ content: c, depth: d.depth!, role: d.role || 'system', tokens: estimateTokens(c) + 10 });
   });
   if (character.depthPrompt?.content) {
     const c = fastReplace(character.depthPrompt.content);

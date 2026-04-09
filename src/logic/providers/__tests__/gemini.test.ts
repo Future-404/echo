@@ -64,4 +64,30 @@ describe('GeminiProvider', () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 403, json: () => Promise.resolve({ error: { message: 'Forbidden' } }) });
     await expect(provider.request({ messages: [], provider: createMockProvider({ apiFormat: 'gemini', model: 'gemini-pro', apiKey: 'k' }), isStreaming: false })).rejects.toThrow('HTTP 403');
   });
+
+  it('sends frequencyPenalty and presencePenalty in generationConfig when non-zero', async () => {
+    const fetch = mockOk();
+    global.fetch = fetch;
+    await provider.request({
+      messages: [],
+      provider: createMockProvider({ apiFormat: 'gemini', model: 'gemini-pro', apiKey: 'k', frequencyPenalty: 0.6, presencePenalty: 0.5 }),
+      isStreaming: false
+    });
+    const body = JSON.parse(fetch.mock.calls[0][1].body);
+    expect(body.generationConfig.frequencyPenalty).toBe(0.6);
+    expect(body.generationConfig.presencePenalty).toBe(0.5);
+  });
+
+  it('omits frequencyPenalty and presencePenalty when zero', async () => {
+    const fetch = mockOk();
+    global.fetch = fetch;
+    await provider.request({
+      messages: [],
+      provider: createMockProvider({ apiFormat: 'gemini', model: 'gemini-pro', apiKey: 'k', frequencyPenalty: 0, presencePenalty: 0 }),
+      isStreaming: false
+    });
+    const body = JSON.parse(fetch.mock.calls[0][1].body);
+    expect(body.generationConfig.frequencyPenalty).toBeUndefined();
+    expect(body.generationConfig.presencePenalty).toBeUndefined();
+  });
 });

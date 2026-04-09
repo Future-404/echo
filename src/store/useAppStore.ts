@@ -29,7 +29,8 @@ import type {
   ThemeMode,
   DebugEntry,
   SaveSlot,
-  TtsSettings
+  TtsSettings,
+  PromptPreset
 } from '../types/store'
 
 export type { 
@@ -47,7 +48,8 @@ export type {
   ThemeMode,
   DebugEntry,
   SaveSlot,
-  TtsSettings
+  TtsSettings,
+  PromptPreset
 }
 
 interface AppState extends ChatSlice, CharacterSlice, ConfigSlice, SaveSlice, UISlice {
@@ -59,6 +61,7 @@ const INITIAL_CONFIG = {
   worldBookLibrary: [], 
   theme: 'system' as ThemeMode,
   directives: INITIAL_DIRECTIVES,
+  promptPresets: [],
   providers: INITIAL_PROVIDERS,
   activeProviderId: 'default',
   activeEmbeddingProviderId: '',
