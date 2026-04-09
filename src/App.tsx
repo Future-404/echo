@@ -19,6 +19,7 @@ import Atmosphere from './engine/Atmosphere'
 // 核心/轻量组件：保持静态导入
 import Loading from './components/Loading'
 import FragmentNotification from './components/FragmentNotification'
+import UpdatePrompt from './components/UpdatePrompt'
 import Header from './components/Header'
 import DialogueBox from './components/DialogueBox'
 import ChatInput from './components/ChatInput'
@@ -162,6 +163,7 @@ const App: React.FC = () => {
   return (
     <ErrorBoundary>
     {locked && <LockScreen onUnlock={handleUnlock} />}
+    <UpdatePrompt />
     <div 
       className="echo-app-root relative w-screen h-[100dvh] overflow-hidden font-sans cursor-crosshair select-none transition-colors duration-700"
       data-view={currentView}

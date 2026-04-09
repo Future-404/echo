@@ -21,8 +21,12 @@ export default defineConfig(({ mode }) => {
       react(),
       tailwindcss(),
       VitePWA({
-        registerType: 'autoUpdate',
+        registerType: 'prompt',
         includeAssets: ['favicon.svg', 'logo.png', 'hero.png', 'bg.webp'],
+        workbox: {
+          skipWaiting: false,
+          clientsClaim: true,
+        },
         manifest: {
           name: 'Echo // 回声系统',
           short_name: 'Echo',
