@@ -51,8 +51,8 @@ const StorageSettings: React.FC = () => {
       const { useAppStore: store } = await import('../../store/useAppStore');
       await store.persist.rehydrate();
       store.getState().setHasHydrated(true);
-    } catch (err: any) {
-      setError(err.message || '连接失败，请检查密码或后端地址');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : (String(err) || '连接失败，请检查密码或后端地址');
     } finally {
       setLoading(false);
     }
@@ -62,8 +62,8 @@ const StorageSettings: React.FC = () => {
     setBackupLoading(true);
     try {
       await backupService.exportFullBackup();
-    } catch (e: any) {
-      alert(`导出失败: ${e?.message ?? e}`)
+    } catch (e) {
+      alert(`导出失败: ${e instanceof Error ? e.message : String(e)}`)
     } finally {
       setBackupLoading(false);
     }
@@ -89,7 +89,7 @@ const StorageSettings: React.FC = () => {
       await backupService.importFullBackup(file);
       await alert('导入成功，即将重新加载。');
       window.location.reload();
-    } catch (err: any) {
+    } catch (err) {
       alert(`导入失败: ${err.message}`);
     } finally {
       setBackupLoading(false);

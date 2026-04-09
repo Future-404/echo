@@ -24,15 +24,15 @@ export const useCustomCss = () => {
       // 全局包：反转后注入，靠上的包后注入优先级更高
       const globalCss = [...cssPackages]
         .reverse()
-        .filter((p: any) => p.enabled && !boundIds.includes(p.id))
-        .map((p: any) => `/* [CSS包] ${p.name} */\n${p.css}`)
+        .filter((p) => p.enabled && !boundIds.includes(p.id))
+        .map((p) => `/* [CSS包] ${p.name} */\n${p.css}`)
         .join('\n\n')
 
       // 角色绑定包：最后注入，优先级最高
       const charCss = boundIds.length
         ? cssPackages
-            .filter((p: any) => p.enabled && boundIds.includes(p.id))
-            .map((p: any) => `/* [CSS包·角色] ${p.name} */\n${p.css}`)
+            .filter((p) => p.enabled && boundIds.includes(p.id))
+            .map((p) => `/* [CSS包·角色] ${p.name} */\n${p.css}`)
             .join('\n\n')
         : ''
 

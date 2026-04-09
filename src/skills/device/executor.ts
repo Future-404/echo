@@ -39,7 +39,7 @@ export const executeDeviceStatus = async (args: { fields?: string[] }): Promise<
       message: `【感知同步成功】\n当前终端状态：${JSON.stringify(results)}`,
       data: results
     };
-  } catch (e: any) {
+  } catch (e) {
     return {
       success: false,
       message: `感知受阻：因环境磁场干扰（${e.message}），无法同步终端状态。`

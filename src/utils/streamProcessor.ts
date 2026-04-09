@@ -3,19 +3,14 @@
  * 单一功能：解析 HTTP ReadableStream 并通过回调返回文本片段及 Tool Calls
  */
 
-export interface ToolCall {
-  id: string;
-  type: string;
-  function: {
-    name: string;
-    arguments: string;
-  };
-}
+import type { ToolCall, UsageInfo } from '../logic/providers/base';
+
+export type { ToolCall };
 
 export interface StreamCallbacks {
   onChunk: (text: string) => void;
-  onFinish: (fullText: string, toolCalls?: ToolCall[], usage?: any) => void;
-  onError: (error: any) => void;
+  onFinish: (fullText: string, toolCalls?: ToolCall[], usage?: UsageInfo) => void;
+  onError: (error: unknown) => void;
 }
 
 export const processChatStream = async (
@@ -32,7 +27,7 @@ export const processChatStream = async (
   const decoder = new TextDecoder('utf-8');
   let fullText = '';
   let buffer = ''; // 处理 SSE 碎片
-  let lastUsage: any = null;
+  let lastUsage: UsageInfo | null = null;
   
   // 用于收集流式的 tool_calls
   const toolCallsMap: Record<number, ToolCall> = {};

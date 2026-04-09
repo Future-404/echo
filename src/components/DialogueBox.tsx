@@ -7,20 +7,24 @@ import { useDevice } from '../hooks/useMediaQuery'
 import { useDialog } from './GlobalDialog'
 import { ttsService } from '../utils/ttsService'
 import { imageDb } from '../utils/imageDb'
+import type { Message, CharacterCard, UserPersona } from '../types/chat'
+import type { TtsSettings } from '../types/store'
+
+type DBMessage = Message & { timestamp?: number; id?: number; slotId?: string }
 
 // 对等的消息行组件
 const MessageRow = memo<{
-  msg: any; idx: number; isAi: boolean; isLatest: boolean;
+  msg: DBMessage; idx: number; isAi: boolean; isLatest: boolean;
   isTyping: boolean; displayText: string;
-  charForMsg: any; activePersona: any;
+  charForMsg: CharacterCard | null; activePersona: UserPersona | undefined;
   userAvatarUrl: string | null;
   isMobile: boolean; isTouchDevice: boolean;
   showMenu: boolean; distanceFromEnd: number;
-  ttsSettings: any;
+  ttsSettings: TtsSettings;
   activeAudioId: string | null;
   onMenuToggle: (idx: number) => void;
   onCopy: (content: string) => void;
-  onRetry: (idx: number, msg: any) => void;
+  onRetry: (idx: number, msg: DBMessage) => void;
   onSpeak: (text: string, charId?: string, msgId?: string) => void;
   onStopAudio: () => void;
   onBranch: (idx: number) => void;
@@ -180,7 +184,7 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
     if (!isLoadingMore) scrollToBottom();
   }, [messages.length, displayText])
 
-  const handleBranch = async (msg: any) => {
+  const handleBranch = async (msg: DBMessage) => {
     const branchName = await prompt('请输入分支存档的名称', {
       title: '创建分支存档',
       defaultValue: `分支 - ${new Date().toLocaleString()}`,
@@ -189,7 +193,7 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
     if (branchName === null) return
     
     // 找到该消息在当前内存窗口中的位置
-    const msgIdx = messages.findIndex(m => (m as any).timestamp === msg.timestamp)
+    const msgIdx = messages.findIndex(m => (m as DBMessage).timestamp === msg.timestamp)
     if (msgIdx === -1) return
 
     const truncatedMessages = messages.slice(0, msgIdx + 1)
@@ -226,7 +230,7 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
     document.body.removeChild(textArea);
   }
 
-  const handleRetry = async (msg: any) => {
+  const handleRetry = async (msg: DBMessage) => {
     const confirmed = await confirm('确认后，该消息之后的所有记录将被永久删除。', {
       title: '确认重试对话？',
       confirmText: '确认重试',
@@ -286,7 +290,7 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
     return 'bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.6)]'
   }
 
-  const getCharForMsg = (msg: any) => {
+  const getCharForMsg = (msg: DBMessage): CharacterCard | null => {
     if (!secondaryCharacter || !msg.speakerId) return selectedCharacter
     return msg.speakerId === secondaryCharacter.id ? secondaryCharacter : selectedCharacter
   }

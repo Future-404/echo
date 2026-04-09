@@ -230,7 +230,7 @@ export const useChat = () => {
         ttsService.speak(transformed, ttsSettings, voiceId);
       }
 
-    } catch (err: any) {
+    } catch (err) {
       setAbortController(null);
       if (err.name === 'AbortError') {
         console.log(`[${char.name}] 用户中断了生成`);
@@ -261,7 +261,7 @@ export const useChat = () => {
         : m.speakerId === secondaryCharacter.id ? secondaryCharacter.name
         : activePersona?.name || 'User'
       const imageTag = m.images?.length ? ` [Attached ${m.images.length} images]` : ''
-      return { role: m.role as any, content: `[${name}]: ${m.content}${imageTag}` }
+      return { role: m.role, content: `[${name}]: ${m.content}${imageTag}` }
     })
 
     const fetchUrl = `${routerProvider.endpoint}/chat/completions`
@@ -329,7 +329,7 @@ export const useChat = () => {
         let actions: RouterAction[]
         try {
           actions = await requestRouter(content, currentMessages, images)
-        } catch (routerErr: any) {
+        } catch (routerErr) {
           addMessage({ role: 'assistant', content: `错误（Router）: ${routerErr.message}。请重试。` })
           setIsTyping(false)
           return
@@ -357,7 +357,7 @@ export const useChat = () => {
       await requestChar(selectedCharacter.id, currentMessages, content)
       setIsTyping(false)
 
-    } catch (err: any) {
+    } catch (err) {
       console.error('Chat Error:', err)
       if (config.isDebugEnabled) addDebugLog({ direction: 'ERR', label: 'Fetch Error', data: { message: err.message } })
       addMessage({ role: 'assistant', content: `错误: ${err.message || '未知错误'}` })

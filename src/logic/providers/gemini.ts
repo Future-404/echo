@@ -9,7 +9,7 @@ export class GeminiProvider implements IChatProvider {
     const suffix = isStreaming ? 'streamGenerateContent?alt=sse&' : 'generateContent?';
     const fetchUrl = `${base}/models/${provider.model}:${suffix}key=${provider.apiKey}`;
 
-    let fetchHeaders: any = { 'Content-Type': 'application/json' };
+    const fetchHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
     if (provider.customHeaders) {
       try {
         const extraHeaders = JSON.parse(provider.customHeaders);
@@ -20,7 +20,7 @@ export class GeminiProvider implements IChatProvider {
     const systemMsg = messages.find(m => m.role === 'system')?.content || '';
 
     const rawContents = messages.filter(m => m.role !== 'system').map(m => {
-      const parts: any[] = [];
+      const parts: Array<Record<string, unknown>> = [];
       if (m.images && m.images.length > 0) {
         m.images.forEach((img: string) => {
           const match = img.match(/^data:(image\/\w+);base64,(.*)$/);
@@ -34,7 +34,7 @@ export class GeminiProvider implements IChatProvider {
     });
 
     // Gemini 要求 user/model 严格交替，合并相邻同 role 消息
-    const contents: { role: string; parts: any[] }[] = [];
+    const contents: Array<{ role: string; parts: Array<Record<string, unknown>> }> = [];
     for (const msg of rawContents) {
       const last = contents[contents.length - 1];
       if (last && last.role === msg.role) {
@@ -48,7 +48,7 @@ export class GeminiProvider implements IChatProvider {
       contents.push({ role: 'model', parts: [{ text: prefill }] });
     }
 
-    const fetchBody: any = {
+    const fetchBody: Record<string, unknown> = {
       contents,
       ...(systemMsg ? { system_instruction: { parts: [{ text: systemMsg }] } } : {}),
       generationConfig: {

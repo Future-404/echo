@@ -7,7 +7,7 @@ export class AnthropicProvider implements IChatProvider {
 
     const base = provider.endpoint.replace(/\/+$/, '').replace(/\/chat\/completions$/, '');
     const fetchUrl = `${base}/messages`;
-    let fetchHeaders: any = { 
+    const fetchHeaders: Record<string, string> = { 
       'Content-Type': 'application/json', 
       'x-api-key': provider.apiKey, 
       'anthropic-version': '2023-06-01', 
@@ -27,7 +27,7 @@ export class AnthropicProvider implements IChatProvider {
     const nonSystemMsgs = messages.filter(m => m.role !== 'system').map(m => {
       const role = m.role === 'assistant' ? 'assistant' : 'user';
       if (m.images && m.images.length > 0) {
-        const content: any[] = m.images.map((img: string) => {
+        const content: Array<Record<string, unknown>> = m.images.map((img: string) => {
           const match = img.match(/^data:(image\/\w+);base64,(.*)$/);
           return {
             type: 'image',
@@ -45,7 +45,7 @@ export class AnthropicProvider implements IChatProvider {
     });
 
     // 合并相邻同 role 消息，避免 Anthropic 报 "roles must alternate" 错误
-    const mergedMsgs: { role: string; content: any }[] = [];
+    const mergedMsgs: Array<{ role: string; content: unknown }> = [];
     for (const msg of nonSystemMsgs) {
       const last = mergedMsgs[mergedMsgs.length - 1];
       if (last && last.role === msg.role) {
@@ -62,7 +62,7 @@ export class AnthropicProvider implements IChatProvider {
       }
     }
 
-    const fetchBody: any = {
+    const fetchBody: Record<string, unknown> = {
       model: provider.model,
       ...(systemMsg ? { system: systemMsg } : {}),
       messages: prefill ? [...mergedMsgs, { role: 'assistant', content: prefill }] : mergedMsgs,

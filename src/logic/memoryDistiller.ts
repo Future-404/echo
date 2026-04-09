@@ -2,6 +2,7 @@ import type { Message } from '../types/chat';
 import { db } from '../storage/db';
 import type { DBMessage, DBMemoryEpisode } from '../storage/db';
 import { vectorMath } from '../utils/vectorMath';
+import type { Provider } from '../types/store';
 
 /**
  * 记忆提炼结果接口
@@ -25,7 +26,7 @@ export const memoryDistiller = {
   /**
    * 辅助：带重试与超时的 Fetch 包装
    */
-  async robustFetch(url: string, options: any, retries = 2): Promise<Response> {
+  async robustFetch(url: string, options: RequestInit, retries = 2): Promise<Response> {
     for (let i = 0; i <= retries; i++) {
       const controller = new AbortController();
       const id = setTimeout(() => controller.abort(), this.API_TIMEOUT);
@@ -41,7 +42,7 @@ export const memoryDistiller = {
         }
         // 429: wait and retry
         await new Promise(r => setTimeout(r, 2000 * (i + 1)));
-      } catch (err: any) {
+      } catch (err) {
         clearTimeout(id);
         if (i === retries) throw err;
         await new Promise(r => setTimeout(r, 1000 * (i + 1))); 
@@ -82,8 +83,8 @@ Expected format:
     slotId: string, 
     messages: DBMessage[], 
     charName: string,
-    llmProvider: any,
-    embeddingProvider: any
+    llmProvider: Provider,
+    embeddingProvider: Provider
   ): Promise<boolean> {
     if (messages.length === 0) return false;
 
@@ -94,7 +95,7 @@ Expected format:
 
       const narrativeVector = await this.callEmbeddingAPI(embeddingProvider, distilledData.narrative);
       const atomicWithVectors = await Promise.all(
-        distilledData.atomic.map(async (item: any) => ({
+        distilledData.atomic.map(async (item) => ({
           ...item,
           vector: await this.callEmbeddingAPI(embeddingProvider, item.text)
         }))
@@ -137,7 +138,7 @@ Expected format:
           .where('slotId').equals(slotId)
           .sortBy('timestamp');
         
-        const deleteIds = (toDelete.slice(0, count - this.MAX_EPISODES_PER_SLOT) as any[])
+        const deleteIds = (toDelete.slice(0, count - this.MAX_EPISODES_PER_SLOT))
           .map(e => e.id)
           .filter((id): id is number => id != null);
         await db.memoryEpisodes.bulkDelete(deleteIds);
@@ -146,7 +147,7 @@ Expected format:
     } catch (e) { console.error('Pruning failed:', e); }
   },
 
-  async callDistillLLM(provider: any, prompt: string): Promise<DistillationResult | null> {
+  async callDistillLLM(provider: Provider, prompt: string): Promise<DistillationResult | null> {
     const response = await this.robustFetch(`${provider.endpoint}/chat/completions`, {
       method: 'POST',
       headers: { 
@@ -171,7 +172,7 @@ Expected format:
     }
   },
 
-  async callEmbeddingAPI(provider: any, text: string): Promise<number[]> {
+  async callEmbeddingAPI(provider: Provider, text: string): Promise<number[]> {
     const isGemini = provider.endpoint?.includes('generativelanguage.googleapis')
     const url = isGemini
       ? `${provider.endpoint}/models/${provider.model}:embedContent?key=${provider.apiKey}`
@@ -202,7 +203,7 @@ Expected format:
     return embedding;
   },
 
-  calculateGlobalImportance(atomic: any[]): number {
+  calculateGlobalImportance(atomic: DistillationResult["atomic"]): number {
     if (atomic.length === 0) return 0.5;
     const scores = { '高': 1.0, '中': 0.6, '低': 0.2 };
     const sum = atomic.reduce((acc, item) => acc + (scores[item.importance as keyof typeof scores] || 0.5), 0);

@@ -1,3 +1,4 @@
+import type { DBMemoryEpisode } from '../storage/db';
 /**
  * Echo 向量数学调度器 (Async Worker Wrapper)
  * 通过 Web Worker 在后台线程执行计算密集型向量运算
@@ -25,7 +26,7 @@ class VectorMathScheduler {
     return null;
   }
 
-  private async callWorker(type: string, payload: any): Promise<any> {
+  private async callWorker<T>(type: string, payload: unknown): Promise<T> {
     const worker = this.getWorker();
     if (!worker) return null;
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -39,7 +40,7 @@ class VectorMathScheduler {
    * 异步计算余弦相似度
    */
   async cosineSimilarity(vecA: Float32Array | number[], vecB: Float32Array | number[]): Promise<number> {
-    return this.callWorker('SIMILARITY', { 
+    return this.callWorker<number>('SIMILARITY', { 
       vecA: this.ensureFloat32(vecA), 
       vecB: this.ensureFloat32(vecB) 
     });
@@ -49,14 +50,14 @@ class VectorMathScheduler {
    * 异步聚合质心
    */
   async calculateCentroid(vectors: Float32Array[]): Promise<Float32Array> {
-    return this.callWorker('CENTROID', { vectors });
+    return this.callWorker<Float32Array>('CENTROID', { vectors });
   }
 
   /**
    * 异步语义检索
    */
-  async findBestMatches(queryVector: Float32Array, episodes: any[], limit = 3, threshold = 0.72): Promise<any[]> {
-    return this.callWorker('SEARCH', { 
+  async findBestMatches(queryVector: Float32Array, episodes: DBMemoryEpisode[], limit = 3, threshold = 0.72): Promise<DBMemoryEpisode[]> {
+    return this.callWorker<DBMemoryEpisode[]>('SEARCH', { 
       queryVector: this.ensureFloat32(queryVector), 
       episodes, 
       limit, 
@@ -64,7 +65,7 @@ class VectorMathScheduler {
     });
   }
 
-  ensureFloat32(vec: any): Float32Array {
+  ensureFloat32(vec: Float32Array | number[]): Float32Array {
     if (vec instanceof Float32Array) return vec;
     return new Float32Array(vec);
   }

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { RefreshCw, Check, MessageSquare, Brain, Volume2, ChevronLeft, Trash2, Settings2, ChevronDown, ChevronUp, Zap } from 'lucide-react'
 import { useAppStore } from '../../store/useAppStore'
 import { useDialog } from '../GlobalDialog'
+import type { Provider } from '../../types/store'
 
 interface ProviderEditorProps {
   id: string
@@ -46,10 +47,10 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
       })
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
       const data = await response.json()
-      const models = data.data?.map((m: any) => m.id) || []
+      const models = data.data?.map((m: { id: string }) => m.id) || []
       setModelList(models.sort())
       setShowDropdown(true)
-    } catch (err: any) { setError(err.message) }
+    } catch (err) { setError(err instanceof Error ? err.message : String(err)) }
     finally { setIsFetching(false) }
   }
 
@@ -92,8 +93,8 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
         const errMsg = body?.error?.message || body?.message || `HTTP ${res.status}`
         setTestResult({ ok: false, msg: errMsg })
       }
-    } catch (err: any) {
-      setTestResult({ ok: false, msg: err.message })
+    } catch (err) {
+      setTestResult({ ok: false, msg: err instanceof Error ? err.message : String(err) })
     } finally {
       setIsTesting(false)
     }
@@ -107,8 +108,8 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
     try {
       JSON.parse(val);
       setJsonError(null);
-    } catch (e: any) {
-      setJsonError(e.message);
+    } catch (e) {
+      setJsonError(e instanceof Error ? e.message : String(e));
     }
   }
 
@@ -127,7 +128,7 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
             {roleTabs.map((t) => (
               <button
                 key={t.id}
-                onClick={() => updateProvider(id, { type: t.id as any })}
+                onClick={() => updateProvider(id, { type: t.id as Provider['type'] })}
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[9px] uppercase tracking-widest transition-all ${provider.type === t.id || (!provider.type && t.id === 'chat') ? 'bg-blue-500 text-white shadow-md' : 'text-gray-400 hover:text-gray-600'}`}
               >
                 {t.icon} {t.label}
@@ -157,7 +158,7 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
 
           <div className="space-y-2">
             <label className="text-[8px] uppercase tracking-widest text-gray-400 font-bold ml-1 italic">API Protocol // 协议</label>
-            <select value={provider.apiFormat || 'openai'} onChange={(e) => updateProvider(id, { apiFormat: e.target.value as any })}
+            <select value={provider.apiFormat || 'openai'} onChange={(e) => updateProvider(id, { apiFormat: e.target.value as Provider['apiFormat'] })}
               className="w-full bg-white dark:bg-white/5 border-0.5 border-gray-100 dark:border-white/5 rounded-2xl px-4 py-3 text-xs focus:outline-none appearance-none cursor-pointer shadow-sm">
               <option value="openai">OpenAI Standard</option>
               <option value="anthropic">Anthropic Native</option>
@@ -345,7 +346,7 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
               <label className="text-[9px] text-gray-400 uppercase italic">Audio Format // 音频格式</label>
               <select
                 value={provider.ttsFormat || 'mp3'}
-                onChange={(e) => updateProvider(id, { ttsFormat: e.target.value as any })}
+                onChange={(e) => updateProvider(id, { ttsFormat: e.target.value as Provider['ttsFormat'] })}
                 className="w-full bg-white dark:bg-white/5 border-0.5 border-gray-100 dark:border-white/5 rounded-2xl px-4 py-3 text-xs focus:outline-none appearance-none cursor-pointer shadow-sm"
               >
                 <option value="mp3">MP3</option>

@@ -3,7 +3,7 @@ import { getEnabledSkillPrompts } from '../skills';
 import { estimateTokens } from '../utils/tokenCounter';
 import { generateFormattingPrompt } from '../store/constants';
 import { db } from '../storage/db';
-import type { DBMessage } from '../storage/db';
+import type { DBMessage, DBWorldEntry } from '../storage/db';
 import { vectorMath } from '../utils/vectorMath';
 import { memoryDistiller } from './memoryDistiller';
 import { useAppStore } from '../store/useAppStore';
@@ -61,7 +61,7 @@ export const replaceMacros = (text: string, userName: string, charName: string, 
 /**
  * 递归扫描并激活世界书条目 (高性能异步版)
  */
-export const scanActiveWorldInfo = async (ctx: PromptContext, fullHistory?: Message[]): Promise<WorldBookEntry[]> => {
+export const scanActiveWorldInfo = async (ctx: PromptContext, fullHistory?: Message[]): Promise<DBWorldEntry[]> => {
   const { character, recentMessages } = ctx;
   
   // 1. 确定搜索范围：当前角色 ID + 绑定的书库 IDs
@@ -75,7 +75,7 @@ export const scanActiveWorldInfo = async (ctx: PromptContext, fullHistory?: Mess
     .filter(e => e.enabled)
     .toArray();
 
-  const activatedEntries = new Map<string, WorldBookEntry>();
+  const activatedEntries = new Map<string, DBWorldEntry>();
   
   // 3. 获取扫描文本：优先用完整历史，fallback 到 recentMessages
   const scanSource = fullHistory || recentMessages || [];
@@ -133,8 +133,8 @@ export const scanActiveWorldInfo = async (ctx: PromptContext, fullHistory?: Mess
   // 排序规则：角色私设优先 (insertionOrder + 权重)
   return Array.from(activatedEntries.values()).sort((a, b) => {
     // 角色私设 (ownerId === char.id) 赋予微弱的排序优势
-    const weightA = (a as any).ownerId === character.id ? -1000 : 0;
-    const weightB = (b as any).ownerId === character.id ? -1000 : 0;
+    const weightA = a.ownerId === character.id ? -1000 : 0;
+    const weightB = b.ownerId === character.id ? -1000 : 0;
     return (weightA + (a.insertionOrder ?? 0)) - (weightB + (b.insertionOrder ?? 0));
   });
 };
@@ -142,7 +142,7 @@ export const scanActiveWorldInfo = async (ctx: PromptContext, fullHistory?: Mess
 /**
  * 构建符合 SillyTavern 逻辑的消息数组 (异步驱动)
  */
-export const buildPromptMessages = async (ctx: PromptContext, contextWindow: number = 128000): Promise<any[]> => {
+export const buildPromptMessages = async (ctx: PromptContext, contextWindow: number = 128000): Promise<Message[]> => {
   const { 
     character, persona, directives, 
     missions, userName, enabledSkillIds, recentMessages,
@@ -233,7 +233,7 @@ export const buildPromptMessages = async (ctx: PromptContext, contextWindow: num
 
   for (const entry of rawActiveEntries) {
     const tokens = estimateTokens(entry.content) + 10;
-    const isPrivate = (entry as any).ownerId === character.id;
+    const isPrivate = (entry as DBWorldEntry).ownerId === character.id;
     // 预算满且非私设且非必需，则裁剪
     if (currentWiTokens + tokens > WI_BUDGET && !entry.constant && !isPrivate) continue; 
     currentWiTokens += tokens;
@@ -281,7 +281,7 @@ export const buildPromptMessages = async (ctx: PromptContext, contextWindow: num
   const totalFixedTokens = baseTokens + currentWiTokens + depthInjections.reduce((s, i) => s + i.tokens, 0) + postHistoryTokens;
   const historyBudget = contextWindow - totalFixedTokens - RESPONSE_RESERVE;
 
-  const eligibleMessages: any[] = [];
+  const eligibleMessages: Message[] = [];
   const discardedMessageIds: number[] = [];
   let usedHistoryTokens = 0;
 
@@ -292,13 +292,13 @@ export const buildPromptMessages = async (ctx: PromptContext, contextWindow: num
 
     if (usedHistoryTokens + t > historyBudget) {
       // 记录被裁切掉的消息 ID (仅限有 ID 的 DB 记录)
-      if ((msg as any).id) discardedMessageIds.push((msg as any).id);
+      if ((msg as DBMessage).id) discardedMessageIds.push((msg as DBMessage).id!);
       continue;
     }
     
     usedHistoryTokens += t;
     eligibleMessages.unshift({ 
-      role: msg.role as any, 
+      role: msg.role,
       content: msg.content,
       images: msg.images,
       speakerId: msg.speakerId,
@@ -327,10 +327,10 @@ export const buildPromptMessages = async (ctx: PromptContext, contextWindow: num
   }
 
   // 6. 最终合成
-  const result: any[] = [{ role: 'system', content: systemFinal }];
+  const result: Message[] = [{ role: 'system', content: systemFinal }];
 
   // 多角色模式：用 buildContextForChar 从目标角色视角重构历史（解决连续 assistant 问题）
-  let finalHistory: any[];
+  let finalHistory: Message[];
   if (isMultiChar && otherCharName) {
     const charNames: Record<string, string> = {
       user: actualUserName,
@@ -354,7 +354,7 @@ export const buildPromptMessages = async (ctx: PromptContext, contextWindow: num
   depthInjections.sort((a, b) => a.depth - b.depth); // 升序，depth=1 最靠近末尾
   const spliceOps = depthInjections.map(inj => ({
     idx: Math.max(0, originalLen - inj.depth),
-    msg: { role: inj.role as any, content: `[Note: ${inj.content}]` }
+    msg: { role: inj.role, content: `[Note: ${inj.content}]` }
   }));
   // 从大 idx 到小 idx 插入，保证前面的插入不影响后面的位置
   spliceOps.sort((a, b) => b.idx - a.idx).forEach(op => {
