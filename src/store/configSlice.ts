@@ -1,3 +1,5 @@
+import type { StateCreator } from 'zustand'
+import type { AppState } from './storeTypes'
 import type { Provider, Directive, WorldBook, WorldBookEntry, UserPersona, ThemeMode, RegexRule, PromptPreset } from './useAppStore'
 import type { ModelConfig } from '../types/modelConfig'
 import { db } from '../storage/db'
@@ -82,45 +84,45 @@ export interface ConfigSlice {
   reorderRegexRules: (rules: RegexRule[]) => void;
 }
 
-export const createConfigSlice = (set: any, get: any, INITIAL_CONFIG: ConfigSlice['config']): ConfigSlice => ({
+export const createConfigSlice = (INITIAL_CONFIG: ConfigSlice['config']): StateCreator<AppState, [], [], ConfigSlice> => (set, get) => ({
   config: INITIAL_CONFIG,
 
-  updateConfig: (newConfig) => set((state: any) => ({ config: { ...state.config, ...newConfig } })),
+  updateConfig: (newConfig) => set((s) => ({ config: { ...s.config, ...newConfig } })),
 
   updateFontFamily: (font) => {
-    set((state: any) => ({ config: { ...state.config, fontFamily: font } }));
+    set((s) => ({ config: { ...s.config, fontFamily: font } }));
   },
 
   updateFontSize: (size) => {
-    set((state: any) => ({ config: { ...state.config, fontSize: size } }));
+    set((s) => ({ config: { ...s.config, fontSize: size } }));
   },
 
   updateCustomCss: (css) => {
-    set((state: any) => ({ config: { ...state.config, customCss: css } }));
+    set((s) => ({ config: { ...s.config, customCss: css } }));
   },
 
-  updateCustomBg: (hasImage) => set((state: any) => ({ config: { ...state.config, customBg: hasImage } })),
+  updateCustomBg: (hasImage) => set((s) => ({ config: { ...s.config, customBg: hasImage } })),
 
-  updateThemePreset: (presetId) => set((state: any) => ({ config: { ...state.config, themePreset: presetId } })),
+  updateThemePreset: (presetId) => set((s) => ({ config: { ...s.config, themePreset: presetId } })),
 
-  addCssPackage: (pkg) => set((state: any) => ({
-    config: { ...state.config, cssPackages: [...(state.config.cssPackages || []), pkg] }
+  addCssPackage: (pkg) => set((s) => ({
+    config: { ...s.config, cssPackages: [...(s.config.cssPackages || []), pkg] }
   })),
-  updateCssPackage: (id, updates) => set((state: any) => ({
-    config: { ...state.config, cssPackages: (state.config.cssPackages || []).map((p: CssPackage) => p.id === id ? { ...p, ...updates } : p) }
+  updateCssPackage: (id, updates) => set((s) => ({
+    config: { ...s.config, cssPackages: (s.config.cssPackages || []).map((p: CssPackage) => p.id === id ? { ...p, ...updates } : p) }
   })),
-  removeCssPackage: (id) => set((state: any) => ({
-    config: { ...state.config, cssPackages: (state.config.cssPackages || []).filter((p: CssPackage) => p.id !== id) }
+  removeCssPackage: (id) => set((s) => ({
+    config: { ...s.config, cssPackages: (s.config.cssPackages || []).filter((p: CssPackage) => p.id !== id) }
   })),
-  reorderCssPackages: (packages) => set((state: any) => ({ config: { ...state.config, cssPackages: packages } })),
+  reorderCssPackages: (packages) => set((s) => ({ config: { ...s.config, cssPackages: packages } })),
 
   addProvider: (provider) => {
-    set((state: any) => ({ config: { ...state.config, providers: [...(state.config.providers || []), provider] } }))
+    set((s) => ({ config: { ...s.config, providers: [...(s.config.providers || []), provider] } }))
   },
 
   updateProvider: (id, updates) => {
     const providers = (get().config.providers || []).map((p: Provider) => p.id === id ? { ...p, ...updates } : p)
-    set((state: any) => ({ config: { ...state.config, providers } }))
+    set((s) => ({ config: { ...s.config, providers } }))
   },
 
   removeProvider: (id) => {
@@ -135,40 +137,40 @@ export const createConfigSlice = (set: any, get: any, INITIAL_CONFIG: ConfigSlic
       routerProviderId: mc.routerProviderId === id ? '' : mc.routerProviderId,
       summaryProviderId: mc.summaryProviderId === id ? '' : mc.summaryProviderId,
     }
-    set((state: any) => ({ config: { ...state.config, providers, activeProviderId, modelConfig } }))
+    set((s) => ({ config: { ...s.config, providers, activeProviderId, modelConfig } }))
   },
 
-  setActiveProvider: (id) => set((state: any) => ({ config: { ...state.config, activeProviderId: id, modelConfig: { ...state.config.modelConfig, chatProviderId: id } } })),
+  setActiveProvider: (id) => set((s) => ({ config: { ...s.config, activeProviderId: id, modelConfig: { ...s.config.modelConfig, chatProviderId: id } } })),
 
-  setModelConfig: (updates) => set((state: any) => ({ config: { ...state.config, modelConfig: { ...state.config.modelConfig, ...updates } } })),
+  setModelConfig: (updates) => set((s) => ({ config: { ...s.config, modelConfig: { ...s.config.modelConfig, ...updates } } })),
 
   addWorldBook: async (book) => {
     if (book.entries?.length) {
       const dbEntries = book.entries.map(e => ({ ...e, ownerId: book.id, updatedAt: Date.now() }));
       await db.worldEntries.bulkPut(dbEntries);
     }
-    set((state: any) => ({ 
-      config: { ...state.config, worldBookLibrary: [...(state.config.worldBookLibrary || []), book] } 
+    set((s) => ({ 
+      config: { ...s.config, worldBookLibrary: [...(s.config.worldBookLibrary || []), book] } 
     }));
   },
 
-  updateWorldBook: async (id, updates) => set((state: any) => ({ 
-    config: { ...state.config, worldBookLibrary: (state.config.worldBookLibrary || []).map((b: any) => b.id === id ? { ...b, ...updates } : b) } 
+  updateWorldBook: async (id, updates) => set((s) => ({ 
+    config: { ...s.config, worldBookLibrary: (s.config.worldBookLibrary || []).map((b) => b.id === id ? { ...b, ...updates } : b) } 
   })),
 
   removeWorldBook: async (id) => {
     await db.worldEntries.where('ownerId').equals(id).delete();
-    set((state: any) => ({ 
-      config: { ...state.config, worldBookLibrary: (state.config.worldBookLibrary || []).filter((b: any) => b.id !== id) } 
+    set((s) => ({ 
+      config: { ...s.config, worldBookLibrary: (s.config.worldBookLibrary || []).filter((b) => b.id !== id) } 
     }));
   },
 
   addWorldBookEntry: async (bookId, entry) => {
     await db.worldEntries.put({ ...entry, ownerId: bookId, updatedAt: Date.now() });
-    set((state: any) => ({
+    set((s) => ({
       config: {
-        ...state.config,
-        worldBookLibrary: (state.config.worldBookLibrary || []).map((b: any) => 
+        ...s.config,
+        worldBookLibrary: (s.config.worldBookLibrary || []).map((b) => 
           b.id === bookId ? { ...b, entries: [...(b.entries || []), entry] } : b
         )
       }
@@ -177,17 +179,17 @@ export const createConfigSlice = (set: any, get: any, INITIAL_CONFIG: ConfigSlic
 
   updateWorldBookEntry: async (bookId, entryId, updates) => {
     const state = get();
-    const book = (state.config.worldBookLibrary || []).find((b: any) => b.id === bookId);
-    const entry = book?.entries?.find((e: any) => e.id === entryId);
+    const book = (s.config.worldBookLibrary || []).find((b) => b.id === bookId);
+    const entry = book?.entries?.find((e) => e.id === entryId);
     if (!entry) return;
 
     const updatedEntry = { ...entry, ...updates };
     await db.worldEntries.put({ ...updatedEntry, ownerId: bookId, updatedAt: Date.now() });
 
-    set((state: any) => ({
+    set((s) => ({
       config: {
-        ...state.config,
-        worldBookLibrary: (state.config.worldBookLibrary || []).map((b: any) => 
+        ...s.config,
+        worldBookLibrary: (s.config.worldBookLibrary || []).map((b) => 
           b.id === bookId ? {
             ...b,
             entries: (b.entries || []).map((e: WorldBookEntry) => e.id === entryId ? updatedEntry : e)
@@ -199,10 +201,10 @@ export const createConfigSlice = (set: any, get: any, INITIAL_CONFIG: ConfigSlic
 
   removeWorldBookEntry: async (bookId, entryId) => {
     await db.worldEntries.delete(entryId);
-    set((state: any) => ({
+    set((s) => ({
       config: {
-        ...state.config,
-        worldBookLibrary: (state.config.worldBookLibrary || []).map((b: any) => 
+        ...s.config,
+        worldBookLibrary: (s.config.worldBookLibrary || []).map((b) => 
           b.id === bookId ? {
             ...b,
             entries: (b.entries || []).filter((e: WorldBookEntry) => e.id !== entryId)
@@ -212,34 +214,34 @@ export const createConfigSlice = (set: any, get: any, INITIAL_CONFIG: ConfigSlic
     }));
   },
 
-  addDirective: (directive) => set((state: any) => ({ 
-    config: { ...state.config, directives: [...(state.config.directives || []), directive] } 
+  addDirective: (directive) => set((s) => ({ 
+    config: { ...s.config, directives: [...(s.config.directives || []), directive] } 
   })),
 
-  updateDirective: (id, updates) => set((state: any) => ({ 
-    config: { ...state.config, directives: (state.config.directives || []).map((d: Directive) => d.id === id ? { ...d, ...updates } : d) } 
+  updateDirective: (id, updates) => set((s) => ({ 
+    config: { ...s.config, directives: (s.config.directives || []).map((d: Directive) => d.id === id ? { ...d, ...updates } : d) } 
   })),
 
-  removeDirective: (id) => set((state: any) => ({ 
-    config: { ...state.config, directives: (state.config.directives || []).filter((d: Directive) => d.id !== id) } 
+  removeDirective: (id) => set((s) => ({ 
+    config: { ...s.config, directives: (s.config.directives || []).filter((d: Directive) => d.id !== id) } 
   })),
 
-  reorderDirectives: (directives) => set((state: any) => ({ config: { ...state.config, directives } })),
+  reorderDirectives: (directives) => set((s) => ({ config: { ...s.config, directives } })),
 
   addPromptPreset: async (preset) => {
     // 條目寫 DB，元數據（id+name）存 store
     await db.promptPresetEntries.bulkPut(
       preset.directives.map(d => ({ ...d, presetId: preset.id }))
     );
-    set((state: any) => ({
-      config: { ...state.config, promptPresets: [...(state.config.promptPresets || []), { id: preset.id, name: preset.name, directives: [] }] }
+    set((s) => ({
+      config: { ...s.config, promptPresets: [...(s.config.promptPresets || []), { id: preset.id, name: preset.name, directives: [] }] }
     }));
   },
 
   removePromptPreset: async (id) => {
     await db.promptPresetEntries.where('presetId').equals(id).delete();
-    set((state: any) => ({
-      config: { ...state.config, promptPresets: (state.config.promptPresets || []).filter((p: PromptPreset) => p.id !== id) }
+    set((s) => ({
+      config: { ...s.config, promptPresets: (s.config.promptPresets || []).filter((p: PromptPreset) => p.id !== id) }
     }));
   },
 
@@ -247,37 +249,37 @@ export const createConfigSlice = (set: any, get: any, INITIAL_CONFIG: ConfigSlic
     await db.promptPresetEntries.update(directiveId, updates);
   },
 
-  toggleSkill: (skillId) => set((state: any) => ({ 
+  toggleSkill: (skillId) => set((s) => ({ 
     config: { 
-      ...state.config, 
-      enabledSkillIds: (state.config.enabledSkillIds || []).includes(skillId) 
-        ? (state.config.enabledSkillIds || []).filter((id: string) => id !== skillId) 
-        : [...(state.config.enabledSkillIds || []), skillId] 
+      ...s.config, 
+      enabledSkillIds: (s.config.enabledSkillIds || []).includes(skillId) 
+        ? (s.config.enabledSkillIds || []).filter((id: string) => id !== skillId) 
+        : [...(s.config.enabledSkillIds || []), skillId] 
     } 
   })),
 
-  addPersona: (persona) => set((state: any) => ({ 
-    config: { ...state.config, personas: [...(state.config.personas || []), persona] } 
+  addPersona: (persona) => set((s) => ({ 
+    config: { ...s.config, personas: [...(s.config.personas || []), persona] } 
   })),
 
-  updatePersona: (id, updates) => set((state: any) => ({ 
-    config: { ...state.config, personas: (state.config.personas || []).map((p: UserPersona) => p.id === id ? { ...p, ...updates } : p) } 
+  updatePersona: (id, updates) => set((s) => ({ 
+    config: { ...s.config, personas: (s.config.personas || []).map((p: UserPersona) => p.id === id ? { ...p, ...updates } : p) } 
   })),
 
-  removePersona: (id) => set((state: any) => ({ 
+  removePersona: (id) => set((s) => ({ 
     config: { 
-      ...state.config, 
-      personas: (state.config.personas || []).filter((p: UserPersona) => p.id !== id), 
-      activePersonaId: state.config.activePersonaId === id ? (state.config.personas[0]?.id || '') : state.config.activePersonaId 
+      ...s.config, 
+      personas: (s.config.personas || []).filter((p: UserPersona) => p.id !== id), 
+      activePersonaId: s.config.activePersonaId === id ? (s.config.personas[0]?.id || '') : s.config.activePersonaId 
     } 
   })),
 
-  setActivePersona: (id) => set((state: any) => ({ config: { ...state.config, activePersonaId: id } })),
+  setActivePersona: (id) => set((s) => ({ config: { ...s.config, activePersonaId: id } })),
 
-  addPersonaWorldBookEntry: (personaId, entry) => set((state: any) => ({
+  addPersonaWorldBookEntry: (personaId, entry) => set((s) => ({
     config: {
-      ...state.config,
-      personas: (state.config.personas || []).map((p: UserPersona) => 
+      ...s.config,
+      personas: (s.config.personas || []).map((p: UserPersona) => 
         p.id === personaId ? {
           ...p,
           worldBook: [...(p.worldBook || []), entry]
@@ -286,10 +288,10 @@ export const createConfigSlice = (set: any, get: any, INITIAL_CONFIG: ConfigSlic
     }
   })),
 
-  updatePersonaWorldBookEntry: (personaId, entryId, updates) => set((state: any) => ({
+  updatePersonaWorldBookEntry: (personaId, entryId, updates) => set((s) => ({
     config: {
-      ...state.config,
-      personas: (state.config.personas || []).map((p: UserPersona) => 
+      ...s.config,
+      personas: (s.config.personas || []).map((p: UserPersona) => 
         p.id === personaId ? {
           ...p,
           worldBook: (p.worldBook || []).map((e: WorldBookEntry) => e.id === entryId ? { ...e, ...updates } : e)
@@ -298,10 +300,10 @@ export const createConfigSlice = (set: any, get: any, INITIAL_CONFIG: ConfigSlic
     }
   })),
 
-  removePersonaWorldBookEntry: (personaId, entryId) => set((state: any) => ({
+  removePersonaWorldBookEntry: (personaId, entryId) => set((s) => ({
     config: {
-      ...state.config,
-      personas: (state.config.personas || []).map((p: UserPersona) => 
+      ...s.config,
+      personas: (s.config.personas || []).map((p: UserPersona) => 
         p.id === personaId ? {
           ...p,
           worldBook: (p.worldBook || []).filter((e: WorldBookEntry) => e.id !== entryId)
@@ -310,17 +312,17 @@ export const createConfigSlice = (set: any, get: any, INITIAL_CONFIG: ConfigSlic
     }
   })),
 
-  addRegexRule: (rule) => set((state: any) => ({
-    config: { ...state.config, regexRules: [...(state.config.regexRules || []), rule] }
+  addRegexRule: (rule) => set((s) => ({
+    config: { ...s.config, regexRules: [...(s.config.regexRules || []), rule] }
   })),
 
-  updateRegexRule: (id, updates) => set((state: any) => ({
-    config: { ...state.config, regexRules: (state.config.regexRules || []).map((r: RegexRule) => r.id === id ? { ...r, ...updates } : r) }
+  updateRegexRule: (id, updates) => set((s) => ({
+    config: { ...s.config, regexRules: (s.config.regexRules || []).map((r: RegexRule) => r.id === id ? { ...r, ...updates } : r) }
   })),
 
-  removeRegexRule: (id) => set((state: any) => ({
-    config: { ...state.config, regexRules: (state.config.regexRules || []).filter((r: RegexRule) => r.id !== id) }
+  removeRegexRule: (id) => set((s) => ({
+    config: { ...s.config, regexRules: (s.config.regexRules || []).filter((r: RegexRule) => r.id !== id) }
   })),
 
-  reorderRegexRules: (rules) => set((state: any) => ({ config: { ...state.config, regexRules: rules } })),
+  reorderRegexRules: (rules) => set((s) => ({ config: { ...s.config, regexRules: rules } })),
 });

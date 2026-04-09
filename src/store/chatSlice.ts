@@ -1,4 +1,6 @@
-import type { CharacterCard, Message, Mission, SaveSlot } from '../types/chat';
+import type { StateCreator } from 'zustand'
+import type { AppState } from './storeTypes'
+import type { CharacterCard, Message, Mission } from '../types/chat';
 import { db } from '../storage/db';
 
 export interface ChatSlice {
@@ -27,7 +29,7 @@ export interface ChatSlice {
   addFragment: (text: string) => void;
 }
 
-export const createChatSlice = (set: any, get: any): ChatSlice => ({
+export const createChatSlice: StateCreator<AppState, [], [], ChatSlice> = (set, get) => ({
   messages: [],
   isTyping: false,
   isGreetingSession: false,
@@ -49,7 +51,7 @@ export const createChatSlice = (set: any, get: any): ChatSlice => ({
 
     // 2. 只有当写入的目标是当前正在查看的存档时，才更新内存窗口
     if (slotId === state.currentAutoSlotId) {
-      set((s: any) => {
+      set((s) => {
         const newMsgs = [...s.messages, msg];
         const windowedMsgs = newMsgs.length > 50 ? newMsgs.slice(-50) : newMsgs;
         return { 
@@ -71,10 +73,10 @@ export const createChatSlice = (set: any, get: any): ChatSlice => ({
       fragments: state.fragments
     };
     
-    set((s: any) => {
+    set((s) => {
       const slots = s.saveSlots || [];
-      const updatedSlots = slots.some((sl: any) => sl.id === slotId)
-        ? slots.map((sl: any) => sl.id === slotId ? { ...sl, ...autoSlot } : sl)
+      const updatedSlots = slots.some((sl) => sl.id === slotId)
+        ? slots.map((sl) => sl.id === slotId ? { ...sl, ...autoSlot } : sl)
         : [autoSlot, ...slots];
       return { saveSlots: updatedSlots.slice(0, 50) };
     });
@@ -102,13 +104,13 @@ export const createChatSlice = (set: any, get: any): ChatSlice => ({
     // 查找更早的消息
     const older = await db.messages
       .where('slotId').equals(slotId)
-      .filter(m => m.timestamp < (firstMsg as any).timestamp)
+      .filter(m => m.timestamp < firstMsg.timestamp)
       .reverse()
       .limit(30)
       .toArray();
 
     if (older.length > 0) {
-      set((s: any) => ({
+      set((s) => ({
         messages: [...older.reverse(), ...s.messages],
         hasMoreOlder: older.length === 30
       }));
@@ -137,11 +139,9 @@ export const createChatSlice = (set: any, get: any): ChatSlice => ({
       .delete();
 
     // 3. 内存窗口回滚：找到内存中对应的那条消息并截断
-    set((s: any) => {
-      const memoryIdx = s.messages.findIndex((m: any) => (m as any).timestamp === targetMsg.timestamp);
+    set((s) => {
+      const memoryIdx = s.messages.findIndex((m) => (m as { timestamp?: number }).timestamp === targetMsg.timestamp);
       if (memoryIdx === -1) {
-        // 极端情况：消息已在内存窗口外（通过分页加载又滚远了）
-        // 此时重新从库里加载最后 30 条作为补偿
         db.messages.where('slotId').equals(state.currentAutoSlotId || '').sortBy('timestamp').then(all => {
           set({ messages: all.slice(-30), hasMoreOlder: all.length > 30 });
         });
@@ -173,8 +173,8 @@ export const createChatSlice = (set: any, get: any): ChatSlice => ({
   setIsGreetingSession: (isGreeting) => set({ isGreetingSession: isGreeting }),
 
   updateMission: (id, updates) => {
-    set((state: any) => ({ missions: (state.missions || []).map((m: Mission) => m.id === id ? { ...m, ...updates } : m) }));
+    set((s) => ({ missions: (s.missions || []).map((m) => m.id === id ? { ...m, ...updates } : m) }));
   },
 
-  addFragment: (text) => set((state: any) => ({ fragments: [...(state.fragments || []), text] })),
+  addFragment: (text) => set((s) => ({ fragments: [...(s.fragments || []), text] })),
 });

@@ -43,7 +43,7 @@ const makeSlice = () => {
     if (next.config) slice.config = next.config;
   };
   const get = () => state;
-  const slice = createConfigSlice(set, get, initialConfig) as ConfigSlice;
+  const slice = createConfigSlice(initialConfig)(set, get, {} as any) as ConfigSlice;
   return slice;
 };
 

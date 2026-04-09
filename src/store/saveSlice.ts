@@ -1,3 +1,5 @@
+import type { StateCreator } from 'zustand'
+import type { AppState } from './storeTypes'
 import type { Message } from '../types/chat'
 import type { SaveSlot } from '../types/store'
 import { SAVE_KEY, MULTI_SAVE_KEY } from './constants'
@@ -38,7 +40,7 @@ export interface SaveSlice {
   startNewGame: (charId: string) => void;
 }
 
-export const createSaveSlice = (set: any, get: any): SaveSlice => ({
+export const createSaveSlice: StateCreator<AppState, [], [], SaveSlice> = (set, get) => ({
   saveSlots: [],
 
   saveGame: async (slotId, name) => {
@@ -60,9 +62,9 @@ export const createSaveSlice = (set: any, get: any): SaveSlice => ({
       fragments: state.fragments,
     }
 
-    set((s: any) => {
-      const slots = (s.saveSlots || []).some((sl: SaveSlot) => sl.id === slotId)
-        ? s.saveSlots.map((sl: SaveSlot) => sl.id === slotId ? newSlot : sl)
+    set((s) => {
+      const slots = (s.saveSlots || []).some(sl => sl.id === slotId)
+        ? s.saveSlots.map(sl => sl.id === slotId ? newSlot : sl)
         : [...(s.saveSlots || []), newSlot]
       persistSlots(SAVE_KEY, slots)
       return { saveSlots: slots }
@@ -101,7 +103,7 @@ export const createSaveSlice = (set: any, get: any): SaveSlice => ({
       fragments: state.fragments,
     }
 
-    set((s: any) => {
+    set((s) => {
       const slots = [...(s.saveSlots || []), newSlot]
       persistSlots(SAVE_KEY, slots)
       return { saveSlots: slots }
@@ -111,8 +113,8 @@ export const createSaveSlice = (set: any, get: any): SaveSlice => ({
   },
 
   renameSaveSlot: (slotId, newName) => {
-    set((s: any) => {
-      const slots = (s.saveSlots || []).map((sl: SaveSlot) => sl.id === slotId ? { ...sl, name: newName } : sl)
+    set((s) => {
+      const slots = (s.saveSlots || []).map(sl => sl.id === slotId ? { ...sl, name: newName } : sl)
       persistSlots(SAVE_KEY, slots)
       return { saveSlots: slots }
     })
@@ -126,10 +128,10 @@ export const createSaveSlice = (set: any, get: any): SaveSlice => ({
     // 核心优化：按需从独立表拉取消息正文
     const storedMessages = await db.getMessagesBySlot(slotId)
     const messages = storedMessages.length > 0 
-      ? storedMessages.map(({ slotId, timestamp, id, ...m }: any) => m as Message) 
+      ? storedMessages.map(({ slotId: _slotId, timestamp: _ts, id: _id, ...m }) => m as Message) 
       : [];
 
-    const char = (state.characters || []).find((c: any) => c.id === slot.characterId) || state.characters[0]
+    const char = (state.characters || []).find(c => c.id === slot.characterId) || state.characters[0]
     set({
       selectedCharacter: char,
       messages: messages,
@@ -142,8 +144,8 @@ export const createSaveSlice = (set: any, get: any): SaveSlice => ({
   },
 
   deleteSaveSlot: (slotId) => {
-    set((s: any) => {
-      const slots = (s.saveSlots || []).filter((sl: SaveSlot) => sl.id !== slotId)
+    set((s) => {
+      const slots = (s.saveSlots || []).filter(sl => sl.id !== slotId)
       persistSlots(SAVE_KEY, slots)
       // 同步删除独立消息表
       db.messages.where('slotId').equals(slotId).delete()
@@ -156,15 +158,15 @@ export const createSaveSlice = (set: any, get: any): SaveSlice => ({
 
   startNewGame: (charId) => {
     const state = get()
-    const char = (state.characters || []).find((c: any) => c.id === charId) || state.characters[0]
+    const char = (state.characters || []).find(c => c.id === charId) || state.characters[0]
     const charWithoutAttrs = { ...char, attributes: {} }
-    const activePersona = state.config.personas.find((p: any) => p.id === state.config.activePersonaId) || state.config.personas[0]
+    const activePersona = state.config.personas.find(p => p.id === state.config.activePersonaId) || state.config.personas[0]
     const userName = activePersona?.name || 'Observer'
     const finalGreeting = charWithoutAttrs.greeting
       ? replaceMacros(charWithoutAttrs.greeting, userName, charWithoutAttrs.name)
       : undefined
     set({
-      characters: (state.characters || []).map((c: any) => c.id === charId ? charWithoutAttrs : c),
+      characters: (state.characters || []).map(c => c.id === charId ? charWithoutAttrs : c),
       selectedCharacter: charWithoutAttrs,
       currentView: 'main',
       messages: finalGreeting ? [{ role: 'assistant', content: finalGreeting }] : [],

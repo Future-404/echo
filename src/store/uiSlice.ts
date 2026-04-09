@@ -1,4 +1,5 @@
 import type { StateCreator } from 'zustand';
+import type { AppState } from './storeTypes';
 import { getStorageAdapter } from '../storage';
 import { MULTI_SAVE_KEY } from './constants';
 import type { 
@@ -47,7 +48,7 @@ export interface UISlice {
   setTokenStats: (last: number, max: number) => void;
 }
 
-export const createUISlice: StateCreator<UISlice & any, [], [], UISlice> = (set, get) => ({
+export const createUISlice: StateCreator<AppState, [], [], UISlice> = (set, get) => ({
   isLoading: true,
   isConfigOpen: false,
   isDialogueFullscreen: false,
@@ -117,8 +118,8 @@ export const createUISlice: StateCreator<UISlice & any, [], [], UISlice> = (set,
     const state = get();
     const slot = (state.multiSaveSlots || []).find((s: SaveSlot) => s.id === slotId);
     if (!slot) return;
-    const charA = state.characters.find((c: any) => c.id === slot.characterId) || state.characters[0];
-    const charB = slot.secondaryCharacterId ? state.characters.find((c: any) => c.id === slot.secondaryCharacterId) || null : null;
+    const charA = state.characters.find((c) => c.id === slot.characterId) || state.characters[0];
+    const charB = slot.secondaryCharacterId ? state.characters.find((c) => c.id === slot.secondaryCharacterId) || null : null;
     set({
       selectedCharacter: charA, secondaryCharacter: charB,
       messages: slot.messages, missions: slot.missions, fragments: slot.fragments,

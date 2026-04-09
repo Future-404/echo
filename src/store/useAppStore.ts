@@ -11,6 +11,7 @@ import { createCharacterSlice, type CharacterSlice } from './characterSlice'
 import { createConfigSlice, type ConfigSlice } from './configSlice'
 import { createSaveSlice, type SaveSlice, loadSlotsFromStorage, SAVE_KEY, MULTI_SAVE_KEY } from './saveSlice'
 import { createUISlice, type UISlice } from './uiSlice'
+import type { AppState } from './storeTypes'
 
 // 导入统一的类型定义
 import type { 
@@ -60,10 +61,7 @@ export type {
   CssPackage
 }
 
-interface AppState extends ChatSlice, CharacterSlice, ConfigSlice, SaveSlice, UISlice {
-  _hasHydrated: boolean;
-  setHasHydrated: (val: boolean) => void;
-}
+export type { AppState }
 
 const INITIAL_CONFIG = {
   worldBookLibrary: [], 
@@ -90,8 +88,8 @@ export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
       ...createChatSlice(set, get),
-      ...createCharacterSlice(set, get, DEFAULT_CHARACTERS),
-      ...createConfigSlice(set, get, INITIAL_CONFIG),
+      ...createCharacterSlice(DEFAULT_CHARACTERS)(set, get),
+      ...createConfigSlice(INITIAL_CONFIG)(set, get),
       ...createSaveSlice(set, get),
       ...createUISlice(set, get),
 
@@ -110,7 +108,7 @@ export const useAppStore = create<AppState>()(
         if (state) {
           // 旧数据迁移：补全默认 CSS 包
           const hasPresets = (state.config.cssPackages || []).some(
-            (p: any) => p.id === 'preset-cyber-echo' || p.id === 'preset-social-chat'
+            (p) => p.id === 'preset-cyber-echo' || p.id === 'preset-social-chat'
           )
           if (!hasPresets) {
             state.config.cssPackages = [
@@ -120,11 +118,11 @@ export const useAppStore = create<AppState>()(
           }
           // 旧数据迁移：将散落的 provider id 字段合并到 modelConfig
           if (!state.config.modelConfig) {
-            const legacy = state as any
+            const legacy = state as AppState & { activeEmbeddingProviderId?: string; activeTtsProviderId?: string; routerProviderId?: string }
             state.config.modelConfig = {
               chatProviderId: state.config.activeProviderId || 'default',
-              embeddingProviderId: legacy.activeEmbeddingProviderId || state.config.activeEmbeddingProviderId || '',
-              ttsProviderId: legacy.activeTtsProviderId || state.config.activeTtsProviderId || '',
+              embeddingProviderId: legacy.activeEmbeddingProviderId || '',
+              ttsProviderId: legacy.activeTtsProviderId || '',
               routerProviderId: legacy.routerProviderId || '',
               summaryProviderId: '',
             }
@@ -139,10 +137,9 @@ export const useAppStore = create<AppState>()(
               ? db.getMessagesBySlot(state.currentAutoSlotId)
               : Promise.resolve(null),
           ]).then(([saveSlots, multiSaveSlots, storedMessages]) => {
-            const patch: Record<string, any> = { saveSlots, multiSaveSlots }
+            const patch: Partial<AppState> = { saveSlots, multiSaveSlots }
             if (storedMessages && storedMessages.length > 0) {
-              // 有 slotId：用 db 消息覆盖（去掉 db 专用字段）
-              patch.messages = storedMessages.map(({ slotId, timestamp, id, ...m }: any) => m)
+              patch.messages = storedMessages.map(({ slotId: _s, timestamp: _t, id: _i, ...m }) => m as Message)
             }
             // 无 storedMessages 且无 slotId：messages 已从 KV 恢复，不覆盖
             useAppStore.setState(patch)
