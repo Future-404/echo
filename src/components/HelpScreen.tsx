@@ -1,10 +1,11 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, BookOpen, Layers, Database, Cpu, Info, ChevronRight, BarChart2, MessageCircle, Paintbrush, Users, Rocket, BrainCircuit } from 'lucide-react';
+import { X, BookOpen, Layers, Database, Cpu, Info, ChevronRight, BarChart2, MessageCircle, Paintbrush, Users, Rocket, BrainCircuit, Sparkles } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 
 // Import sub-components
 import QuickStart from './Help/QuickStart';
+import EchoIntro from './Help/EchoIntro';
 import WritingGuide from './Help/WritingGuide';
 import KnowledgeInjection from './Help/KnowledgeInjection';
 import SkillsGuide from './Help/SkillsGuide';
@@ -17,25 +18,26 @@ import SecurityGuide from './Help/SecurityGuide';
 import ApiSpecs from './Help/ApiSpecs';
 import Feedback from './Help/Feedback';
 
-const HELP_SECTIONS = [
-  { id: 'quickstart', title: '快速开始', icon: <Rocket size={18} />, component: <QuickStart /> },
-  { id: 'writing', title: '角色创作', icon: <BookOpen size={18} />, component: <WritingGuide /> },
-  { id: 'world', title: '知识注入系统', icon: <Layers size={18} />, component: <KnowledgeInjection /> },
-  { id: 'skills', title: '技能 Skills', icon: <Cpu size={18} />, component: <SkillsGuide /> },
-  { id: 'multichar', title: '双角色模式', icon: <Users size={18} />, component: <MultiCharGuide /> },
-  { id: 'status', title: '状态渲染协议', icon: <BarChart2 size={18} />, component: <StatusProtocol /> },
-  { id: 'customcss', title: '自定义样式', icon: <Paintbrush size={18} />, component: <CustomCssGuide /> },
-  { id: 'storage', title: '存储与存档', icon: <Database size={18} />, component: <StorageGuide /> },
-  { id: 'memory', title: '记忆管理', icon: <BrainCircuit size={18} />, component: <MemoryGuide /> },
-  { id: 'security', title: '安全与部署', icon: <Info size={18} />, component: <SecurityGuide /> },
-  { id: 'api', title: 'API 规范', icon: <Cpu size={18} />, component: <ApiSpecs /> },
-  { id: 'feedback', title: '交流与反馈', icon: <MessageCircle size={18} />, component: <Feedback /> },
-];
-
 const HelpScreen: React.FC = () => {
   const { setCurrentView } = useAppStore();
-  const [activeTab, setActiveTab] = React.useState(HELP_SECTIONS[0].id);
+  const [activeTab, setActiveTab] = React.useState('intro');
   const activeTabRef = React.useRef<HTMLButtonElement>(null);
+
+  const HELP_SECTIONS = React.useMemo(() => [
+    { id: 'intro', title: 'Echo 介绍', icon: <Sparkles size={18} />, component: <EchoIntro onNavigate={setActiveTab} /> },
+    { id: 'quickstart', title: '快速开始', icon: <Rocket size={18} />, component: <QuickStart /> },
+    { id: 'writing', title: '角色创作', icon: <BookOpen size={18} />, component: <WritingGuide /> },
+    { id: 'world', title: '知识注入系统', icon: <Layers size={18} />, component: <KnowledgeInjection /> },
+    { id: 'skills', title: '技能 Skills', icon: <Cpu size={18} />, component: <SkillsGuide /> },
+    { id: 'multichar', title: '双角色模式', icon: <Users size={18} />, component: <MultiCharGuide /> },
+    { id: 'status', title: '状态渲染协议', icon: <BarChart2 size={18} />, component: <StatusProtocol /> },
+    { id: 'customcss', title: '自定义样式', icon: <Paintbrush size={18} />, component: <CustomCssGuide /> },
+    { id: 'storage', title: '存储与存档', icon: <Database size={18} />, component: <StorageGuide /> },
+    { id: 'memory', title: '记忆管理', icon: <BrainCircuit size={18} />, component: <MemoryGuide /> },
+    { id: 'security', title: '安全与部署', icon: <Info size={18} />, component: <SecurityGuide /> },
+    { id: 'api', title: 'API 规范', icon: <Cpu size={18} />, component: <ApiSpecs /> },
+    { id: 'feedback', title: '交流与反馈', icon: <MessageCircle size={18} />, component: <Feedback /> },
+  ], [setActiveTab]);
 
   React.useEffect(() => {
     activeTabRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
