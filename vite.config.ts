@@ -58,6 +58,9 @@ export default defineConfig(({ mode }) => {
           drop_console: true,
           drop_debugger: true,
         },
+        mangle: {
+          toplevel: true,
+        },
       },
       rollupOptions: {
         output: {

@@ -7,7 +7,7 @@ export class AnthropicProvider implements IChatProvider {
 
     const base = provider.endpoint.replace(/\/+$/, '').replace(/\/chat\/completions$/, '');
     const fetchUrl = `${base}/messages`;
-    const fetchHeaders: Record<string, string> = { 
+    let fetchHeaders: Record<string, string> = { 
       'Content-Type': 'application/json', 
       'x-api-key': provider.apiKey, 
       'anthropic-version': '2023-06-01', 

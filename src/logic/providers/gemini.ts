@@ -9,7 +9,7 @@ export class GeminiProvider implements IChatProvider {
     const suffix = isStreaming ? 'streamGenerateContent?alt=sse&' : 'generateContent?';
     const fetchUrl = `${base}/models/${provider.model}:${suffix}key=${provider.apiKey}`;
 
-    const fetchHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+    let fetchHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
     if (provider.customHeaders) {
       try {
         const extraHeaders = JSON.parse(provider.customHeaders);
