@@ -301,10 +301,10 @@ const MessageContent: React.FC<MessageContentProps> = React.memo(({ content, isA
 
           // 基础文字类型
           switch (part.type) {
-            case 'narration': return <span key={i} className="opacity-90 whitespace-pre-wrap block w-full text-center py-2 font-sans" style={{ fontSize: '0.85em', color: 'var(--dialogue-text-narration)' }}>{part.content}</span>;
-            case 'dialogue': return <span key={i} className={`font-bold whitespace-pre-wrap drop-shadow-sm ${isAi ? 'text-left' : 'text-right'}`} style={{ color: 'var(--dialogue-text-dialogue)' }}>{config.dialogueQuotes?.[0] || '“'}{part.content}{config.dialogueQuotes?.[1] || '”'}</span>;
-            case 'thought': return <span key={i} className={`opacity-80 italic block mb-1 whitespace-pre-wrap font-serif ${isAi ? 'text-left' : 'text-right'}`} style={{ fontSize: '0.85em', color: 'var(--dialogue-text-thought)' }}>({part.content})</span>;
-            case 'action': return <span key={i} className="italic whitespace-pre-wrap block w-full text-center py-2 font-serif" style={{ fontSize: '0.85em', color: 'var(--dialogue-text-action)' }}>{part.content}</span>;
+            case 'narration': return <span key={i} className="opacity-90 whitespace-pre-wrap block w-full text-center py-2 font-sans" style={{ fontSize: '0.75em', color: 'var(--dialogue-text-narration)' }}>{part.content}</span>;
+            case 'dialogue': return <span key={i} className={`whitespace-pre-wrap drop-shadow-sm ${isAi ? 'text-left' : 'text-right'}`} style={{ color: 'var(--dialogue-text-dialogue)' }}>{part.content}</span>;
+            case 'thought': return <span key={i} className={`opacity-80 italic block mb-1 whitespace-pre-wrap font-serif ${isAi ? 'text-left' : 'text-right'}`} style={{ fontSize: '0.75em', color: 'var(--dialogue-text-thought)' }}>({part.content})</span>;
+            case 'action': return <span key={i} className="italic whitespace-pre-wrap block w-full text-center py-2 font-serif" style={{ fontSize: '0.75em', color: 'var(--dialogue-text-action)' }}>{part.content}</span>;
             default: return <span key={i} className={isAi ? 'text-left' : 'text-right'}>{part.content}</span>;
           }
         })}

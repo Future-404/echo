@@ -55,11 +55,28 @@ export const createCharacterSlice = (DEFAULT_CHARACTERS: CharacterCard[]): State
       await db.worldEntries.bulkPut(entries);
     }
 
+    // 自定义角色存入 characters 表（剥离 image 和 worldBook，分别存独立位置）
+    if (char.id.startsWith('custom-')) {
+      const { image: _img, extensions, ...rest } = char
+      await db.characters.put({ ...rest, extensions: extensions ? { ...extensions, worldBook: [] } : extensions, updatedAt: Date.now() })
+    }
+
     set((s) => ({ characters: [...(s.characters || []), char] }));
   },
 
   updateCharacter: async (id, updates) => {
     if (updates.image?.startsWith('data:')) await getStorageAdapter().saveImage(id, updates.image);
+
+    // 同步更新 Dexie characters 表
+    if (id.startsWith('custom-')) {
+      const existing = (get().characters || []).find(c => c.id === id)
+      if (existing) {
+        const merged = { ...existing, ...updates }
+        const { image: _img, extensions, ...rest } = merged
+        await db.characters.put({ ...rest, extensions: extensions ? { ...extensions, worldBook: [] } : extensions, updatedAt: Date.now() })
+      }
+    }
+
     set((s) => ({
       characters: (s.characters || []).map((c) => c.id === id ? { ...c, ...updates } : c),
       selectedCharacter: s.selectedCharacter.id === id ? { ...s.selectedCharacter, ...updates } : s.selectedCharacter
@@ -69,6 +86,7 @@ export const createCharacterSlice = (DEFAULT_CHARACTERS: CharacterCard[]): State
   removeCharacter: async (id) => {
     await getStorageAdapter().removeImage(id);
     await db.worldEntries.where('ownerId').equals(id).delete();
+    if (id.startsWith('custom-')) await db.characters.delete(id);
 
     set((s) => ({
       characters: (s.characters || []).filter((c) => c.id !== id),

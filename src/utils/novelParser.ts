@@ -18,21 +18,18 @@ export const parseStreamingNovelText = (
   let segmentCount = 0;
 
   // 從配置獲取標記符號（默認值）
-  const quotes = options?.dialogueQuotes || '""“”';
+  const quotesConfig = options?.dialogueQuotes || '""“”＂＂＇＇‘’「」『』';
   const actionChars = options?.actionMarkers || '**「」『』';
-  const thoughtChars = options?.thoughtMarkers || '()（）'; // 严格禁止包含 <>
+  const thoughtChars = options?.thoughtMarkers || '()（）';
 
   // 1. 预处理：提取 Markdown 风格卡片、结构化容器及斜杠命令
-  // 支持 {{...}}, {...}, [[...]], [...]
   const cardRegex = /\{\{([\s\S]+?)\}\}|\{([\s\S]+?)\}|\[\[([\s\S]+?)\]\]|\[([\s\S]+?)\]/g;
-  // 增加对斜杠命令的识别：必须是行首或换行符后的 /command
   const slashRegex = /(?:^|\n)\/([a-zA-Z0-9_-]+)\s+([\s\S]+?)(?=\n\/|$)/g;
 
   const cardSlots: { placeholder: string; segment: TextSegment }[] = [];
   let cardIdx = 0;
 
   let textWithPlaceholders = rawText.replace(cardRegex, (match, p1, p2, p3, p4) => {
-    // ... (保持原有 card 逻辑不变)
     const content = (p1 || p2 || p3 || p4 || "").trim();
     const pipeIdx = content.indexOf('|');
     let type = "";
@@ -68,12 +65,11 @@ export const parseStreamingNovelText = (
     return placeholder;
   });
 
-  // 提取斜杠命令
   textWithPlaceholders = textWithPlaceholders.replace(slashRegex, (match, cmd, args) => {
     const placeholder = `\x00CARD${cardIdx}\x00`;
     const seg: TextSegment = {
       id: `seg_slash_${cardIdx}`,
-      type: 'card', // 借用 card 类型或后续扩展，这里为了不改动太多逻辑，先用 card 类型并在 content 里标注
+      type: 'card',
       content: `slash:${cmd}`,
       metadata: { rawBody: args.trim(), fullMatch: match }
     };
@@ -82,12 +78,35 @@ export const parseStreamingNovelText = (
     return `\n${placeholder}\n`;
   });
 
-  // 2. 识别对话锚点并进行初步切分（使用配置的引號）
-  const quotePattern = `[${quotes.split('').map(c => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('')}]`;
+  // 2. 识别对话锚点并进行初步切分
+  // 将 quotes 字符串拆解为配对
+  const quotePairs: [string, string][] = [];
+  for (let i = 0; i < quotesConfig.length; i += 2) {
+    if (i + 1 < quotesConfig.length) {
+      quotePairs.push([quotesConfig[i], quotesConfig[i + 1]]);
+    } else {
+      quotePairs.push([quotesConfig[i], quotesConfig[i]]);
+    }
+  }
+
+  // 构建配对正则，支持嵌套相同字符以外的内容
+  const pairRegexParts = quotePairs.map(([open, close]) => {
+    const o = open.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const c = close.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    if (o === c) {
+      return `${o}[^${o}\\n]+${c}`;
+    }
+    // 对于不等的配对（如 “ ”），允许内部包含其他引号，直到遇到对应的结束引号
+    return `${o}[^${c}\\n]*${c}`;
+  });
+  const pairRegex = `(?:${pairRegexParts.join('|')})`;
+  const quoteSet = quotesConfig.split('').map(c => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('');
+
   const dialogPattern = new RegExp(
-    `([^：:\\n。？！…${quotes} ]{1,10})?[:：]\\s*(${quotePattern}[^${quotes}]*${quotePattern}?)|(${quotePattern}[^${quotes}]*${quotePattern}?)`,
+    `([^：:\\n。？！…${quoteSet} ]{1,10})?[:：]\\s*(${pairRegex})|(${pairRegex})`,
     'g'
   );
+  
   let lastIdx = 0;
   let match;
   const rawParts: { type: 'narration' | 'dialogue'; content: string; speaker?: string }[] = [];
@@ -99,12 +118,30 @@ export const parseStreamingNovelText = (
     }
     const speaker = match[1];
     const contentWithQuotes = match[2] || match[3];
-    const quoteChars = quotes.split('');
-    let content = contentWithQuotes;
-    quoteChars.forEach(q => {
-      content = content.replace(new RegExp(`^${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}|${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'g'), '');
-    });
-    content = content.trim();
+    
+    // 剥离首尾引号（多层剥离）
+    let content = contentWithQuotes.trim();
+    let changed = true;
+    while (changed && content.length > 0) {
+      changed = false;
+      for (const [open, close] of quotePairs) {
+        if (content.startsWith(open) && content.endsWith(close) && content.length >= 2) {
+          content = content.slice(1, -1).trim();
+          changed = true;
+          break;
+        } else if (content.startsWith(open) && content.length >= 1) {
+           // 处理单边缺失的情况
+           content = content.slice(1).trim();
+           changed = true;
+           break;
+        } else if (content.endsWith(close) && content.length >= 1) {
+           content = content.slice(0, -1).trim();
+           changed = true;
+           break;
+        }
+      }
+    }
+
     if (content) rawParts.push({ type: 'dialogue', content, speaker: speaker?.trim() });
     lastIdx = dialogPattern.lastIndex;
   }
@@ -117,7 +154,6 @@ export const parseStreamingNovelText = (
   const refinedParts: { type: string; content: string; speaker?: string; metadata?: any }[] = [];
 
   function processSubTags(text: string, baseType: string, target: typeof refinedParts, speaker?: string) {
-    // 灵活匹配各种 \x00 格式的占位符
     const placeholderRegex = /\x00(CARD|BLOCK)(_B)?(_?\d+)?\x00/g;
     let lastSubIdx = 0;
     let subMatch;
@@ -127,7 +163,6 @@ export const parseStreamingNovelText = (
         const preText = text.substring(lastSubIdx, subMatch.index).trim();
         if (preText) processInlineSubTags(preText, baseType, target, speaker);
       }
-      // 保持占位符原样作为 card 类型
       target.push({ type: 'card', content: subMatch[0] });
       lastSubIdx = placeholderRegex.lastIndex;
     }
@@ -138,7 +173,6 @@ export const parseStreamingNovelText = (
   }
 
   function processInlineSubTags(text: string, baseType: string, target: typeof refinedParts, speaker?: string) {
-    // 動態構建動作和心理標記的正則
     const actionPattern = actionChars.split('').map(c => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
     const thoughtPattern = thoughtChars.split('').map(c => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
     const subRegex = new RegExp(`([${thoughtPattern}][^${thoughtPattern}]*[${thoughtPattern}]?)|([${actionPattern}][^${actionPattern}]*[${actionPattern}]?)`, 'g');
@@ -173,7 +207,8 @@ export const parseStreamingNovelText = (
       const lines = p.content.split(/\n+/);
       lines.forEach(line => {
         const trimmed = line.trim();
-        if (trimmed && !/^[：:""" ]+$/.test(trimmed)) {
+        const skipPattern = new RegExp(`^[：:${quoteSet} ]+$`);
+        if (trimmed && !skipPattern.test(trimmed)) {
           processSubTags(trimmed, 'narration', refinedParts);
         }
       });

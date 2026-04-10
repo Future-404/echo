@@ -115,6 +115,12 @@ export const useAppStore = create<AppState>()(
               ...DEFAULT_CSS_PACKAGES,
               ...(state.config.cssPackages || []),
             ]
+          } else {
+            // 更新预设包 CSS 到最新版本（不影响用户自建包）
+            state.config.cssPackages = (state.config.cssPackages || []).map(p => {
+              const preset = DEFAULT_CSS_PACKAGES.find(d => d.id === p.id)
+              return preset ? { ...p, css: preset.css, name: preset.name } : p
+            })
           }
           // 旧数据迁移：将散落的 provider id 字段合并到 modelConfig
           if (!state.config.modelConfig) {
@@ -132,31 +138,100 @@ export const useAppStore = create<AppState>()(
           Promise.all([
             loadSlotsFromStorage(SAVE_KEY),
             loadSlotsFromStorage(MULTI_SAVE_KEY),
-            // 有 slotId：从 db 恢复对话消息；无 slotId（开场白）：保留 KV 里的 messages
             state.currentAutoSlotId
               ? db.getMessagesBySlot(state.currentAutoSlotId)
               : Promise.resolve(null),
-          ]).then(([saveSlots, multiSaveSlots, storedMessages]) => {
+            db.worldEntries.toArray(),
+            // 从 Dexie characters 表恢复自定义角色
+            db.characters.toArray(),
+          ]).then(([saveSlots, multiSaveSlots, storedMessages, allWorldEntries, dbChars]) => {
             const patch: Partial<AppState> = { saveSlots, multiSaveSlots }
             if (storedMessages && storedMessages.length > 0) {
               patch.messages = storedMessages.map(({ slotId: _s, timestamp: _t, id: _i, ...m }) => m as Message)
             }
-            // 无 storedMessages 且无 slotId：messages 已从 KV 恢复，不覆盖
+
+            const currentState = useAppStore.getState()
+
+            // 用 Dexie characters 表中的自定义角色覆盖 kvStore 里的版本（Dexie 为主存储）
+            let characters = currentState.characters || []
+            if (dbChars.length > 0) {
+              const dbCharMap = new Map(dbChars.map(c => [c.id, c]))
+              characters = characters.map(c => dbCharMap.has(c.id) ? { ...dbCharMap.get(c.id)!, image: c.image } : c)
+              // 补充 kvStore 里没有但 Dexie 有的角色（极端情况：kvStore 被清空）
+              dbChars.forEach(dc => {
+                if (!characters.find(c => c.id === dc.id)) characters = [...characters, dc]
+              })
+            }
+
+            // 回填 worldBook entries
+            const entriesByOwner = allWorldEntries.reduce<Record<string, typeof allWorldEntries>>((acc, e) => {
+              ;(acc[e.ownerId] ||= []).push(e)
+              return acc
+            }, {})
+
+            patch.config = {
+              ...currentState.config,
+              worldBookLibrary: (currentState.config.worldBookLibrary || []).map(b => ({
+                ...b,
+                entries: (entriesByOwner[b.id] || []).map(({ ownerId: _o, updatedAt: _u, ...e }) => e),
+              })),
+            }
+
+            const rehydrateChar = (c: CharacterCard): CharacterCard => ({
+              ...c,
+              extensions: c.extensions ? {
+                ...c.extensions,
+                worldBook: (entriesByOwner[c.id] || []).map(({ ownerId: _o, updatedAt: _u, ...e }) => e),
+              } : c.extensions,
+            })
+
+            patch.characters = characters.map(rehydrateChar)
+            patch.selectedCharacter = rehydrateChar(
+              characters.find(c => c.id === currentState.selectedCharacter.id) || currentState.selectedCharacter
+            )
+            if (currentState.secondaryCharacter) {
+              patch.secondaryCharacter = rehydrateChar(
+                characters.find(c => c.id === currentState.secondaryCharacter!.id) || currentState.secondaryCharacter
+              )
+            }
+
             useAppStore.setState(patch)
           }).catch(err => console.error('[echo] async load failed:', err))
         }
       },
       partialize: (state) => ({
-          config: state.config,
+          config: {
+            ...state.config,
+            // worldBook 条目已存 Dexie，只保留书的元数据（id/name），不存 entries
+            worldBookLibrary: (state.config.worldBookLibrary || []).map(({ entries: _e, ...meta }) => meta),
+          },
           currentView: state.currentView,
-          characters: state.characters.map(c => c.id.startsWith('custom-') ? { ...c, image: '' } : c),
-          selectedCharacter: state.selectedCharacter.id.startsWith('custom-') ? { ...state.selectedCharacter, image: '' } : state.selectedCharacter, 
-          secondaryCharacter: state.secondaryCharacter ? (state.secondaryCharacter.id.startsWith('custom-') ? { ...state.secondaryCharacter, image: '' } : state.secondaryCharacter) : null,
+          // 角色卡只存轻量元数据，剥离 image 和 extensions.worldBook（已存 Dexie）
+          characters: state.characters.map(c => ({
+            ...c,
+            image: c.id.startsWith('custom-') ? '' : c.image,
+            extensions: c.extensions ? { ...c.extensions, worldBook: [] } : c.extensions,
+          })),
+          selectedCharacter: {
+            ...(state.selectedCharacter.id.startsWith('custom-')
+              ? { ...state.selectedCharacter, image: '' }
+              : state.selectedCharacter),
+            extensions: state.selectedCharacter.extensions
+              ? { ...state.selectedCharacter.extensions, worldBook: [] }
+              : state.selectedCharacter.extensions,
+          },
+          secondaryCharacter: state.secondaryCharacter ? {
+            ...(state.secondaryCharacter.id.startsWith('custom-')
+              ? { ...state.secondaryCharacter, image: '' }
+              : state.secondaryCharacter),
+            extensions: state.secondaryCharacter.extensions
+              ? { ...state.secondaryCharacter.extensions, worldBook: [] }
+              : state.secondaryCharacter.extensions,
+          } : null,
           multiCharMode: state.multiCharMode,
           isGreetingSession: state.isGreetingSession,
-          // 开场白阶段（无 slotId）消息只存内存，需要持久化以便刷新恢复
           messages: state.currentAutoSlotId ? [] : state.messages,
-          missions: state.missions, 
+          missions: state.missions,
           fragments: state.fragments,
           currentAutoSlotId: state.currentAutoSlotId,
           ttsSettings: state.ttsSettings,

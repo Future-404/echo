@@ -34,64 +34,121 @@ export const CSS_SNIPPETS: { label: string; sub: string; css: string }[] = [
 }`,
   },
 ];
+
 export const DEFAULT_CSS_PACKAGES = [
   {
     id: 'preset-cyber-echo',
-    name: '赛博沉浸 (Cyber-Echo)',
+    name: '赛博霓虹',
     enabled: false,
-    css: `/* 赛博沉浸 */
+    css: `/* 赛博霓虹 - 极致变量驱动版 */
 :root {
-  --echo-base: transparent;
-  --dialogue-bg: transparent;
-  --dialogue-backdrop: none;
+  --echo-base: #000000;
+  --echo-accent: #00f2ff;
+  --dialogue-bg: rgba(5, 10, 20, 0.6);
+  --dialogue-backdrop: blur(25px) saturate(2.5);
   --dialogue-text-dialogue: #00f2ff;
-  --dialogue-text-narration: rgba(255, 255, 255, 0.95);
+  --dialogue-text-narration: #ffffff;
   --dialogue-text-thought: #ff00ff;
-  --dialogue-text-action: #7cfc00;
-  --app-font-size: 18px;
-  --cyber-blue: #00f2ff;
+  
+  --echo-header-primary: #00f2ff;
+  --echo-header-secondary: #00ccff;
+  
+  --echo-input-bg: rgba(0, 242, 255, 0.05);
+  --echo-input-border: rgba(0, 242, 255, 0.2);
+  --echo-send-btn-bg: #00f2ff;
+  --echo-send-btn-text: #000000;
+  --echo-typing-cursor-color: #00f2ff;
+  
+  --echo-message-gap: 2.5rem;
 }
-.echo-app-root { background-color: #000 !important; }
-.echo-header-container { background: transparent !important; border: none !important; backdrop-filter: none !important; }
-.echo-header-container > div.pointer-events-auto { opacity: 0; transition: opacity 0.4s ease; }
-.echo-header-container > div.pointer-events-auto:hover { opacity: 1; background: rgba(5,8,15,0.85) !important; backdrop-filter: blur(20px) !important; }
-.echo-message-list { padding-top: 64px !important; padding-bottom: 120px !important; }
-.echo-message-row { padding-left: 12px !important; padding-right: 12px !important; margin-bottom: 2.2rem !important; }
-.echo-message-content { max-width: 850px !important; }
-.echo-message-content .dialogue-text { text-shadow: 0 2px 8px rgba(0,0,0,0.8); }
-.echo-input-container { position: fixed !important; bottom: 0 !important; left: 50% !important; right: auto !important; transform: translateX(-50%) !important; width: calc(100% - 40px) !important; max-width: 720px !important; background: rgba(10,15,25,0.75) !important; backdrop-filter: blur(30px) !important; border: 1px solid rgba(0,242,255,0.1) !important; margin: 0 0 20px 0 !important; border-radius: 20px !important; }
-.echo-config-panel { background: rgba(5,8,15,0.92) !important; backdrop-filter: blur(40px) saturate(1.8) !important; border-left: 1px solid var(--cyber-blue) !important; width: 400px !important; }
-::-webkit-scrollbar { display: none; }`,
+
+.dark {
+  --echo-base: #050505;
+  --dialogue-bg: rgba(0, 5, 15, 0.7);
+}
+
+/* 霓虹发光文字特效 */
+.echo-message-row-ai .echo-message-bubble {
+  text-shadow: 0 0 10px rgba(0, 242, 255, 0.5);
+}
+
+/* 精准视觉微调 (不破坏布局) */
+.echo-header-container { border-bottom: 1px solid rgba(0, 242, 255, 0.15) !important; }
+::-webkit-scrollbar-thumb { background: #00f2ff !important; box-shadow: 0 0 15px #00f2ff; }
+.echo-config-panel { background: rgba(5,8,15,0.95) !important; }`,
   },
   {
     id: 'preset-social-chat',
-    name: '社交媒体 (Social Chat)',
+    name: '极简社交',
     enabled: false,
-    css: `/* 社交媒体 */
+    css: `/* 极简社交 - 极致变量驱动版 */
 :root {
-  --dialogue-bg: #f5f5f5;
+  --echo-base: #f7f7f7;
+  --echo-white: #ffffff;
+  --dialogue-bg: transparent;
   --dialogue-backdrop: none;
-  --dialogue-text-dialogue: #1a1a1a;
-  --dialogue-text-narration: #888888;
-  --dialogue-text-thought: #888888;
-  --dialogue-text-action: #555555;
-  --bubble-ai: #ffffff;
+  --dialogue-text-dialogue: #000000;
+  
   --bubble-user: #95ec69;
+  --bubble-ai: #ffffff;
+  
+  --echo-input-radius: 0.5rem;
+  --echo-input-bg: #ffffff;
+  --echo-input-border: #e0e0e0;
+  --echo-send-btn-bg: #07c160;
+  
+  --echo-header-primary: #000000;
+  --echo-header-secondary: #888888;
+  --echo-message-gap: 1.2rem;
 }
+
 .dark {
-  --dialogue-bg: #1a1a1a;
-  --dialogue-text-dialogue: #e5e5e5;
-  --dialogue-text-narration: #888;
-  --bubble-ai: #2c2c2c;
+  --echo-base: #111111;
+  --echo-white: #1a1a1a;
   --bubble-user: #07c160;
+  --bubble-ai: #262626;
+  --echo-input-bg: #262626;
+  --echo-input-border: #333333;
+  --echo-header-primary: #ffffff;
 }
-.echo-app-root { background-color: var(--dialogue-bg) !important; }
-.echo-message-list { background: var(--dialogue-bg) !important; padding-bottom: 80px !important; }
-.echo-message-bubble { background: var(--bubble-ai); border-radius: 0 10px 10px 10px !important; padding: 10px 14px !important; box-shadow: 0 1px 2px rgba(0,0,0,0.08) !important; max-width: 72vw !important; }
-.echo-message-row-user .echo-message-bubble { background: var(--bubble-user) !important; border-radius: 10px 0 10px 10px !important; color: #1a1a1a !important; }
-.echo-input-container { position: fixed !important; bottom: 0 !important; left: 0 !important; right: 0 !important; width: 100% !important; max-width: 100% !important; background: #f7f7f7 !important; border-top: 1px solid #e0e0e0 !important; border-radius: 0 !important; padding: 8px 12px !important; }
-.dark .echo-input-container { background: #2c2c2c !important; border-top-color: #3a3a3a !important; }
-.echo-header-container { background: #f7f7f7 !important; border-bottom: 1px solid #e0e0e0 !important; backdrop-filter: none !important; }
-.dark .echo-header-container { background: #2c2c2c !important; border-bottom-color: #3a3a3a !important; }`,
+
+/* 消息气泡视觉强制 (微信风格) */
+.echo-message-bubble {
+  background: var(--bubble-ai) !important;
+  padding: 12px 16px !important;
+  border-radius: 0 10px 10px 10px !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
+  color: inherit !important;
+  position: relative !important;
+}
+
+.echo-message-bubble::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -7px;
+  border: 7px solid transparent;
+  border-top-color: var(--bubble-ai);
+  border-right-color: var(--bubble-ai);
+  border-top-left-radius: 2px;
+}
+
+.echo-message-row-user .echo-message-bubble {
+  background: var(--bubble-user) !important;
+  color: #000000 !important;
+  border-radius: 10px 0 10px 10px !important;
+}
+
+.echo-message-row-user .echo-message-bubble::before {
+  left: auto;
+  right: -7px;
+  border-right-color: transparent;
+  border-left-color: var(--bubble-user);
+  border-top-color: var(--bubble-user);
+  border-top-right-radius: 2px;
+  border-top-left-radius: 0;
+}
+
+.echo-message-avatar img { border: none !important; box-shadow: none !important; }`,
   },
 ];

@@ -180,6 +180,12 @@
   
   .echo-input-container {
     padding-bottom: var(--echo-input-bottom-offset) !important;
+    z-index: var(--z-input) !important;
+  }
+
+  .echo-input-area {
+    z-index: var(--z-input) !important;
+    pointer-events: auto !important;
   }
 
   .echo-header-container {

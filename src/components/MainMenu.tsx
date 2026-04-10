@@ -16,7 +16,7 @@ const MainMenu: React.FC = () => {
 
   const menuItems = [
     { 
-      label: '新游戏', 
+      label: '新的开始', 
       subLabel: 'NEW GAME',
       action: () => setCurrentView('selection')
     },
@@ -47,7 +47,7 @@ const MainMenu: React.FC = () => {
     { 
       label: '系统设定', 
       subLabel: 'CONFIG',
-      action: () => setIsConfigOpen(true) 
+      action: () => setCurrentView('config') 
     },
     { 
       label: '引导手册', 

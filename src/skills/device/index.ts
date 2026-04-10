@@ -1,13 +1,11 @@
 import type { SkillModule } from '../core/types';
 import { deviceSchema } from './schema';
 import { executeDeviceStatus } from './executor';
-import { devicePrompt } from './prompt';
 
 export const deviceSkill: SkillModule = {
   name: 'get_device_status',
   displayName: '设备感知',
-  description: '主动读取用户当前的设备状态（电量、网络、时间）。',
+  description: deviceSchema.description,
   schema: deviceSchema,
   execute: executeDeviceStatus,
-  systemPrompt: devicePrompt
 };

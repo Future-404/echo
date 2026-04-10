@@ -21,10 +21,10 @@ export default defineConfig(({ mode }) => {
       react(),
       tailwindcss(),
       VitePWA({
-        registerType: 'prompt',
+        registerType: 'autoUpdate',
         includeAssets: ['favicon.svg', 'logo.png', 'hero.png', 'bg.webp'],
         workbox: {
-          skipWaiting: false,
+          skipWaiting: true,
           clientsClaim: true,
         },
         manifest: {
