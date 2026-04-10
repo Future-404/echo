@@ -15,7 +15,7 @@ const StatusProtocol: React.FC = () => {
         <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">主流渲染组件 // Renderers</p>
 
         {/* status-container */}
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+        <div className="rounded-2xl border border-echo-border overflow-hidden">
           <div className="px-4 py-2 bg-orange-500/10 flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-widest text-orange-400">status-container // 同步矩阵</span>
             <span className="text-[9px] opacity-50">中文语义化协议（推荐）</span>
@@ -36,7 +36,7 @@ const StatusProtocol: React.FC = () => {
         </div>
 
         {/* status */}
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+        <div className="rounded-2xl border border-echo-border overflow-hidden">
           <div className="px-4 py-2 bg-purple-500/10 flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-widest text-purple-400">status // 属性矩阵</span>
             <span className="text-[9px] opacity-50">适合多维度文本属性</span>
@@ -54,7 +54,7 @@ const StatusProtocol: React.FC = () => {
         </div>
 
         {/* Iframe */}
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+        <div className="rounded-2xl border border-echo-border overflow-hidden">
           <div className="px-4 py-2 bg-green-500/10 flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-widest text-green-400">html // 终极自定义界面</span>
             <span className="text-[9px] opacity-50">全沙箱隔离渲染</span>

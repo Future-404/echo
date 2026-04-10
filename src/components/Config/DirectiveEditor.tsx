@@ -21,21 +21,21 @@ const DirectiveEditor: React.FC<DirectiveEditorProps> = ({ id, onClose }) => {
       className="p-8 h-full flex flex-col space-y-8"
     >
       <div className="group">
-        <label className="text-[9px] tracking-wide text-gray-400 dark:text-gray-600 uppercase mb-3 block italic underline decoration-gray-100 dark:decoration-gray-800 underline-offset-8">Directive Title</label>
+        <label className="text-[9px] tracking-wide text-echo-text-dim uppercase mb-3 block italic underline decoration-gray-100 dark:decoration-gray-800 underline-offset-8">Directive Title</label>
         <input 
           type="text" 
           value={directive.title} 
           onChange={(e) => updateDirective(id, { title: e.target.value })} 
-          className="w-full bg-transparent border-b-0.5 border-gray-200 dark:border-gray-800 py-2 text-sm text-gray-600 dark:text-gray-300 focus:outline-none focus:border-gray-400 dark:focus:border-gray-600 transition-colors" 
+          className="w-full bg-transparent border-b-0.5 border-gray-200 dark:border-gray-800 py-2 text-sm text-echo-text-base focus:outline-none focus:border-gray-400 dark:focus:border-gray-600 transition-colors" 
         />
       </div>
       <div className="flex-1 flex flex-col min-h-[300px]">
-        <label className="text-[9px] tracking-wide text-gray-400 dark:text-gray-600 uppercase mb-3 block italic">Instruction Content</label>
+        <label className="text-[9px] tracking-wide text-echo-text-dim uppercase mb-3 block italic">Instruction Content</label>
         <textarea 
           value={directive.content} 
           onChange={(e) => updateDirective(id, { content: e.target.value })} 
           placeholder="Enter behavioral guidelines..." 
-          className="flex-1 bg-white/30 dark:bg-white/5 border-0.5 border-gray-100 dark:border-gray-800 rounded-3xl p-6 text-sm text-gray-500 dark:text-gray-400 font-serif leading-relaxed focus:outline-none focus:border-gray-300 dark:focus:border-gray-600 transition-colors resize-none no-scrollbar shadow-inner" 
+          className="flex-1 bg-white/30 dark:bg-white/5 border-0.5 border-gray-100 dark:border-gray-800 rounded-3xl p-6 text-sm text-echo-text-muted font-serif leading-relaxed focus:outline-none focus:border-gray-300 dark:focus:border-gray-600 transition-colors resize-none no-scrollbar shadow-inner" 
         />
       </div>
       <div className="flex gap-4">
@@ -47,7 +47,7 @@ const DirectiveEditor: React.FC<DirectiveEditorProps> = ({ id, onClose }) => {
         </button>
         <button 
           onClick={onClose} 
-          className="flex-[2] py-4 border-0.5 border-gray-200 dark:border-gray-800 text-gray-400 dark:text-gray-500 rounded-full text-[10px] tracking-widest uppercase hover:bg-white dark:hover:bg-gray-900 transition-all shadow-sm"
+          className="flex-[2] py-4 border-0.5 border-gray-200 dark:border-gray-800 text-gray-600 dark:text-echo-text-subtle rounded-full text-[10px] tracking-widest uppercase hover:bg-gray-50 dark:hover:bg-gray-900 transition-all shadow-sm"
         >
           Done // Sync
         </button>

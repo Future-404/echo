@@ -69,7 +69,7 @@ const CssPackageEditor: React.FC<Props> = ({ id, onClose }) => {
         {cssError && <p className="text-[10px] text-red-500">{cssError}</p>}
       </div>
 
-      <button onClick={onClose} className="w-full py-3 bg-white/50 dark:bg-gray-900 border-0.5 border-gray-200 dark:border-gray-800 rounded-full text-[10px] tracking-[0.4em] text-gray-400 uppercase hover:bg-white transition-all">
+      <button onClick={onClose} className="w-full py-3 bg-white/50 dark:bg-gray-900 border-0.5 border-gray-200 dark:border-gray-800 rounded-full text-[10px] tracking-[0.4em] text-gray-600 dark:text-gray-400 uppercase hover:bg-white dark:hover:bg-gray-800 transition-all">
         完成
       </button>
     </motion.div>

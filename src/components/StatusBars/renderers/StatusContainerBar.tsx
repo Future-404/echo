@@ -76,9 +76,9 @@ export const StatusContainerBar: React.FC<StatusBarProps> = ({ metadata }) => {
   const narrativeBlocks = normalizedTags.filter(t => isNaN(parseFloat(t.val)) && t.val.length >= 15);
 
   return (
-    <div className="flex flex-col gap-6 p-6 bg-white/70 dark:bg-black/45 border border-gray-200 dark:border-white/10 rounded-[2.5rem] my-8 shadow-2xl backdrop-blur-2xl select-text group">
+    <div className="flex flex-col gap-6 p-6 bg-white/70 dark:bg-black/45 border border-echo-border-md rounded-[2.5rem] my-8 shadow-2xl backdrop-blur-2xl select-text group">
       {/* Header: 系统元数据栏 */}
-      <div className="flex items-center justify-between border-b border-gray-100 dark:border-white/5 pb-4">
+      <div className="flex items-center justify-between border-b border-echo-border pb-4">
         <div className="flex items-center gap-2">
           <Terminal size={14} className="text-blue-500 animate-pulse" />
           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Neural Sync Matrix</span>
@@ -143,7 +143,7 @@ export const StatusContainerBar: React.FC<StatusBarProps> = ({ metadata }) => {
                 className={`p-4 rounded-2xl transition-all ${
                   isComment ? 'bg-red-500/5 border border-red-500/10' : 
                   isThought ? 'bg-blue-500/5 border border-blue-500/10 italic' : 
-                  'bg-gray-50/50 dark:bg-white/5 border border-gray-100 dark:border-white/5'
+                  'bg-gray-50/50 dark:bg-white/5 border border-echo-border'
                 }`}
               >
                 <div className="flex items-center gap-2 mb-2">

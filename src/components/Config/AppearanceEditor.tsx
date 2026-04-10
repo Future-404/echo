@@ -5,6 +5,7 @@ import { Check, Upload, X, ChevronRight } from 'lucide-react'
 import { imageDb } from '../../utils/imageDb'
 import { BG_KEY } from '../../hooks/useCustomBg'
 import { useDialog } from '../GlobalDialog'
+import { readFileAsDataURL } from '../../utils/fileUtils'
 
 const FONTS = [
   { id: 'Noto Sans SC', name: '思源黑体', sub: 'Noto Sans SC', class: 'font-noto-sans' },
@@ -37,18 +38,14 @@ const AppearanceEditor: React.FC<Props> = ({ onOpenCssPackages }) => {
     if (config?.customBg) imageDb.get(BG_KEY).then(url => setBgPreview(url))
   }, [])
 
-  const handleBgUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBgUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = async (ev) => {
-      const base64 = ev.target?.result as string
-      await imageDb.save(BG_KEY, base64)
-      setBgPreview(base64)
-      updateCustomBg(true)
-      document.documentElement.style.setProperty('--custom-bg', `url("${base64}")`)
-    }
-    reader.readAsDataURL(file)
+    const base64 = await readFileAsDataURL(file)
+    await imageDb.save(BG_KEY, base64)
+    setBgPreview(base64)
+    updateCustomBg(true)
+    document.documentElement.style.setProperty('--custom-bg', `url("${base64}")`)
     e.target.value = ''
   }
 
@@ -73,7 +70,7 @@ const AppearanceEditor: React.FC<Props> = ({ onOpenCssPackages }) => {
           className="w-full flex items-center justify-between p-4 rounded-2xl border-0.5 border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-white/5 hover:border-blue-400 transition-colors"
         >
           <div className="text-left">
-            <p className="text-sm font-serif text-gray-600 dark:text-gray-300">CSS 样式包</p>
+            <p className="text-sm font-serif text-echo-text-base">CSS 样式包</p>
             <p className="text-[9px] text-gray-400 mt-0.5">
               {(config.cssPackages || []).length === 0
                 ? '暂无样式包，点击创建'
@@ -103,7 +100,7 @@ const AppearanceEditor: React.FC<Props> = ({ onOpenCssPackages }) => {
           onChange={(e) => updateFontSize(parseInt(e.target.value))}
           className="w-full h-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
         />
-        <div className="flex justify-between text-[8px] text-gray-400 dark:text-gray-600 tracking-tighter">
+        <div className="flex justify-between text-[8px] text-echo-text-dim tracking-tighter">
           <span>MIN (12px)</span>
           <span>MAX (24px)</span>
         </div>
@@ -118,8 +115,8 @@ const AppearanceEditor: React.FC<Props> = ({ onOpenCssPackages }) => {
           <div className="flex items-center gap-3">
             <span className={`text-lg ${FONTS.find(f => f.id === currentFont)?.class}`}>永</span>
             <div className="text-left">
-              <p className="text-sm font-serif text-gray-600 dark:text-gray-300">{FONTS.find(f => f.id === currentFont)?.name ?? currentFont}</p>
-              <p className="text-[8px] text-gray-400 dark:text-gray-600 uppercase tracking-widest">Font Family</p>
+              <p className="text-sm font-serif text-echo-text-base">{FONTS.find(f => f.id === currentFont)?.name ?? currentFont}</p>
+              <p className="text-[8px] text-echo-text-dim uppercase tracking-widest">Font Family</p>
             </div>
           </div>
           <motion.span animate={{ rotate: fontOpen ? 180 : 0 }} transition={{ duration: 0.2 }} className="text-gray-400 text-[10px]">▾</motion.span>
@@ -145,10 +142,10 @@ const AppearanceEditor: React.FC<Props> = ({ onOpenCssPackages }) => {
                         : 'bg-transparent border-gray-100 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700'
                     }`}
                   >
-                    <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-lg ${font.class} ${currentFont === font.id ? 'text-black dark:text-white' : 'text-gray-400 dark:text-gray-600'}`}>永</span>
+                    <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-lg ${font.class} ${currentFont === font.id ? 'text-black dark:text-white' : 'text-echo-text-dim'}`}>永</span>
                     <div className="flex-1 text-left">
-                      <p className={`text-sm tracking-wide ${font.class} ${currentFont === font.id ? 'text-black dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>{font.name}</p>
-                      <p className="text-[8px] text-gray-400 dark:text-gray-600 uppercase tracking-widest font-sans">{font.sub}</p>
+                      <p className={`text-sm tracking-wide ${font.class} ${currentFont === font.id ? 'text-black dark:text-white' : 'text-echo-text-muted'}`}>{font.name}</p>
+                      <p className="text-[8px] text-echo-text-dim uppercase tracking-widest font-sans">{font.sub}</p>
                     </div>
                     {currentFont === font.id && <Check size={14} className="text-green-500 dark:text-green-400 shrink-0" />}
                   </button>
@@ -159,9 +156,9 @@ const AppearanceEditor: React.FC<Props> = ({ onOpenCssPackages }) => {
         </AnimatePresence>
       </div>
 
-      <div className="p-8 rounded-3xl bg-gray-50 dark:bg-white/5 border-0.5 border-gray-100 dark:border-gray-800">
-        <div className="text-[9px] text-gray-400 dark:text-gray-600 uppercase tracking-widest mb-4">Preview // 实时预览</div>
-        <p className={`leading-relaxed text-gray-600 dark:text-gray-300`} style={{ fontFamily: currentFont, fontSize: `${currentSize}px` }}>
+      <div className="p-8 rounded-3xl bg-echo-surface border-0.5 border-gray-100 dark:border-gray-800">
+        <div className="text-[9px] text-echo-text-dim uppercase tracking-widest mb-4">Preview // 实时预览</div>
+        <p className={`leading-relaxed text-echo-text-base`} style={{ fontFamily: currentFont, fontSize: `${currentSize}px` }}>
           回声系统正在同步。所有的记忆都将被重新排版。
         </p>
       </div>
@@ -177,7 +174,7 @@ const AppearanceEditor: React.FC<Props> = ({ onOpenCssPackages }) => {
             
             return (
               <div key={key}>
-                <label className="text-[9px] text-gray-500 dark:text-gray-400">{labels[key]}</label>
+                <label className="text-[9px] text-echo-text-muted">{labels[key]}</label>
                 <input
                   type="text"
                   value={val}
@@ -202,7 +199,7 @@ const AppearanceEditor: React.FC<Props> = ({ onOpenCssPackages }) => {
       <div className="px-4 space-y-3">
         <div>
           <label className="text-[10px] tracking-widest text-gray-400 uppercase">Background Image // 对话背景</label>
-          <p className="text-[9px] text-gray-400 dark:text-gray-600 mt-1">支持 JPG / PNG / WebP，图片存储于本地 IndexedDB。</p>
+          <p className="text-[9px] text-echo-text-dim mt-1">支持 JPG / PNG / WebP，图片存储于本地 IndexedDB。</p>
         </div>
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleBgUpload} />
         {bgPreview ? (

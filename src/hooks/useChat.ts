@@ -35,7 +35,6 @@ export const useChat = () => {
   } = useAppStore()
 
   const [displayText, setDisplayText] = useState('')
-  const [activeSpeakerId, setActiveSpeakerId] = useState<string | undefined>(undefined)
   const lastGreetingKey = useRef<string | null>(null)
   const activePersona = config.personas?.find(p => p.id === config.activePersonaId) || config.personas?.[0]
 
@@ -325,7 +324,6 @@ export const useChat = () => {
     try {
       // ── 多角色模式 ──────────────────────────────────────────────────────────
       if (multiCharMode && secondaryCharacter) {
-        setActiveSpeakerId(undefined)
         let actions: RouterAction[]
         try {
           actions = await requestRouter(content, currentMessages, images)
@@ -341,14 +339,12 @@ export const useChat = () => {
             continue
           }
           if (action.type === 'speak') {
-            setActiveSpeakerId(action.speakerId)
             setDisplayText('')
             const latestMessages = [...useAppStore.getState().messages]
             await requestChar(action.speakerId, latestMessages, content)
           }
         }
 
-        setActiveSpeakerId(undefined)
         setIsTyping(false)
         return
       }
@@ -371,5 +367,5 @@ export const useChat = () => {
     return () => iframeBus.setHandler(null)
   }, [sendMessage])
 
-  return { displayText, sendMessage, isTyping, skipGreeting, activeSpeakerId }
+  return { displayText, sendMessage, isTyping, skipGreeting }
 }

@@ -78,58 +78,60 @@ export const GlobalDialog: React.FC = () => {
 
           {/* 弹窗主体 */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.92, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.92, y: 10 }}
-            transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+            initial={{ opacity: 0, scale: 0.95, y: 10, filter: 'blur(8px)' }}
+            animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, scale: 0.95, y: 10, filter: 'blur(8px)' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none px-6"
           >
-            <div className="pointer-events-auto w-full max-w-sm bg-white/90 dark:bg-[#0d0d0d]/98 backdrop-blur-2xl border border-gray-200/60 dark:border-white/10 rounded-3xl shadow-2xl overflow-hidden">
+            <div className={`pointer-events-auto w-full max-w-sm glass-morphism rounded-[2rem] shadow-2xl overflow-hidden border ${state.danger ? 'border-red-500/30' : 'border-white/40 dark:border-white/10'}`}>
               
-              {/* 顶部装饰线 */}
-              <div className={`h-[2px] w-full ${state.danger ? 'bg-gradient-to-r from-transparent via-red-400/60 to-transparent' : 'bg-gradient-to-r from-transparent via-blue-400/40 to-transparent'}`} />
+              <div className="px-8 py-8 flex flex-col gap-6 relative">
+                {/* 装饰性背景光晕 */}
+                <div className={`absolute -top-10 -left-10 w-32 h-32 rounded-full blur-3xl opacity-20 pointer-events-none ${state.danger ? 'bg-red-500' : 'bg-blue-400 dark:bg-white'}`} />
 
-              <div className="px-8 py-7 flex flex-col gap-5">
                 {/* 标题 */}
                 {state.title && (
-                  <h3 className="text-sm font-serif tracking-widest text-gray-800 dark:text-gray-100">
+                  <h3 className="text-base font-serif font-medium tracking-widest text-gray-900 dark:text-gray-100 relative z-10 text-center">
                     {state.title}
                   </h3>
                 )}
 
                 {/* 消息 */}
-                <p className="text-sm font-serif leading-relaxed text-gray-600 dark:text-gray-300 whitespace-pre-line">
+                <p className={`text-sm font-serif leading-relaxed text-gray-700 dark:text-gray-300 relative z-10 whitespace-pre-line ${state.title ? 'text-center' : 'text-center font-medium text-gray-900 dark:text-gray-100'}`}>
                   {state.message}
                 </p>
 
                 {/* Input 模式 */}
                 {state.input && (
-                  <input
-                    ref={inputRef}
-                    value={inputValue}
-                    onChange={e => setInputValue(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleConfirm()}
-                    placeholder={state.inputPlaceholder}
-                    className="w-full bg-transparent border-b border-gray-300 dark:border-gray-600 py-2 text-sm text-gray-700 dark:text-gray-200 outline-none focus:border-gray-500 dark:focus:border-gray-400 transition-colors font-serif"
-                  />
+                  <div className="relative z-10 mt-1">
+                    <input
+                      ref={inputRef}
+                      value={inputValue}
+                      onChange={e => setInputValue(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleConfirm()}
+                      placeholder={state.inputPlaceholder}
+                      className="w-full bg-black/5 dark:bg-white/5 border border-gray-300/50 dark:border-gray-600/50 rounded-2xl px-5 py-3.5 text-sm font-serif text-gray-900 dark:text-gray-100 outline-none focus:border-gray-500 dark:focus:border-gray-400 transition-all placeholder-gray-500 dark:placeholder-gray-400"
+                    />
+                  </div>
                 )}
 
                 {/* 按钮组 */}
-                <div className="flex gap-3 pt-1">
+                <div className="flex gap-3 pt-2 relative z-10">
                   {state.cancelText && (
                     <button
                       onClick={handleCancel}
-                      className="flex-1 py-3 rounded-2xl text-[11px] tracking-[0.3em] uppercase font-sans text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 transition-all"
+                      className="flex-1 py-3.5 rounded-2xl text-[11px] font-sans font-medium tracking-[0.2em] uppercase text-gray-600 dark:text-gray-400 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-gray-100 transition-all active:scale-95"
                     >
                       {state.cancelText}
                     </button>
                   )}
                   <button
                     onClick={handleConfirm}
-                    className={`flex-1 py-3 rounded-2xl text-[11px] tracking-[0.3em] uppercase font-sans transition-all ${
+                    className={`flex-1 py-3.5 rounded-2xl text-[11px] font-sans font-medium tracking-[0.2em] uppercase transition-all active:scale-95 ${
                       state.danger
-                        ? 'bg-red-500/10 text-red-500 border border-red-400/30 hover:bg-red-500/20'
-                        : 'bg-gray-900/5 dark:bg-white/5 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 hover:border-gray-500 dark:hover:border-gray-400'
+                        ? 'bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 border border-red-500/20'
+                        : 'bg-black/10 dark:bg-white/10 text-gray-900 dark:text-gray-100 hover:bg-black/20 dark:hover:bg-white/20 border border-gray-300/50 dark:border-gray-600/50'
                     }`}
                   >
                     {state.confirmText || '确认'}

@@ -87,7 +87,7 @@ export const LockScreen: React.FC<Props> = ({ onUnlock }) => {
           <button
             onClick={handleSubmit}
             disabled={loading || !pin || lockedUntil > Date.now()}
-            className="w-full flex items-center justify-center gap-2 py-3 bg-white/90 hover:bg-white text-black rounded-xl text-[11px] font-bold tracking-[0.3em] uppercase transition-all disabled:opacity-20 disabled:cursor-not-allowed active:scale-[0.98]"
+            className="w-full flex items-center justify-center gap-2 py-3 bg-white/90 hover:bg-white dark:bg-white/10 dark:hover:bg-white/20 text-black dark:text-white rounded-xl text-[11px] font-bold tracking-[0.3em] uppercase transition-all disabled:opacity-20 disabled:cursor-not-allowed active:scale-[0.98]"
           >
             {loading ? <Loader2 size={14} className="animate-spin" /> : <>Unlock <ChevronRight size={12} /></>}
           </button>

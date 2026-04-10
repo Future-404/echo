@@ -23,7 +23,7 @@ const KnowledgeInjection: React.FC = () => {
             <div key={num} className="flex gap-3 items-start">
               <span className="text-[9px] font-mono text-blue-400 opacity-60 mt-0.5 w-3 shrink-0">{num}</span>
               <div>
-                <span className="font-bold text-gray-700 dark:text-gray-200">{title}</span>
+                <span className="font-bold text-echo-text-primary">{title}</span>
                 <span className="opacity-60"> — {desc}</span>
               </div>
             </div>
@@ -55,7 +55,7 @@ const KnowledgeInjection: React.FC = () => {
       {/* 世界书触发规则 */}
       <div className="space-y-2">
         <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">世界书触发规则</p>
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+        <div className="rounded-2xl border border-echo-border overflow-hidden">
           <div className="divide-y divide-white/5">
             {[
               ['🔒 disabled', '灰色', 'enabled = false，永不注入'],

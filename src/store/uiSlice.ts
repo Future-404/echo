@@ -12,9 +12,8 @@ import type {
 export interface UISlice {
   isLoading: boolean;
   isConfigOpen: boolean;
-  isDialogueFullscreen: boolean;
-  currentView: 'home' | 'main' | 'selection' | 'multi-selection' | 'save' | 'load' | 'help';
-  configSubView: 'main' | 'advanced' | 'gateway' | 'world' | 'prompt' | 'provider-edit' | 'directive-edit' | 'skills' | 'persona' | 'debug' | 'parsers' | 'appearance' | 'tts' | 'memory-palace' | 'global-management';
+  currentView: 'home' | 'main' | 'selection' | 'multi-selection' | 'save' | 'load' | 'help' | 'config';
+  configSubView: 'main' | 'advanced' | 'gateway' | 'world' | 'prompt' | 'provider-edit' | 'directive-edit' | 'skills' | 'persona' | 'debug' | 'parsers' | 'appearance' | 'tts' | 'memory-palace' | 'global-management' | 'regex' | 'regex-edit' | 'css-packages' | 'css-package-edit';
   lastInteraction: { x: number; y: number } | null;
   isInteracting: boolean;
   debugLogs: DebugEntry[];
@@ -31,7 +30,6 @@ export interface UISlice {
   setIsConfigOpen: (open: boolean, subView?: UISlice['configSubView']) => void;
   setConfigSubView: (view: UISlice['configSubView']) => void;
   setCurrentView: (view: UISlice['currentView']) => void;
-  setDialogueFullscreen: (v: boolean) => void;
   setInteraction: (x: number, y: number, interacting: boolean) => void;
   addDebugLog: (entry: Omit<DebugEntry, 'id' | 'timestamp'>) => void;
   clearDebugLogs: () => void;
@@ -51,7 +49,6 @@ export interface UISlice {
 export const createUISlice: StateCreator<AppState, [], [], UISlice> = (set, get) => ({
   isLoading: true,
   isConfigOpen: false,
-  isDialogueFullscreen: false,
   currentView: 'home',
   configSubView: 'main',
   lastInteraction: null,
@@ -79,7 +76,6 @@ export const createUISlice: StateCreator<AppState, [], [], UISlice> = (set, get)
   })),
   setConfigSubView: (view) => set({ configSubView: view }),
   setCurrentView: (view) => set({ currentView: view }),
-  setDialogueFullscreen: (v) => set({ isDialogueFullscreen: v }),
   setInteraction: (x, y, interacting) => set({ lastInteraction: interacting ? { x, y } : null, isInteracting: interacting }),
   
   addDebugLog: (entry) => set((state) => ({ 

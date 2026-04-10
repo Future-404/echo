@@ -4,6 +4,7 @@ import type { RegexRule } from '../../types/chat';
 import { Plus, Trash2, Edit2, ToggleLeft, ToggleRight, ArrowUp, ArrowDown, Download, Upload } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useDialog } from '../GlobalDialog';
+import { readFileAsText, downloadJson } from '../../utils/fileUtils';
 
 interface RegexManagerProps {
   onEdit: (id: string) => void;
@@ -27,68 +28,56 @@ const RegexManager: React.FC<RegexManagerProps> = ({ onEdit, onAdd }) => {
 
   // 导出功能
   const handleExport = () => {
-    const data = JSON.stringify(rules, null, 2);
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `echo-regex-rules-${new Date().toLocaleDateString()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadJson(rules, `echo-regex-rules-${new Date().toLocaleDateString()}.json`);
   };
 
   // 导入功能 (兼容 ST 格式)
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    try {
+      const json = JSON.parse(await readFileAsText(file));
+      const importedRules = Array.isArray(json) ? json : [json];
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const json = JSON.parse(event.target?.result as string);
-        const importedRules = Array.isArray(json) ? json : [json];
+      importedRules.forEach(r => {
+        // 尝试映射 ST 格式
+        const newRule: RegexRule = {
+          id: r.id || `regex-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          name: r.name || r.ruleName || '导入规则',
+          regex: r.regex || '',
+          replacement: r.replacement || '',
+          flags: r.flags || (r.caseSensitive === false ? 'gi' : 'g'),
+          enabled: r.enabled ?? !(r.disabled),
+          runOn: r.runOn || []
+        };
 
-        importedRules.forEach(r => {
-          // 尝试映射 ST 格式
-          const newRule: RegexRule = {
-            id: r.id || `regex-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-            name: r.name || r.ruleName || '导入规则',
-            regex: r.regex || '',
-            replacement: r.replacement || '',
-            flags: r.flags || (r.caseSensitive === false ? 'gi' : 'g'),
-            enabled: r.enabled ?? !(r.disabled),
-            runOn: r.runOn || []
-          };
+        // ST 兼容逻辑：处理 placement [1=AI输入, 2=渲染, 3=用户输入]
+        if (r.placement && Array.isArray(r.placement)) {
+          const scopes: ('ui' | 'ai' | 'user')[] = [];
+          if (r.placement.includes(1)) scopes.push('ai');
+          if (r.placement.includes(2)) scopes.push('ui');
+          if (r.placement.includes(3)) scopes.push('user');
+          newRule.runOn = scopes;
+        }
 
-          // ST 兼容逻辑：处理 placement [1=AI输入, 2=渲染, 3=用户输入]
-          if (r.placement && Array.isArray(r.placement)) {
-            const scopes: ('ui' | 'ai' | 'user')[] = [];
-            if (r.placement.includes(1)) scopes.push('ai');
-            if (r.placement.includes(2)) scopes.push('ui');
-            if (r.placement.includes(3)) scopes.push('user');
-            newRule.runOn = scopes;
-          }
-
-          if (!newRule.runOn.length) newRule.runOn = ['ui'];
-          addRegexRule(newRule);
-        });
-        
-        if (fileInputRef.current) fileInputRef.current.value = '';
-        alert(`成功导入 ${importedRules.length} 条规则`);
-      } catch (err) {
-        console.error('Import failed:', err);
-        alert('导入失败：非法的 JSON 格式');
-      }
-    };
-    reader.readAsText(file);
+        if (!newRule.runOn.length) newRule.runOn = ['ui'];
+        addRegexRule(newRule);
+      });
+      
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      alert(`成功导入 ${importedRules.length} 条规则`);
+    } catch (err) {
+      console.error('Import failed:', err);
+      alert('导入失败：非法的 JSON 格式');
+    }
   };
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-6 space-y-6">
       <header className="flex justify-between items-center px-2">
         <div>
-          <h3 className="text-sm font-serif text-gray-600 dark:text-gray-300">全局正则 // REGEX</h3>
-          <p className="text-[8px] text-gray-400 dark:text-gray-500 uppercase mt-0.5 tracking-widest">Global Regex Rules</p>
+          <h3 className="text-sm font-serif text-echo-text-base">全局正则 // REGEX</h3>
+          <p className="text-[8px] text-echo-text-subtle uppercase mt-0.5 tracking-widest">Global Regex Rules</p>
         </div>
         <div className="flex items-center gap-2">
           <input 
@@ -133,10 +122,10 @@ const RegexManager: React.FC<RegexManagerProps> = ({ onEdit, onAdd }) => {
             <div key={rule.id} className="group p-4 bg-white/50 dark:bg-white/5 border-0.5 border-gray-100 dark:border-gray-800 rounded-3xl hover:border-gray-300 dark:hover:border-gray-600 transition-all shadow-sm">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex-1 min-w-0 pr-4">
-                  <h4 className="text-xs font-serif text-gray-700 dark:text-gray-200 truncate">{rule.name || '未命名规则'}</h4>
+                  <h4 className="text-xs font-serif text-echo-text-primary truncate">{rule.name || '未命名规则'}</h4>
                   <div className="flex gap-2 mt-1">
                     {rule.runOn.map(scope => (
-                      <span key={scope} className="text-[7px] px-1.5 py-0.5 bg-gray-100 dark:bg-white/5 text-gray-400 rounded uppercase tracking-widest border-0.5 border-black/5">
+                      <span key={scope} className="text-[7px] px-1.5 py-0.5 bg-echo-surface text-gray-400 rounded uppercase tracking-widest border-0.5 border-black/5">
                         {scope}
                       </span>
                     ))}

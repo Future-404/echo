@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Brain, Trash2, Edit3, Save, X, ChevronDown, ChevronUp, Search, Info } from 'lucide-react'
+import { Brain, Trash2, Edit2, Save, X, ChevronDown, ChevronUp, Search, Info } from 'lucide-react'
 import { useAppStore } from '../../store/useAppStore'
 import { db } from '../../storage/db'
 import type { DBMemoryEpisode } from '../../storage/db'
@@ -79,8 +79,8 @@ const MemoryManager: React.FC = () => {
               <Brain size={24} strokeWidth={1.5} />
             </div>
             <div>
-              <h3 className="text-sm font-serif tracking-wide text-gray-700 dark:text-gray-200 font-bold italic">记忆管理 // MEMORY</h3>
-              <p className="text-[9px] text-gray-400 dark:text-gray-500 uppercase mt-1 tracking-widest font-mono">
+              <h3 className="text-sm font-serif tracking-wide text-echo-text-primary font-bold italic">记忆管理 // MEMORY</h3>
+              <p className="text-[9px] text-echo-text-subtle uppercase mt-1 tracking-widest font-mono">
                 S-{currentAutoSlotId?.slice(0, 8)} // {episodes.length} EPISODES
               </p>
             </div>
@@ -94,7 +94,7 @@ const MemoryManager: React.FC = () => {
             placeholder="搜索内容或标签..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white/50 dark:bg-white/5 border-0.5 border-gray-100 dark:border-gray-800 rounded-2xl py-3 pl-12 pr-4 text-xs text-gray-600 dark:text-gray-300 focus:outline-none focus:border-blue-300 dark:focus:border-blue-900 transition-all shadow-sm"
+            className="w-full bg-white/50 dark:bg-white/5 border-0.5 border-gray-100 dark:border-gray-800 rounded-2xl py-3 pl-12 pr-4 text-xs text-echo-text-base focus:outline-none focus:border-blue-300 dark:focus:border-blue-900 transition-all shadow-sm"
           />
         </div>
       </div>
@@ -113,12 +113,12 @@ const MemoryManager: React.FC = () => {
             <motion.div
               layout
               key={ep.id}
-              className="group bg-white/60 dark:bg-white/5 border-0.5 border-gray-100 dark:border-white/5 rounded-3xl p-5 hover:border-gray-300 dark:hover:border-white/10 transition-all"
+              className="group bg-white/60 dark:bg-white/5 border-0.5 border-echo-border rounded-3xl p-5 hover:border-gray-300 dark:hover:border-white/10 transition-all"
             >
               <div className="flex justify-between items-start mb-3">
                 <div className="flex flex-wrap gap-1.5">
                   {ep.tags.map(tag => (
-                    <span key={tag} className="px-2 py-0.5 bg-gray-100 dark:bg-white/5 text-[8px] text-gray-400 dark:text-gray-500 rounded-full uppercase tracking-tighter">#{tag}</span>
+                    <span key={tag} className="px-2 py-0.5 bg-echo-surface text-[8px] text-echo-text-subtle rounded-full uppercase tracking-tighter">#{tag}</span>
                   ))}
                 </div>
                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -126,7 +126,7 @@ const MemoryManager: React.FC = () => {
                     <button onClick={() => setEditingId(null)} className="p-1.5 text-gray-400 hover:text-red-400"><X size={14} /></button>
                   ) : (
                     <>
-                      <button onClick={() => handleStartEdit(ep)} className="p-1.5 text-gray-400 hover:text-blue-400"><Edit3 size={14} /></button>
+                      <button onClick={() => handleStartEdit(ep)} className="p-1.5 text-gray-400 hover:text-blue-400"><Edit2 size={14} /></button>
                       <button onClick={() => handleDelete(ep.id!)} className="p-1.5 text-gray-400 hover:text-red-400"><Trash2 size={14} /></button>
                     </>
                   )}
@@ -138,7 +138,7 @@ const MemoryManager: React.FC = () => {
                   <textarea
                     value={editContent}
                     onChange={(e) => setEditContent(e.target.value)}
-                    className="w-full bg-white dark:bg-black/20 border-0.5 border-blue-200 dark:border-blue-900 rounded-xl p-3 text-xs text-gray-600 dark:text-gray-300 focus:outline-none min-h-[80px] resize-none font-serif leading-relaxed"
+                    className="w-full bg-white dark:bg-black/20 border-0.5 border-blue-200 dark:border-blue-900 rounded-xl p-3 text-xs text-echo-text-base focus:outline-none min-h-[80px] resize-none font-serif leading-relaxed"
                   />
                   <button
                     onClick={() => handleSaveEdit(ep)}
@@ -149,12 +149,12 @@ const MemoryManager: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <p className="text-xs text-gray-600 dark:text-gray-300 font-serif leading-relaxed line-clamp-3 group-hover:line-clamp-none transition-all">
+                  <p className="text-xs text-echo-text-base font-serif leading-relaxed line-clamp-3 group-hover:line-clamp-none transition-all">
                     {ep.narrative}
                   </p>
 
                   {/* 原子命题详情 */}
-                  <div className="pt-2 border-t-0.5 border-gray-100 dark:border-white/5">
+                  <div className="pt-2 border-t-0.5 border-echo-border">
                     <button
                       onClick={() => setExpandedId(expandedId === ep.id ? null : ep.id!)}
                       className="flex items-center gap-2 text-[8px] uppercase tracking-widest text-gray-400 hover:text-gray-600"
@@ -175,7 +175,7 @@ const MemoryManager: React.FC = () => {
                             <div key={idx} className="flex items-start gap-3 bg-gray-50/50 dark:bg-white/5 p-3 rounded-xl border-0.5 border-gray-100 dark:border-transparent">
                               <span className={`w-1 h-1 rounded-full mt-1.5 shrink-0 ${at.importance === '高' ? 'bg-amber-400' : at.importance === '中' ? 'bg-blue-400' : 'bg-gray-300'}`} />
                               <div className="flex-1">
-                                <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-normal">{at.text}</p>
+                                <p className="text-[10px] text-echo-text-muted leading-normal">{at.text}</p>
                                 <span className="text-[7px] uppercase text-gray-400 mt-1 block opacity-50">重要性: {at.importance}</span>
                               </div>
                             </div>

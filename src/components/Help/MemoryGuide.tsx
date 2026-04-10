@@ -8,7 +8,7 @@ const MemoryGuide: React.FC = () => {
       {/* 工作原理 */}
       <div className="space-y-2">
         <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">工作原理</p>
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden divide-y divide-white/5 text-[10px]">
+        <div className="rounded-2xl border border-echo-border overflow-hidden divide-y divide-white/5 text-[10px]">
           {[
             ['1. 消息积累', '每条新消息通过 Embedding 模型生成向量，追踪当前话题的语义质心'],
             ['2. 触发提炼', '话题漂移（余弦相似度 < 0.65）或消息数达到 15 条时，自动触发；空闲 20 分钟也会触发'],
@@ -27,14 +27,14 @@ const MemoryGuide: React.FC = () => {
       {/* 前置配置 */}
       <div className="space-y-2">
         <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">前置配置</p>
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden divide-y divide-white/5 text-[10px]">
+        <div className="rounded-2xl border border-echo-border overflow-hidden divide-y divide-white/5 text-[10px]">
           {[
             ['对话 Provider', '用于提炼的 LLM，使用当前激活的对话节点，建议选择速度快、成本低的模型'],
             ['Embedding Provider', '必须单独配置，在 API 参数中添加 type=embedding 的节点'],
             ['绑定 Embedding', '在设置 → 记忆管理 中选择要使用的 Embedding 节点'],
           ].map(([item, desc]) => (
             <div key={item} className="grid grid-cols-[8rem_1fr] gap-x-3 px-4 py-2.5">
-              <span className="font-bold text-gray-600 dark:text-gray-300 shrink-0">{item}</span>
+              <span className="font-bold text-echo-text-base shrink-0">{item}</span>
               <span className="opacity-60 leading-relaxed">{desc}</span>
             </div>
           ))}
@@ -44,7 +44,7 @@ const MemoryGuide: React.FC = () => {
       {/* Embedding 兼容性 */}
       <div className="space-y-2">
         <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">Embedding 节点配置</p>
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+        <div className="rounded-2xl border border-echo-border overflow-hidden">
           <div className="px-4 py-2.5 bg-blue-500/10 flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400">OpenAI 兼容</span>
             <span className="text-[9px] opacity-50">endpoint + /embeddings</span>
@@ -55,7 +55,7 @@ const MemoryGuide: React.FC = () => {
             <p>embeddingDimensions: 可选，如 <code className="bg-white/10 px-1 rounded">512</code>（降维节省存储）</p>
           </div>
         </div>
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+        <div className="rounded-2xl border border-echo-border overflow-hidden">
           <div className="px-4 py-2.5 bg-purple-500/10 flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-widest text-purple-400">Google Gemini</span>
             <span className="text-[9px] opacity-50">generativelanguage.googleapis.com</span>
@@ -71,7 +71,7 @@ const MemoryGuide: React.FC = () => {
       {/* 记忆片段结构 */}
       <div className="space-y-2">
         <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">记忆片段结构</p>
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden divide-y divide-white/5 text-[10px]">
+        <div className="rounded-2xl border border-echo-border overflow-hidden divide-y divide-white/5 text-[10px]">
           {[
             ['原子命题', '3–8 条最小化事实陈述，每条自包含（含具体人名/物名），用于高精度细节召回'],
             ['叙事摘要', '将原子命题合并为 1 段高密度叙事，保留情感弧线，用于上下文连贯召回'],
@@ -79,7 +79,7 @@ const MemoryGuide: React.FC = () => {
             ['重要度评分', '由原子命题的高/中/低重要性加权平均，影响召回优先级'],
           ].map(([layer, desc]) => (
             <div key={layer} className="grid grid-cols-[6rem_1fr] gap-x-3 px-4 py-2.5">
-              <span className="font-bold text-gray-600 dark:text-gray-300 shrink-0">{layer}</span>
+              <span className="font-bold text-echo-text-base shrink-0">{layer}</span>
               <span className="opacity-60 leading-relaxed">{desc}</span>
             </div>
           ))}
@@ -89,7 +89,7 @@ const MemoryGuide: React.FC = () => {
       {/* 管理操作 */}
       <div className="space-y-2">
         <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">记忆管理操作</p>
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden divide-y divide-white/5 text-[10px]">
+        <div className="rounded-2xl border border-echo-border overflow-hidden divide-y divide-white/5 text-[10px]">
           {[
             ['搜索', '按叙事内容或标签关键词过滤，支持中英文'],
             ['编辑', '修改叙事内容后自动重新生成向量（需要 Embedding 节点在线）'],
@@ -97,7 +97,7 @@ const MemoryGuide: React.FC = () => {
             ['展开原子命题', '查看该片段的细粒度事实列表及重要性标注'],
           ].map(([op, desc]) => (
             <div key={op} className="grid grid-cols-[5rem_1fr] gap-x-3 px-4 py-2.5">
-              <span className="font-bold text-gray-600 dark:text-gray-300 shrink-0">{op}</span>
+              <span className="font-bold text-echo-text-base shrink-0">{op}</span>
               <span className="opacity-60 leading-relaxed">{desc}</span>
             </div>
           ))}

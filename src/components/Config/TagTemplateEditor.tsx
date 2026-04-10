@@ -36,7 +36,7 @@ const TagTemplateEditor: React.FC = () => {
     <div className="p-6 space-y-4">
       <div className="flex justify-between items-center px-1">
         <label className="text-[9px] tracking-widest text-gray-400 uppercase italic">Regex Scripts // 正则脚本</label>
-        <button onClick={() => setIsAdding(!isAdding)} className="p-1 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-full text-gray-400 hover:text-black dark:hover:text-white transition-all">
+        <button onClick={() => setIsAdding(!isAdding)} className="p-1 bg-echo-surface border border-echo-border-md rounded-full text-gray-400 hover:text-black dark:hover:text-white transition-all">
           <Plus size={12} />
         </button>
       </div>
@@ -44,13 +44,13 @@ const TagTemplateEditor: React.FC = () => {
       <AnimatePresence>
         {isAdding && (
           <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-            className="bg-gray-50 dark:bg-white/5 rounded-2xl p-4 space-y-3">
+            className="bg-echo-surface rounded-2xl p-4 space-y-3">
             <input placeholder="脚本名称" value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))}
-              className="w-full bg-transparent border-b border-gray-200 dark:border-gray-700 text-[11px] py-1 focus:outline-none text-gray-600 dark:text-gray-300" />
+              className="w-full bg-transparent border-b border-gray-200 dark:border-gray-700 text-[11px] py-1 focus:outline-none text-echo-text-base" />
             <input placeholder="查找正则（如 /<UpdateVariable>[\s\S]*?<\/UpdateVariable>/gm）" value={draft.originalRegex || ''} onChange={e => setDraft(d => ({ ...d, originalRegex: e.target.value }))}
-              className="w-full bg-transparent border-b border-gray-200 dark:border-gray-700 text-[10px] font-mono py-1 focus:outline-none text-gray-500 dark:text-gray-400" />
+              className="w-full bg-transparent border-b border-gray-200 dark:border-gray-700 text-[10px] font-mono py-1 focus:outline-none text-echo-text-muted" />
             <input placeholder="替换为（留空 = 删除匹配内容）" value={draft.replaceString || ''} onChange={e => setDraft(d => ({ ...d, replaceString: e.target.value }))}
-              className="w-full bg-transparent border-b border-gray-200 dark:border-gray-700 text-[10px] font-mono py-1 focus:outline-none text-gray-500 dark:text-gray-400" />
+              className="w-full bg-transparent border-b border-gray-200 dark:border-gray-700 text-[10px] font-mono py-1 focus:outline-none text-echo-text-muted" />
             <div className="flex justify-end gap-2 pt-1">
               <button onClick={() => { setIsAdding(false); setDraft(BLANK) }} className="text-[8px] uppercase tracking-widest text-gray-400 px-3 py-1">Cancel</button>
               <button onClick={add} className="text-[8px] uppercase tracking-widest bg-purple-500/10 text-purple-500 font-bold px-3 py-1 rounded-lg">Add</button>
@@ -65,13 +65,13 @@ const TagTemplateEditor: React.FC = () => {
 
       <div className="space-y-2">
         {templates.map(tpl => (
-          <div key={tpl.id} className="bg-white/50 dark:bg-white/5 border-0.5 border-gray-100 dark:border-white/5 rounded-2xl overflow-hidden group">
+          <div key={tpl.id} className="bg-white/50 dark:bg-white/5 border-0.5 border-echo-border rounded-2xl overflow-hidden group">
             <div className="p-3 flex items-center gap-3">
               <button onClick={() => toggle(tpl.id)}
                 className={`w-7 h-3.5 rounded-full flex items-center px-0.5 transition-colors flex-shrink-0 ${tpl.enabled ? 'bg-purple-400/50' : 'bg-gray-300 dark:bg-gray-700'}`}>
                 <motion.div layout className="w-2.5 h-2.5 rounded-full bg-white shadow-sm" animate={{ x: tpl.enabled ? 14 : 0 }} />
               </button>
-              <span className="text-[11px] font-serif font-bold text-gray-700 dark:text-gray-200 flex-1 truncate">{tpl.name}</span>
+              <span className="text-[11px] font-serif font-bold text-echo-text-primary flex-1 truncate">{tpl.name}</span>
               <div className="flex items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-all">
                 <button onClick={() => remove(tpl.id)} className="p-1 text-gray-400 hover:text-red-400 transition-colors"><Trash2 size={11} /></button>
                 <button onClick={() => setExpandedId(expandedId === tpl.id ? null : tpl.id)} className="p-1 text-gray-400">
@@ -83,16 +83,16 @@ const TagTemplateEditor: React.FC = () => {
             <AnimatePresence>
               {expandedId === tpl.id && (
                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                  className="px-4 pb-4 pt-2 border-t border-gray-100 dark:border-white/5 space-y-3">
+                  className="px-4 pb-4 pt-2 border-t border-echo-border space-y-3">
                   <div>
                     <label className="text-[8px] uppercase tracking-widest text-gray-400 mb-1 block">查找正则</label>
                     <input value={tpl.originalRegex || ''} onChange={e => update(tpl.id, { originalRegex: e.target.value })}
-                      className="w-full bg-white dark:bg-black/20 border-0.5 border-gray-100 dark:border-white/10 rounded-xl px-3 py-2 text-[10px] font-mono focus:outline-none focus:border-purple-400/50 transition-colors" />
+                      className="w-full bg-white dark:bg-black/20 border-0.5 border-echo-border-md rounded-xl px-3 py-2 text-[10px] font-mono focus:outline-none focus:border-purple-400/50 transition-colors" />
                   </div>
                   <div>
                     <label className="text-[8px] uppercase tracking-widest text-gray-400 mb-1 block">替换为（留空 = 删除）</label>
                     <input value={tpl.replaceString ?? ''} onChange={e => update(tpl.id, { replaceString: e.target.value })}
-                      className="w-full bg-white dark:bg-black/20 border-0.5 border-gray-100 dark:border-white/10 rounded-xl px-3 py-2 text-[10px] font-mono focus:outline-none focus:border-purple-400/50 transition-colors" />
+                      className="w-full bg-white dark:bg-black/20 border-0.5 border-echo-border-md rounded-xl px-3 py-2 text-[10px] font-mono focus:outline-none focus:border-purple-400/50 transition-colors" />
                   </div>
                   <div>
                     <label className="text-[8px] uppercase tracking-widest text-gray-400 mb-1 block">执行层级</label>

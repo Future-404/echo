@@ -19,7 +19,7 @@ const CustomCssGuide: React.FC = () => {
 
         <div className="space-y-2">
           <p className="text-[9px] text-blue-400/60 uppercase tracking-widest px-1 font-bold">1. 对话框 // Dialogue</p>
-          <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+          <div className="rounded-2xl border border-echo-border overflow-hidden">
             <div className="divide-y divide-white/5">
               {[
                 ['--dialogue-bg', 'rgba(255,255,255,0.75)', '对话框背景（支持渐变/纯色）'],
@@ -41,7 +41,7 @@ const CustomCssGuide: React.FC = () => {
 
         <div className="space-y-2">
           <p className="text-[9px] text-orange-400/60 uppercase tracking-widest px-1 font-bold">2. 状态条 // Stats</p>
-          <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+          <div className="rounded-2xl border border-echo-border overflow-hidden">
             <div className="divide-y divide-white/5">
               {[
                 ['--stat-color-love', '#f43f5e', '好感度/爱心条'],
@@ -64,7 +64,7 @@ const CustomCssGuide: React.FC = () => {
 
         <div className="space-y-2">
           <p className="text-[9px] text-purple-400/60 uppercase tracking-widest px-1 font-bold">3. 字体与排版 // Typography</p>
-          <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+          <div className="rounded-2xl border border-echo-border overflow-hidden">
             <div className="divide-y divide-white/5">
               {[
                 ['--app-font', 'Noto Sans SC', '全局字体（由字体选择器写入）'],
@@ -82,7 +82,7 @@ const CustomCssGuide: React.FC = () => {
 
         <div className="space-y-2">
           <p className="text-[9px] text-green-400/60 uppercase tracking-widest px-1 font-bold">4. 全局主题 // Theme</p>
-          <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+          <div className="rounded-2xl border border-echo-border overflow-hidden">
             <div className="divide-y divide-white/5">
               {[
                 ['--echo-base', '#fdfdfd', '应用背景基色'],
@@ -102,11 +102,9 @@ const CustomCssGuide: React.FC = () => {
 
         <div className="space-y-2">
           <p className="text-[9px] text-teal-400/60 uppercase tracking-widest px-1 font-bold">5. 布局与尺寸 // Layout</p>
-          <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+          <div className="rounded-2xl border border-echo-border overflow-hidden">
             <div className="divide-y divide-white/5">
               {[
-                ['--echo-dialogue-max-width', '56rem', '对话框最大宽度'],
-                ['--echo-dialogue-padding-x', '1rem', '对话框水平内边距'],
                 ['--echo-input-bottom-offset', '1rem', '输入框底部间距'],
                 ['--echo-avatar-size', '2.25rem', '聊天头像尺寸'],
               ].map(([varName, defaultVal, desc]) => (
@@ -122,15 +120,13 @@ const CustomCssGuide: React.FC = () => {
 
         <div className="space-y-2">
           <p className="text-[9px] text-rose-400/60 uppercase tracking-widest px-1 font-bold">6. 语义化组件锚点 // Semantic Classes</p>
-          <div className="p-4 rounded-2xl border border-white/10 dark:border-white/5 text-[11px] leading-relaxed opacity-80 font-mono space-y-1">
+          <div className="p-4 rounded-2xl border border-echo-border text-[11px] leading-relaxed opacity-80 font-mono space-y-1">
             <p className="text-rose-300">.echo-app-root <span className="text-gray-500 ml-2">// 根容器 (带 data-view 状态)</span></p>
-            <p className="text-rose-300">.echo-dialogue-container <span className="text-gray-500 ml-2">// 对话区域</span></p>
-            <p className="text-rose-300">.echo-dialogue-toolbar <span className="text-gray-500 ml-2">// 顶部工具栏</span></p>
             <p className="text-rose-300">.echo-message-list <span className="text-gray-500 ml-2">// 消息列表</span></p>
             <p className="text-rose-300">.echo-message-row <span className="text-gray-500 ml-2">// 独立消息行</span></p>
             <p className="text-rose-300">.echo-message-bubble <span className="text-gray-500 ml-2">// 消息气泡容器</span></p>
-            <p className="text-rose-300">.echo-char-avatar-wrapper <span className="text-gray-500 ml-2">// 角色大头像容器</span></p>
             <p className="text-rose-300">.echo-input-container <span className="text-gray-500 ml-2">// 底部输入区</span></p>
+            <p className="text-rose-300">.echo-header-container <span className="text-gray-500 ml-2">// 顶部导航栏</span></p>
             <p className="text-rose-300">.echo-config-panel <span className="text-gray-500 ml-2">// 侧边设置面板</span></p>
           </div>
         </div>
@@ -140,7 +136,7 @@ const CustomCssGuide: React.FC = () => {
       <div className="space-y-3">
         <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">示例</p>
 
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+        <div className="rounded-2xl border border-echo-border overflow-hidden">
           <div className="px-4 py-2 bg-purple-500/10">
             <span className="text-[10px] font-bold uppercase tracking-widest text-purple-400">暗色沉浸预设</span>
           </div>
@@ -153,7 +149,7 @@ const CustomCssGuide: React.FC = () => {
 }`}</pre>
         </div>
 
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+        <div className="rounded-2xl border border-echo-border overflow-hidden">
           <div className="px-4 py-2 bg-amber-500/10">
             <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400">关闭毛玻璃效果</span>
           </div>
@@ -163,7 +159,7 @@ const CustomCssGuide: React.FC = () => {
 }`}</pre>
         </div>
 
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+        <div className="rounded-2xl border border-echo-border overflow-hidden">
           <div className="px-4 py-2 bg-blue-500/10">
             <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400">移动端 HTML 块字号</span>
           </div>
@@ -171,32 +167,6 @@ const CustomCssGuide: React.FC = () => {
   .echo-html-block * {
     font-size: 12px !important;
   }
-}`}</pre>
-        </div>
-
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
-          <div className="px-4 py-2 bg-cyan-500/10">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-cyan-400">🖥️ 全屏对话容器（复制即用）</span>
-          </div>
-          <pre className="p-4 text-[10px] leading-relaxed opacity-70 overflow-x-auto whitespace-pre bg-black/5 dark:bg-black/20 font-mono">{`:root {
-  --echo-fullscreen-top: 64px;   /* header 高度 */
-  --echo-fullscreen-bg: #ededed; /* 背景色 */
-}
-.echo-dialogue-container {
-  position: fixed !important;
-  top: calc(var(--echo-fullscreen-top) + var(--sat, 0px)) !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  width: 100vw !important;
-  max-width: 100vw !important;
-  height: auto !important;
-  margin: 0 !important;
-  border-radius: 0 !important;
-  border: none !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  background: var(--echo-fullscreen-bg) !important;
 }`}</pre>
         </div>
       </div>

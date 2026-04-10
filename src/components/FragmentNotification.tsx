@@ -32,10 +32,10 @@ const FragmentNotification: React.FC = () => {
             className="glass-morphism p-5 rounded-[2rem] flex flex-col items-center gap-3 shadow-xl border-white/40 dark:border-white/10"
           >
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-gray-50 dark:bg-white/5 flex items-center justify-center">
+              <div className="w-6 h-6 rounded-full bg-echo-surface flex items-center justify-center">
                 <Sparkles size={12} className="text-gray-400 dark:text-gray-300 animate-pulse" />
               </div>
-              <span className="text-[8px] tracking-[0.4em] text-gray-400 dark:text-gray-500 uppercase font-sans font-medium">
+              <span className="text-[8px] tracking-[0.4em] text-echo-text-subtle uppercase font-sans font-medium">
                 Neural Fragment Retreived
               </span>
             </div>
@@ -46,7 +46,7 @@ const FragmentNotification: React.FC = () => {
               “ {activeFragment} ”
             </p>
             
-            <div className="text-[7px] text-gray-400 dark:text-gray-600 tracking-widest uppercase mt-1">
+            <div className="text-[7px] text-echo-text-dim tracking-widest uppercase mt-1">
               Synchronized to Archive
             </div>
           </motion.div>

@@ -9,7 +9,7 @@ const MultiCharGuide: React.FC = () => {
       {/* 运行流程 */}
       <div className="space-y-2">
         <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">每轮对话运行流程</p>
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+        <div className="rounded-2xl border border-echo-border overflow-hidden">
           <div className="divide-y divide-white/5 text-[10px]">
             {[
               ['1', 'Router 决策', '前置路由模型分析上下文，调用 route_response 工具，决定本轮由谁发言、顺序如何。不输出任何对话内容。'],
@@ -21,7 +21,7 @@ const MultiCharGuide: React.FC = () => {
               <div key={num} className="flex gap-3 px-4 py-2.5">
                 <span className="text-[9px] font-mono text-blue-400 opacity-60 shrink-0 w-3 mt-0.5">{num}</span>
                 <div>
-                  <span className="font-bold text-gray-600 dark:text-gray-300">{title}</span>
+                  <span className="font-bold text-echo-text-base">{title}</span>
                   <span className="opacity-60"> — {desc}</span>
                 </div>
               </div>
@@ -34,7 +34,7 @@ const MultiCharGuide: React.FC = () => {
       <div className="space-y-2">
         <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">上下文折叠合并法</p>
         <p className="opacity-60 text-[10px] leading-relaxed">CharB 上次发言之后发生的所有事情（User 发言 + CharA 发言），合并为一条 user 消息发给 CharB，加 <code className="bg-white/10 px-1 rounded">[名字]:</code> 前缀区分说话者。这样完全规避了 Anthropic 等模型对 role 交替的严格要求。</p>
-        <pre className="p-4 text-[10px] leading-relaxed opacity-70 overflow-x-auto whitespace-pre bg-black/5 dark:bg-black/20 font-mono rounded-2xl border border-white/10 dark:border-white/5">{`// CharB 视角的消息历史示例
+        <pre className="p-4 text-[10px] leading-relaxed opacity-70 overflow-x-auto whitespace-pre bg-black/5 dark:bg-black/20 font-mono rounded-2xl border border-echo-border">{`// CharB 视角的消息历史示例
 { role: "assistant", content: "你好，我是 CharB" }
 { role: "user",      content: "[User]: 今天去哪？\\n[CharA]: 我想去图书馆" }
 // ↑ User 和 CharA 的发言折叠为一条`}</pre>
@@ -58,7 +58,7 @@ const MultiCharGuide: React.FC = () => {
       {/* 模型选择建议 */}
       <div className="space-y-2">
         <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">模型选择建议</p>
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+        <div className="rounded-2xl border border-echo-border overflow-hidden">
           <div className="divide-y divide-white/5 text-[10px]">
             {[
               ['Router', '小模型 / 快模型', 'gpt-4o-mini、claude-haiku、gemini-flash', '只做路由决策，不需要强大的创作能力，优先选延迟低、价格便宜的模型。每轮消耗约 200-500 tokens。'],
@@ -66,7 +66,7 @@ const MultiCharGuide: React.FC = () => {
             ].map(([role, type, examples, desc]) => (
               <div key={role} className="px-4 py-3 space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-gray-600 dark:text-gray-300 w-16 shrink-0">{role}</span>
+                  <span className="font-bold text-echo-text-base w-16 shrink-0">{role}</span>
                   <span className="text-blue-400 opacity-70">{type}</span>
                 </div>
                 <p className="opacity-40 font-mono pl-[4.5rem]">{examples}</p>
@@ -80,7 +80,7 @@ const MultiCharGuide: React.FC = () => {
       {/* Token 消耗 */}
       <div className="space-y-2">
         <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">Token 消耗估算（每轮对话）</p>
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+        <div className="rounded-2xl border border-echo-border overflow-hidden">
           <div className="divide-y divide-white/5 text-[10px]">
             {[
               ['Router 请求', '~200–500', '系统提示 + 近期上下文 + tool schema'],
@@ -89,7 +89,7 @@ const MultiCharGuide: React.FC = () => {
               ['合计（单轮）', '~2200–6500', '约为单角色模式的 2.5–3 倍'],
             ].map(([item, tokens, note]) => (
               <div key={item} className="grid grid-cols-[auto_5rem_1fr] gap-x-4 items-start px-4 py-2.5">
-                <span className="text-gray-600 dark:text-gray-300 font-medium">{item}</span>
+                <span className="text-echo-text-base font-medium">{item}</span>
                 <span className="font-mono text-amber-400 text-right">{tokens}</span>
                 <span className="opacity-40">{note}</span>
               </div>

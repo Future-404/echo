@@ -8,14 +8,14 @@ const SecurityGuide: React.FC = () => {
       {/* 部署模式 */}
       <div className="space-y-2">
         <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">部署模式</p>
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+        <div className="rounded-2xl border border-echo-border overflow-hidden">
           <div className="divide-y divide-white/5 text-[10px]">
             {[
               ['纯前端模式', '设置 VITE_AUTH_TOKEN 环境变量，无需后端。密码在浏览器端 SHA-256 比对，数据存 IndexedDB（Dexie）。'],
               ['前后端模式', '设置 VITE_API_URL 指向 echo-storage Node.js 后端。验证通过后获取 token，数据本地+远端混合存储。'],
             ].map(([title, desc]) => (
               <div key={title} className="flex gap-3 px-4 py-2.5">
-                <span className="font-bold text-gray-600 dark:text-gray-300 shrink-0 w-20">{title}</span>
+                <span className="font-bold text-echo-text-base shrink-0 w-20">{title}</span>
                 <span className="opacity-60">{desc}</span>
               </div>
             ))}
@@ -26,7 +26,7 @@ const SecurityGuide: React.FC = () => {
       {/* 访问控制 */}
       <div className="space-y-2">
         <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">访问控制机制</p>
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+        <div className="rounded-2xl border border-echo-border overflow-hidden">
           <div className="divide-y divide-white/5 text-[10px]">
             {[
               ['密码网关', '首次访问显示 GateScreen，5 次失败后锁定 30 秒'],
@@ -35,7 +35,7 @@ const SecurityGuide: React.FC = () => {
               ['换设备', '清除浏览器数据或换设备需重新输入密码'],
             ].map(([title, desc]) => (
               <div key={title} className="flex gap-3 px-4 py-2.5">
-                <span className="font-bold text-gray-600 dark:text-gray-300 shrink-0 w-20">{title}</span>
+                <span className="font-bold text-echo-text-base shrink-0 w-20">{title}</span>
                 <span className="opacity-60">{desc}</span>
               </div>
             ))}
@@ -46,7 +46,7 @@ const SecurityGuide: React.FC = () => {
       {/* 部署安全建议 */}
       <div className="space-y-2">
         <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">部署安全建议</p>
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+        <div className="rounded-2xl border border-echo-border overflow-hidden">
           <div className="divide-y divide-white/5 text-[10px]">
             {[
               ['强随机密码', 'openssl rand -hex 32 生成至少 32 字符的 AUTH_TOKEN / VITE_AUTH_TOKEN'],
@@ -55,7 +55,7 @@ const SecurityGuide: React.FC = () => {
               ['Token 泄露', '重新设置环境变量并重新部署，旧 token 立即失效'],
             ].map(([title, desc]) => (
               <div key={title} className="flex gap-3 px-4 py-2.5">
-                <span className="font-bold text-gray-600 dark:text-gray-300 shrink-0 w-20">{title}</span>
+                <span className="font-bold text-echo-text-base shrink-0 w-20">{title}</span>
                 <span className="opacity-60">{desc}</span>
               </div>
             ))}
@@ -66,7 +66,7 @@ const SecurityGuide: React.FC = () => {
       {/* 技术架构 */}
       <div className="space-y-2">
         <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">技术架构</p>
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+        <div className="rounded-2xl border border-echo-border overflow-hidden">
           <div className="divide-y divide-white/5 text-[10px]">
             {[
               ['前端框架', 'React 18 + TypeScript + Vite'],
@@ -76,7 +76,7 @@ const SecurityGuide: React.FC = () => {
               ['部署', 'Cloudflare Pages（前端）+ Node.js（可选后端）'],
             ].map(([key, value]) => (
               <div key={key} className="grid grid-cols-[6rem_1fr] gap-x-4 px-4 py-2.5">
-                <span className="font-bold text-gray-600 dark:text-gray-300">{key}</span>
+                <span className="font-bold text-echo-text-base">{key}</span>
                 <span className="opacity-60 font-mono">{value}</span>
               </div>
             ))}

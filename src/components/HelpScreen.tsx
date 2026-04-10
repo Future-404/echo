@@ -78,7 +78,7 @@ const HelpScreen: React.FC = () => {
                 className={`flex-shrink-0 flex items-center gap-2 md:gap-4 px-3 md:px-5 py-2 md:py-4 rounded-xl md:rounded-2xl transition-all ${
                   activeTab === section.id 
                     ? 'bg-blue-500/10 text-blue-500 font-bold' 
-                    : 'text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5'
+                    : 'text-gray-400 hover:bg-echo-surface'
                 }`}
               >
                 <span className={`${activeTab === section.id ? 'text-blue-500' : 'text-gray-400'} scale-90 md:scale-100 shrink-0`}>
@@ -103,14 +103,14 @@ const HelpScreen: React.FC = () => {
               className="max-w-2xl"
             >
               <div className="mb-6 md:mb-10">
-                <div className="hidden md:flex w-12 h-12 rounded-2xl bg-gray-50 dark:bg-white/5 items-center justify-center text-blue-500 mb-6 border-0.5 border-gray-100 dark:border-gray-800">
+                <div className="hidden md:flex w-12 h-12 rounded-2xl bg-echo-surface items-center justify-center text-blue-500 mb-6 border-0.5 border-gray-100 dark:border-gray-800">
                   {activeSection.icon}
                 </div>
                 <h3 className="text-xl md:text-3xl font-serif text-gray-800 dark:text-gray-100 mb-2">{activeSection.title}</h3>
                 <div className="w-8 md:w-12 h-[2px] bg-blue-500/30" />
               </div>
               
-              <div className="text-gray-500 dark:text-gray-400 leading-relaxed font-sans">
+              <div className="text-echo-text-muted leading-relaxed font-sans">
                 {activeSection.component}
               </div>
             </motion.div>

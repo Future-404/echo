@@ -15,13 +15,13 @@ export const StatusBar: React.FC<StatusBarProps> = (props) => {
   if (!Renderer) {
     // 回退渲染器 (针对未知类型)
     return (
-      <div className="inline-flex items-center gap-3 bg-white/50 dark:bg-black/20 border-0.5 border-gray-200 dark:border-white/10 rounded-2xl px-4 py-2 my-2 shadow-sm">
-        <div className="w-6 h-6 rounded-lg bg-gray-100 dark:bg-white/5 flex items-center justify-center">
+      <div className="inline-flex items-center gap-3 bg-white/50 dark:bg-black/20 border-0.5 border-echo-border-md rounded-2xl px-4 py-2 my-2 shadow-sm">
+        <div className="w-6 h-6 rounded-lg bg-echo-surface flex items-center justify-center">
           <Terminal size={12} className="text-gray-400" />
         </div>
         <div className="flex flex-col text-left">
           <span className="text-[8px] uppercase tracking-widest text-gray-400 font-bold">{type}</span>
-          <span className="text-[10px] text-gray-600 dark:text-gray-300 font-medium">
+          <span className="text-[10px] text-echo-text-base font-medium">
             {Array.isArray(metadata) ? metadata.join(' | ') : (metadata?.rawBody || 'Unknown format')}
           </span>
         </div>

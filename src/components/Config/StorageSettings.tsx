@@ -105,8 +105,8 @@ const StorageSettings: React.FC = () => {
           <Database size={24} strokeWidth={1.5} />
         </div>
         <div>
-          <h3 className="text-sm font-serif tracking-[0.2em] text-gray-700 dark:text-gray-200 uppercase font-bold italic">数据管理 // DATA</h3>
-          <p className="text-[9px] text-gray-400 dark:text-gray-500 uppercase mt-1 tracking-widest font-mono">Archive & Portability</p>
+          <h3 className="text-sm font-serif tracking-[0.2em] text-echo-text-primary uppercase font-bold italic">数据管理 // DATA</h3>
+          <p className="text-[9px] text-echo-text-subtle uppercase mt-1 tracking-widest font-mono">Archive & Portability</p>
         </div>
       </div>
 
@@ -121,7 +121,7 @@ const StorageSettings: React.FC = () => {
           (isSafari && remaining < 300 * 1024 * 1024)
         )
         return (
-          <div className={`p-5 rounded-3xl border-0.5 flex flex-col gap-3 ${warn ? 'bg-red-500/5 border-red-400/20' : 'bg-gray-50/50 dark:bg-white/5 border-gray-100 dark:border-white/5'}`}>
+          <div className={`p-5 rounded-3xl border-0.5 flex flex-col gap-3 ${warn ? 'bg-red-500/5 border-red-400/20' : 'bg-gray-50/50 dark:bg-white/5 border-echo-border'}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <HardDrive size={14} className={warn ? 'text-red-400' : 'text-gray-400'} />
@@ -134,7 +134,7 @@ const StorageSettings: React.FC = () => {
             </div>
             {storageEstimate && (
               <>
-                <div className="w-full h-1.5 rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden">
+                <div className="w-full h-1.5 rounded-full bg-echo-surface-md overflow-hidden">
                   <div className={`h-full rounded-full transition-all ${warn ? 'bg-red-400' : 'bg-blue-400'}`} style={{ width: `${Math.min(pct!, 100)}%` }} />
                 </div>
                 <div className="flex justify-between items-center">
@@ -160,14 +160,14 @@ const StorageSettings: React.FC = () => {
           <button
             onClick={handleExport}
             disabled={backupLoading}
-            className="group p-6 rounded-[2.5rem] bg-white/40 dark:bg-white/5 border-0.5 border-gray-100 dark:border-white/5 hover:border-blue-300 dark:hover:border-blue-900 transition-all text-left shadow-sm relative overflow-hidden"
+            className="group p-6 rounded-[2.5rem] bg-white/40 dark:bg-white/5 border-0.5 border-echo-border hover:border-blue-300 dark:hover:border-blue-900 transition-all text-left shadow-sm relative overflow-hidden"
           >
             <div className="relative z-10 flex flex-col gap-4">
               <div className="w-10 h-10 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
                 <Download size={20} />
               </div>
               <div>
-                <p className="text-xs font-serif font-bold text-gray-700 dark:text-gray-200">导出备份</p>
+                <p className="text-xs font-serif font-bold text-echo-text-primary">导出备份</p>
                 <p className="text-[8px] text-gray-400 uppercase mt-1 tracking-tighter">打包角色、记忆与配置为 .echo 文件</p>
               </div>
             </div>
@@ -178,7 +178,7 @@ const StorageSettings: React.FC = () => {
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={backupLoading}
-            className="group p-6 rounded-[2.5rem] bg-white/40 dark:bg-white/5 border-0.5 border-gray-100 dark:border-white/5 hover:border-amber-300 dark:hover:border-amber-900 transition-all text-left shadow-sm relative overflow-hidden"
+            className="group p-6 rounded-[2.5rem] bg-white/40 dark:bg-white/5 border-0.5 border-echo-border hover:border-amber-300 dark:hover:border-amber-900 transition-all text-left shadow-sm relative overflow-hidden"
           >
             <input type="file" ref={fileInputRef} onChange={handleImport} accept=".echo,.json" className="hidden" />
             <div className="relative z-10 flex flex-col gap-4">
@@ -186,7 +186,7 @@ const StorageSettings: React.FC = () => {
                 <Upload size={20} />
               </div>
               <div>
-                <p className="text-xs font-serif font-bold text-gray-700 dark:text-gray-200">导入备份</p>
+                <p className="text-xs font-serif font-bold text-echo-text-primary">导入备份</p>
                 <p className="text-[8px] text-gray-400 uppercase mt-1 tracking-tighter">从本地文件恢复所有数据 (覆盖模式)</p>
               </div>
             </div>
@@ -217,11 +217,11 @@ const StorageSettings: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="space-y-6 bg-gray-50/50 dark:bg-white/5 p-6 rounded-[2.5rem] border-0.5 border-gray-100 dark:border-white/5">
+          <div className="space-y-6 bg-gray-50/50 dark:bg-white/5 p-6 rounded-[2.5rem] border-0.5 border-echo-border">
             <div className="flex items-center gap-4 opacity-60 px-2">
               <CloudOff className="text-gray-400 shrink-0" size={20} />
               <div className="text-left">
-                <p className="text-xs font-bold text-gray-500 dark:text-gray-400">本地存储模式</p>
+                <p className="text-xs font-bold text-echo-text-muted">本地存储模式</p>
                 <p className="text-[8px] text-gray-400 mt-0.5 uppercase tracking-tighter">DATA STORED LOCALLY IN BROWSER</p>
               </div>
             </div>
@@ -311,7 +311,7 @@ const AppLockSettings: React.FC = () => {
         <label className="text-[10px] uppercase tracking-widest text-gray-400 font-bold italic">应用锁 // APP LOCK</label>
       </div>
 
-      <div className="bg-gray-50/50 dark:bg-white/5 p-6 rounded-[2.5rem] border-0.5 border-gray-100 dark:border-white/5 space-y-6">
+      <div className="bg-gray-50/50 dark:bg-white/5 p-6 rounded-[2.5rem] border-0.5 border-echo-border space-y-6">
         {/* 开关状态 */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -319,7 +319,7 @@ const AppLockSettings: React.FC = () => {
               ? <Lock size={16} className="text-blue-500" />
               : <Unlock size={16} className="text-gray-400" />}
             <div>
-              <p className="text-xs font-bold text-gray-700 dark:text-gray-200">
+              <p className="text-xs font-bold text-echo-text-primary">
                 {appLock.enabled ? '已启用' : '未启用'}
               </p>
               <p className="text-[8px] text-gray-400 uppercase tracking-widest mt-0.5">

@@ -10,7 +10,7 @@ const QuickStart: React.FC = () => {
       <div className="grid grid-cols-1 gap-3">
 
         {/* Cloudflare 自动部署 */}
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+        <div className="rounded-2xl border border-echo-border overflow-hidden">
           <div className="px-4 py-2.5 bg-orange-500/10 flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-widest text-orange-400">方式一：GitHub + Cloudflare（推荐小白）</span>
             <span className="text-[9px] opacity-50">免费 · 全自动 · push 自动更新</span>
@@ -41,7 +41,7 @@ const QuickStart: React.FC = () => {
         </div>
 
         {/* Docker */}
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+        <div className="rounded-2xl border border-echo-border overflow-hidden">
           <div className="px-4 py-2.5 bg-blue-500/10 flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400">方式二：Docker 自托管</span>
             <span className="text-[9px] opacity-50">有服务器 · 完全私有</span>
@@ -57,7 +57,7 @@ docker-compose up -d
         </div>
 
         {/* Node.js 生产 */}
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+        <div className="rounded-2xl border border-echo-border overflow-hidden">
           <div className="px-4 py-2.5 bg-green-500/10 flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-widest text-green-400">方式三：Node.js 生产部署</span>
             <span className="text-[9px] opacity-50">单端口 · 前后端一体</span>
@@ -75,7 +75,7 @@ AUTH_TOKEN=your_token node server.js
       {/* 进入后第一步 */}
       <div className="space-y-2">
         <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">进入后第一步</p>
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+        <div className="rounded-2xl border border-echo-border overflow-hidden">
           <div className="divide-y divide-white/5 text-[10px]">
             {[
               ['1', '配置 API', '设置 → API 参数 → 填入 Endpoint、API Key、模型名称'],
@@ -85,7 +85,7 @@ AUTH_TOKEN=your_token node server.js
               <div key={num} className="flex gap-3 px-4 py-2.5">
                 <span className="text-[9px] font-mono text-blue-400 opacity-60 w-3 shrink-0 mt-0.5">{num}</span>
                 <div>
-                  <span className="font-bold text-gray-600 dark:text-gray-300">{title}</span>
+                  <span className="font-bold text-echo-text-base">{title}</span>
                   <span className="opacity-60"> — {desc}</span>
                 </div>
               </div>
@@ -100,7 +100,7 @@ AUTH_TOKEN=your_token node server.js
       </div>
 
       {/* 纯前端模式 */}
-      <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+      <div className="rounded-2xl border border-echo-border overflow-hidden">
         <div className="px-4 py-2.5 bg-purple-500/10 flex items-center justify-between">
           <span className="text-[10px] font-bold uppercase tracking-widest text-purple-400">方式四：纯前端模式（无后端）</span>
           <span className="text-[9px] opacity-50">数据存本地 · 无需服务器</span>

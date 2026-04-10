@@ -8,7 +8,7 @@ const ApiSpecs: React.FC = () => {
       {/* Provider 节点 */}
       <div className="space-y-2">
         <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">Provider 节点字段</p>
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+        <div className="rounded-2xl border border-echo-border overflow-hidden">
           <div className="divide-y divide-white/5 text-[10px] font-mono">
             {[
               ['endpoint', '必填', 'API 基础 URL，如 https://api.openai.com/v1'],
@@ -31,7 +31,7 @@ const ApiSpecs: React.FC = () => {
       {/* 对话 API */}
       <div className="space-y-2">
         <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">对话 API 兼容性</p>
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+        <div className="rounded-2xl border border-echo-border overflow-hidden">
           <div className="divide-y divide-white/5 text-[10px]">
             {[
               ['OpenAI', 'POST /chat/completions，支持流式 SSE，自动处理 [DONE] 终止符'],
@@ -40,7 +40,7 @@ const ApiSpecs: React.FC = () => {
               ['兼容格式', '所有 OpenAI 兼容接口（Ollama、第三方中转、本地部署）均可使用'],
             ].map(([provider, desc]) => (
               <div key={provider} className="flex gap-3 px-4 py-2.5">
-                <span className="font-bold text-gray-600 dark:text-gray-300 shrink-0 w-16">{provider}</span>
+                <span className="font-bold text-echo-text-base shrink-0 w-16">{provider}</span>
                 <span className="opacity-60">{desc}</span>
               </div>
             ))}
@@ -51,7 +51,7 @@ const ApiSpecs: React.FC = () => {
       {/* TTS */}
       <div className="space-y-2">
         <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">TTS 配置</p>
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+        <div className="rounded-2xl border border-echo-border overflow-hidden">
           <div className="divide-y divide-white/5 text-[10px]">
             {[
               ['browser', '浏览器原生 SpeechSynthesis，无需 API Key'],
@@ -71,14 +71,14 @@ const ApiSpecs: React.FC = () => {
       {/* Embedding */}
       <div className="space-y-2">
         <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">Embedding API</p>
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+        <div className="rounded-2xl border border-echo-border overflow-hidden">
           <div className="divide-y divide-white/5 text-[10px]">
             {[
               ['OpenAI 兼容', 'POST /embeddings，body: { input, model, dimensions? }，返回 data[0].embedding'],
               ['Gemini', 'POST /models/{model}:embedContent，自动检测 generativelanguage.googleapis 域名，返回 embedding.values'],
             ].map(([type, desc]) => (
               <div key={type} className="flex gap-3 px-4 py-2.5">
-                <span className="font-bold text-gray-600 dark:text-gray-300 shrink-0 w-20">{type}</span>
+                <span className="font-bold text-echo-text-base shrink-0 w-20">{type}</span>
                 <span className="opacity-60">{desc}</span>
               </div>
             ))}

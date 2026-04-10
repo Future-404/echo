@@ -3,9 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Trash2, Check, Globe, Plus, Book, Settings2, Edit2, ChevronDown, ChevronUp, Key, Camera, Palette } from 'lucide-react'
 import { useAppStore } from '../../store/useAppStore'
 import type { WorldBook } from '../../types/store'
+import { Toggle } from '../ui'
 import TagTemplateEditor from './TagTemplateEditor'
 import { extractPersonaFromPng } from '../../utils/pngParser'
 import { useDialog } from '../GlobalDialog'
+import { readFileAsDataURL } from '../../utils/fileUtils'
 
 interface CharacterEditorProps {
   charId: string
@@ -50,64 +52,60 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
       const isV3 = personaRaw?.spec === 'chara_card_v3'
       const persona = isV2 || isV3 ? personaRaw?.data : personaRaw
       
-      const reader = new FileReader()
-      reader.onload = async (event) => {
-        const base64 = event.target?.result as string
-        if (base64) {
-          const updates: any = { image: base64 }
+      const base64 = await readFileAsDataURL(file)
+      if (base64) {
+        const updates: any = { image: base64 }
+        
+        if (persona && persona.name) {
+          updates.name = persona.name
           
-          if (persona && persona.name) {
-            updates.name = persona.name
-            
-            const description = [
-              persona.description,
-              persona.personality,
-              persona.scenario,
-              persona.system_prompt,
-              persona.mes_example
-            ].filter(Boolean).join('\n\n')
-            
-            if (description) updates.systemPrompt = description
-            
-            const greeting = persona.first_mes || persona.greeting || persona.first_message
-            if (greeting) updates.greeting = greeting
-            
-            if (isV2 || isV3) {
-              if (persona.alternate_greetings?.length) {
-                updates.alternateGreetings = persona.alternate_greetings
-              }
-              if (persona.post_history_instructions) {
-                updates.postHistoryInstructions = persona.post_history_instructions
-              }
-              if (persona.character_book) {
-                updates.extensions = {
-                  ...char.extensions,
-                  worldBook: persona.character_book.entries || []
-                }
-              }
+          const description = [
+            persona.description,
+            persona.personality,
+            persona.scenario,
+            persona.system_prompt,
+            persona.mes_example
+          ].filter(Boolean).join('\n\n')
+          
+          if (description) updates.systemPrompt = description
+          
+          const greeting = persona.first_mes || persona.greeting || persona.first_message
+          if (greeting) updates.greeting = greeting
+          
+          if (isV2 || isV3) {
+            if (persona.alternate_greetings?.length) {
+              updates.alternateGreetings = persona.alternate_greetings
             }
-
-            // V3 assets 處理
-            if (isV3 && persona.assets) {
-              const mainIcon = persona.assets.find((a: any) => a.type === 'icon' && a.name === 'main')
-              if (mainIcon?.uri === 'ccdefault:') {
-                updates.image = base64
-              } else if (mainIcon?.uri) {
-                updates.image = mainIcon.uri
-              }
-
+            if (persona.post_history_instructions) {
+              updates.postHistoryInstructions = persona.post_history_instructions
+            }
+            if (persona.character_book) {
               updates.extensions = {
-                ...updates.extensions,
                 ...char.extensions,
-                assets: persona.assets
+                worldBook: persona.character_book.entries || []
               }
             }
           }
-          
-          await updateCharacter(charId, updates)
+
+          // V3 assets 處理
+          if (isV3 && persona.assets) {
+            const mainIcon = persona.assets.find((a: any) => a.type === 'icon' && a.name === 'main')
+            if (mainIcon?.uri === 'ccdefault:') {
+              updates.image = base64
+            } else if (mainIcon?.uri) {
+              updates.image = mainIcon.uri
+            }
+
+            updates.extensions = {
+              ...updates.extensions,
+              ...char.extensions,
+              assets: persona.assets
+            }
+          }
         }
+        
+        await updateCharacter(charId, updates)
       }
-      reader.readAsDataURL(file)
     } catch (err) {
       console.error("Failed to process character image:", err)
     }
@@ -197,7 +195,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
             />
             <button 
               onClick={() => fileInputRef.current?.click()}
-              className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-gray-50 dark:bg-white/5 border-0.5 border-gray-100 dark:border-gray-800 flex items-center justify-center overflow-hidden p-0 group relative cursor-pointer"
+              className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-echo-surface border-0.5 border-gray-100 dark:border-gray-800 flex items-center justify-center overflow-hidden p-0 group relative cursor-pointer"
             >
               <img src={char.image} alt={char.name} className="w-full h-full object-cover transition-all group-hover:brightness-50" />
               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -213,7 +211,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
               type="text" 
               value={char.name} 
               onChange={(e) => updateCharacter(charId, { name: e.target.value })}
-              className="w-full bg-transparent border-b-0.5 border-gray-200 dark:border-gray-800 py-2 text-sm text-gray-600 dark:text-gray-300 focus:outline-none focus:border-gray-400"
+              className="w-full bg-transparent border-b-0.5 border-gray-200 dark:border-gray-800 py-2 text-sm text-echo-text-base focus:outline-none focus:border-gray-400"
             />
           </div>
 
@@ -224,7 +222,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
               value={char.greeting || ''} 
               onChange={(e) => updateCharacter(charId, { greeting: e.target.value })}
               placeholder="AI 的第一句话..."
-              className="w-full bg-white/30 dark:bg-white/5 border-0.5 border-gray-100 dark:border-gray-800 rounded-3xl p-6 text-sm text-gray-500 dark:text-gray-400 font-serif leading-relaxed focus:outline-none focus:border-gray-300 min-h-[100px] resize-none no-scrollbar"
+              className="w-full bg-white/30 dark:bg-white/5 border-0.5 border-gray-100 dark:border-gray-800 rounded-3xl p-6 text-sm text-echo-text-muted font-serif leading-relaxed focus:outline-none focus:border-gray-300 min-h-[100px] resize-none no-scrollbar"
             />
 
             {/* 备选开场白 */}
@@ -233,7 +231,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
                 <span className="text-[8px] tracking-widest text-gray-400 uppercase italic">Alternate Greetings // 备选开场白</span>
                 <button
                   onClick={() => updateCharacter(charId, { alternateGreetings: [...(char.alternateGreetings || []), ''] })}
-                  className="p-1 rounded-full bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 text-gray-400 hover:text-black dark:hover:text-white transition-all"
+                  className="p-1 rounded-full bg-echo-surface border border-echo-border-md text-gray-400 hover:text-black dark:hover:text-white transition-all"
                 >
                   <Plus size={12} />
                 </button>
@@ -248,7 +246,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
                       updateCharacter(charId, { alternateGreetings: next })
                     }}
                     placeholder={`备选 ${i + 1}...`}
-                    className="flex-1 bg-white/30 dark:bg-white/5 border-0.5 border-gray-100 dark:border-gray-800 rounded-2xl px-4 py-3 text-xs text-gray-500 dark:text-gray-400 font-serif leading-relaxed focus:outline-none focus:border-gray-300 min-h-[80px] resize-none no-scrollbar"
+                    className="flex-1 bg-white/30 dark:bg-white/5 border-0.5 border-gray-100 dark:border-gray-800 rounded-2xl px-4 py-3 text-xs text-echo-text-muted font-serif leading-relaxed focus:outline-none focus:border-gray-300 min-h-[80px] resize-none no-scrollbar"
                   />
                   <button
                     onClick={() => {
@@ -270,7 +268,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
             <textarea 
               value={char.systemPrompt} 
               onChange={(e) => updateCharacter(charId, { systemPrompt: e.target.value })}
-              className="w-full bg-white/30 dark:bg-white/5 border-0.5 border-gray-100 dark:border-gray-800 rounded-3xl p-6 text-sm text-gray-500 dark:text-gray-400 font-serif leading-relaxed focus:outline-none focus:border-gray-300 min-h-[150px] resize-none no-scrollbar"
+              className="w-full bg-white/30 dark:bg-white/5 border-0.5 border-gray-100 dark:border-gray-800 rounded-3xl p-6 text-sm text-echo-text-muted font-serif leading-relaxed focus:outline-none focus:border-gray-300 min-h-[150px] resize-none no-scrollbar"
             />
           </div>
 
@@ -281,7 +279,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
               value={char.scenario || ''} 
               onChange={(e) => updateCharacter(charId, { scenario: e.target.value })}
               placeholder="当前的故事背景、地点或发生的事件..."
-              className="w-full bg-white/30 dark:bg-white/5 border-0.5 border-gray-100 dark:border-gray-800 rounded-3xl p-6 text-sm text-gray-500 dark:text-gray-400 font-serif leading-relaxed focus:outline-none focus:border-gray-300 min-h-[100px] resize-none no-scrollbar"
+              className="w-full bg-white/30 dark:bg-white/5 border-0.5 border-gray-100 dark:border-gray-800 rounded-3xl p-6 text-sm text-echo-text-muted font-serif leading-relaxed focus:outline-none focus:border-gray-300 min-h-[100px] resize-none no-scrollbar"
             />
           </div>
 
@@ -291,7 +289,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
             <select
               value={char.providerId || ''}
               onChange={(e) => updateCharacter(charId, { providerId: e.target.value || undefined })}
-              className="w-full bg-white/30 dark:bg-white/5 border-0.5 border-gray-100 dark:border-gray-800 rounded-2xl px-4 py-3 text-xs text-gray-500 dark:text-gray-400 focus:outline-none focus:border-gray-300 bg-white dark:bg-[#0d0d0d]"
+              className="w-full bg-white/30 dark:bg-white/5 border-0.5 border-gray-100 dark:border-gray-800 rounded-2xl px-4 py-3 text-xs text-echo-text-muted focus:outline-none focus:border-gray-300 bg-white dark:bg-[#0d0d0d]"
             >
               <option value="">默认（使用全局激活的 Provider）</option>
               {config.providers.map(p => (
@@ -307,7 +305,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
               <select
                 value={ttsSettings.voiceMap[charId] || ''}
                 onChange={(e) => updateTtsVoice(charId, e.target.value)}
-                className="w-full bg-white/30 dark:bg-white/5 border-0.5 border-gray-100 dark:border-gray-800 rounded-2xl px-4 py-3 text-xs text-gray-500 dark:text-gray-400 focus:outline-none focus:border-gray-300 bg-white dark:bg-[#0d0d0d]"
+                className="w-full bg-white/30 dark:bg-white/5 border-0.5 border-gray-100 dark:border-gray-800 rounded-2xl px-4 py-3 text-xs text-echo-text-muted focus:outline-none focus:border-gray-300 bg-white dark:bg-[#0d0d0d]"
               >
                 <option value="">默认语音</option>
                 {ttsSettings.provider === 'openai' ? (
@@ -337,12 +335,12 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
                 library.map((book) => {
                   const isBound = boundBookIds.includes(book.id)
                   return (
-                    <button key={book.id} onClick={() => toggleBookBinding(book.id)} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${isBound ? 'bg-blue-500/10 border-blue-400/30 text-blue-600 dark:text-blue-400' : 'bg-transparent border-gray-100 dark:border-white/5 text-gray-400'}`}>
+                    <button key={book.id} onClick={() => toggleBookBinding(book.id)} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${isBound ? 'bg-blue-500/10 border-blue-400/30 text-blue-600 dark:text-blue-400' : 'bg-transparent border-echo-border text-gray-400'}`}>
                       <div className="flex items-center gap-3">
                         <Book size={14} className={isBound ? 'opacity-100' : 'opacity-40'} />
                         <span className="text-[11px] font-serif font-bold">{book.name}</span>
                       </div>
-                      {isBound ? <Check size={14} /> : <div className="w-3.5 h-3.5 rounded-full border border-gray-200 dark:border-white/10" />}
+                      {isBound ? <Check size={14} /> : <div className="w-3.5 h-3.5 rounded-full border border-echo-border-md" />}
                     </button>
                   )
                 })
@@ -365,7 +363,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
                   const isBound = boundPresetIds.includes(preset.id)
                   const enabledCount = preset.directives.filter(d => d.enabled).length
                   return (
-                    <button key={preset.id} onClick={() => togglePresetBinding(preset.id)} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${isBound ? 'bg-purple-500/10 border-purple-400/30 text-purple-600 dark:text-purple-400' : 'bg-transparent border-gray-100 dark:border-white/5 text-gray-400'}`}>
+                    <button key={preset.id} onClick={() => togglePresetBinding(preset.id)} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${isBound ? 'bg-purple-500/10 border-purple-400/30 text-purple-600 dark:text-purple-400' : 'bg-transparent border-echo-border text-gray-400'}`}>
                       <div className="flex items-center gap-3">
                         <Settings2 size={14} className={isBound ? 'opacity-100' : 'opacity-40'} />
                         <div className="text-left">
@@ -373,7 +371,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
                           <span className="text-[8px] opacity-60">{enabledCount}/{preset.directives.length} 已啟用</span>
                         </div>
                       </div>
-                      {isBound ? <Check size={14} /> : <div className="w-3.5 h-3.5 rounded-full border border-gray-200 dark:border-white/10" />}
+                      {isBound ? <Check size={14} /> : <div className="w-3.5 h-3.5 rounded-full border border-echo-border-md" />}
                     </button>
                   )
                 })
@@ -395,12 +393,12 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
                 (config.cssPackages || []).map((pkg) => {
                   const isBound = boundCssPackageIds.includes(pkg.id)
                   return (
-                    <button key={pkg.id} onClick={() => toggleCssPackageBinding(pkg.id)} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${isBound ? 'bg-cyan-500/10 border-cyan-400/30 text-cyan-600 dark:text-cyan-400' : 'bg-transparent border-gray-100 dark:border-white/5 text-gray-400'}`}>
+                    <button key={pkg.id} onClick={() => toggleCssPackageBinding(pkg.id)} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${isBound ? 'bg-cyan-500/10 border-cyan-400/30 text-cyan-600 dark:text-cyan-400' : 'bg-transparent border-echo-border text-gray-400'}`}>
                       <div className="flex items-center gap-3">
                         <Palette size={14} className={isBound ? 'opacity-100' : 'opacity-40'} />
                         <span className="text-[11px] font-serif font-bold">{pkg.name}</span>
                       </div>
-                      {isBound ? <Check size={14} /> : <div className="w-3.5 h-3.5 rounded-full border border-gray-200 dark:border-white/10" />}
+                      {isBound ? <Check size={14} /> : <div className="w-3.5 h-3.5 rounded-full border border-echo-border-md" />}
                     </button>
                   )
                 })
@@ -414,15 +412,15 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
               <label className="text-[10px] tracking-widest text-gray-400 uppercase italic flex items-center gap-2">
                 <Globe size={12} /> Character Private Settings // 角色私设
               </label>
-              <button onClick={() => setIsAddingPrivate(!isAddingPrivate)} className="p-1.5 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-full text-gray-400 hover:text-black dark:hover:text-white transition-all">
+              <button onClick={() => setIsAddingPrivate(!isAddingPrivate)} className="p-1.5 bg-echo-surface border border-echo-border-md rounded-full text-gray-400 hover:text-black dark:hover:text-white transition-all">
                 <Plus size={14} />
               </button>
             </div>
 
 
             {isAddingPrivate && (
-              <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-gray-50 dark:bg-white/5 rounded-2xl p-4 space-y-3">
-                <textarea placeholder="输入私设内容..." value={newContent} onChange={e => setNewContent(e.target.value)} className="w-full bg-transparent text-[11px] font-serif min-h-[80px] resize-none focus:outline-none text-gray-600 dark:text-gray-300" />
+              <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-echo-surface rounded-2xl p-4 space-y-3">
+                <textarea placeholder="输入私设内容..." value={newContent} onChange={e => setNewContent(e.target.value)} className="w-full bg-transparent text-[11px] font-serif min-h-[80px] resize-none focus:outline-none text-echo-text-base" />
                 <div className="flex justify-end gap-2 pt-2">
                   <button onClick={() => { setIsAddingPrivate(false); setNewContent(''); }} className="text-[8px] uppercase tracking-widest text-gray-400 px-3 py-1">Cancel</button>
                   <button onClick={handleAddPrivate} className="text-[8px] uppercase tracking-widest bg-blue-500/10 text-blue-500 font-bold px-3 py-1 rounded-lg">Store</button>
@@ -435,27 +433,22 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
                 <p className="text-[9px] text-gray-400 italic text-center py-4 opacity-50">暂无私人记忆碎片</p>
               ) : (
                 privateEntries.map((entry) => (
-                  <div key={entry.id} className="bg-white/50 dark:bg-white/5 border-0.5 border-gray-100 dark:border-white/5 rounded-2xl overflow-hidden transition-all group">
+                  <div key={entry.id} className="bg-white/50 dark:bg-white/5 border-0.5 border-echo-border rounded-2xl overflow-hidden transition-all group">
                     <div className="p-4 flex items-center justify-between">
                       <div className="flex items-center gap-3 overflow-hidden flex-1 cursor-pointer" onClick={() => setExpandedPrivateId(expandedPrivateId === entry.id ? null : entry.id)}>
                         <div className="flex flex-col overflow-hidden">
-                          <span className="text-[10px] font-serif font-bold text-gray-700 dark:text-gray-200 truncate">{entry.comment || entry.content.slice(0, 30)}</span>
+                          <span className="text-[10px] font-serif font-bold text-echo-text-primary truncate">{entry.comment || entry.content.slice(0, 30)}</span>
                           <span className="text-[7px] font-mono text-gray-400 truncate opacity-60 italic">{entry.keys.join(', ') || 'Global Identity Pattern'}</span>
                         </div>
                       </div>
                       
                       <div className="flex items-center gap-3">
                         {/* 改进开关按钮：使用 Switch 样式 */}
-                        <button 
-                          onClick={() => updatePrivateWorldBookEntry(entry.id, { enabled: !entry.enabled }, charId)}
-                          className={`w-8 h-4 rounded-full flex items-center px-0.5 transition-colors ${entry.enabled ? 'bg-orange-400/50' : 'bg-gray-300 dark:bg-gray-700'}`}
-                        >
-                          <motion.div 
-                            layout 
-                            className="w-3 h-3 rounded-full bg-white shadow-sm" 
-                            animate={{ x: entry.enabled ? 16 : 0 }} 
-                          />
-                        </button>
+                        <Toggle
+                          checked={entry.enabled}
+                          onChange={() => updatePrivateWorldBookEntry(entry.id, { enabled: !entry.enabled }, charId)}
+                          color="bg-orange-400/50"
+                        />
 
                         <div className="flex items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-all">
                           <button onClick={() => removePrivateWorldBookEntry(entry.id, charId)} className="p-1.5 text-gray-400 hover:text-red-400 transition-colors">
@@ -470,13 +463,13 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
 
                     <AnimatePresence>
                       {expandedPrivateId === entry.id && (
-                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="px-4 pb-4 border-t border-gray-100 dark:border-white/5 pt-4 space-y-4">
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="px-4 pb-4 border-t border-echo-border pt-4 space-y-4">
                           <div className="space-y-2">
                             <label className="text-[8px] uppercase tracking-widest text-gray-400 px-1">Content // 记忆内容</label>
                             <textarea 
                               value={entry.content} 
                               onChange={(e) => updatePrivateWorldBookEntry(entry.id, { content: e.target.value })}
-                              className="w-full bg-white dark:bg-black/20 border-0.5 border-gray-100 dark:border-white/10 rounded-xl px-3 py-2 text-[11px] font-serif min-h-[100px] focus:outline-none focus:border-orange-400/50 transition-colors resize-none no-scrollbar"
+                              className="w-full bg-white dark:bg-black/20 border-0.5 border-echo-border-md rounded-xl px-3 py-2 text-[11px] font-serif min-h-[100px] focus:outline-none focus:border-orange-400/50 transition-colors resize-none no-scrollbar"
                             />
                           </div>
                           
@@ -487,7 +480,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
                                 placeholder="Label" 
                                 value={entry.comment || ''} 
                                 onChange={e => updatePrivateWorldBookEntry(entry.id, { comment: e.target.value })}
-                                className="w-full bg-white dark:bg-black/20 border-0.5 border-gray-100 dark:border-white/10 rounded-xl px-3 py-2 text-[10px] focus:outline-none"
+                                className="w-full bg-white dark:bg-black/20 border-0.5 border-echo-border-md rounded-xl px-3 py-2 text-[10px] focus:outline-none"
                               />
                             </div>
                             <div className="space-y-2">
@@ -497,7 +490,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
                                 placeholder="Order" 
                                 value={entry.insertionOrder ?? 0} 
                                 onChange={e => updatePrivateWorldBookEntry(entry.id, { insertionOrder: parseInt(e.target.value) || 0 })}
-                                className="w-full bg-white dark:bg-black/20 border-0.5 border-gray-100 dark:border-white/10 rounded-xl px-3 py-2 text-[10px] focus:outline-none"
+                                className="w-full bg-white dark:bg-black/20 border-0.5 border-echo-border-md rounded-xl px-3 py-2 text-[10px] focus:outline-none"
                               />
                             </div>
                           </div>
@@ -508,7 +501,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
                               <select
                                 value={entry.position ?? 1}
                                 onChange={e => updatePrivateWorldBookEntry(entry.id, { position: parseInt(e.target.value) as any })}
-                                className="w-full bg-white dark:bg-black/20 border-0.5 border-gray-100 dark:border-white/10 rounded-xl px-3 py-2 text-[10px] focus:outline-none appearance-none"
+                                className="w-full bg-white dark:bg-black/20 border-0.5 border-echo-border-md rounded-xl px-3 py-2 text-[10px] focus:outline-none appearance-none"
                               >
                                 <option value={4}>Top (最顶部)</option>
                                 <option value={0}>Before Char (描述前)</option>
@@ -524,7 +517,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
                                 placeholder="Depth (only for @Depth)" 
                                 value={entry.depth ?? 4} 
                                 onChange={e => updatePrivateWorldBookEntry(entry.id, { depth: parseInt(e.target.value) || 0 })}
-                                className={`w-full bg-white dark:bg-black/20 border-0.5 border-gray-100 dark:border-white/10 rounded-xl px-3 py-2 text-[10px] focus:outline-none ${entry.position !== 2 ? 'opacity-30' : ''}`}
+                                className={`w-full bg-white dark:bg-black/20 border-0.5 border-echo-border-md rounded-xl px-3 py-2 text-[10px] focus:outline-none ${entry.position !== 2 ? 'opacity-30' : ''}`}
                               />
                             </div>
                           </div>
@@ -547,7 +540,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
             </div>
             <AnimatePresence>
               {isParsersExpanded && (
-                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden bg-gray-50/50 dark:bg-white/5 rounded-[2rem] border border-gray-100 dark:border-white/5">
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden bg-gray-50/50 dark:bg-white/5 rounded-[2rem] border border-echo-border">
                   <TagTemplateEditor />
                 </motion.div>
               )}

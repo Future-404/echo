@@ -72,7 +72,7 @@ const WritingGuide: React.FC = () => {
       {/* 技术规格 */}
       <div className="space-y-2">
         <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">技术规格 // Specs</p>
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden divide-y divide-white/5">
+        <div className="rounded-2xl border border-echo-border overflow-hidden divide-y divide-white/5">
           {[
             ['PNG 隐写', '支持读取图片中的 tEXt/iTXt 数据块。'],
             ['V2 规范', '支持 character_book 与多开场白切换。'],

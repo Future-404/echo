@@ -39,12 +39,12 @@ export const DataLinkBar: React.FC<StatusBarProps> = ({ metadata }) => {
   });
 
   return (
-    <div className="flex flex-col gap-4 p-5 bg-white/60 dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded-3xl my-6 shadow-xl backdrop-blur-md select-text">
+    <div className="flex flex-col gap-4 p-5 bg-white/60 dark:bg-black/40 border border-echo-border-md rounded-3xl my-6 shadow-xl backdrop-blur-md select-text">
       {/* 顶部标识 */}
-      <div className="flex items-center justify-between border-b border-gray-100 dark:border-white/5 pb-3">
+      <div className="flex items-center justify-between border-b border-echo-border pb-3">
         <div className="flex items-center gap-2">
           <Activity size={14} className="text-blue-500 animate-pulse" />
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">Neural Sync // 状态矩阵</span>
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-echo-text-muted">Neural Sync // 状态矩阵</span>
         </div>
         <Terminal size={12} className="text-gray-400 dark:text-gray-700" />
       </div>
@@ -58,7 +58,7 @@ export const DataLinkBar: React.FC<StatusBarProps> = ({ metadata }) => {
             <div key={sIdx} className="space-y-3">
               <div className="flex items-center gap-2">
                 <Layers size={10} className="text-gray-400" />
-                <h4 className="text-[9px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+                <h4 className="text-[9px] font-bold uppercase tracking-widest text-echo-text-subtle">
                   {section.title}
                 </h4>
               </div>
@@ -69,9 +69,9 @@ export const DataLinkBar: React.FC<StatusBarProps> = ({ metadata }) => {
                     {row.map((cell, cIdx) => (
                       <div 
                         key={cIdx} 
-                        className="bg-gray-50/50 dark:bg-white/5 px-3 py-1.5 rounded-xl border border-gray-100 dark:border-white/5 hover:border-blue-200/50 transition-colors"
+                        className="bg-gray-50/50 dark:bg-white/5 px-3 py-1.5 rounded-xl border border-echo-border hover:border-blue-200/50 transition-colors"
                       >
-                        <span className="text-[11px] font-serif text-gray-600 dark:text-gray-300 leading-relaxed">
+                        <span className="text-[11px] font-serif text-echo-text-base leading-relaxed">
                           {cell}
                         </span>
                       </div>

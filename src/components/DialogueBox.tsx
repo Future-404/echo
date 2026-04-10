@@ -1,8 +1,9 @@
 import React, { useRef, useEffect, useState, useMemo, memo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MoreHorizontal, Copy, RotateCw, Maximize2, Minimize2, Volume2, VolumeX, GitBranch, User as UserIcon } from 'lucide-react'
+import { MoreHorizontal, Copy, RotateCw, Volume2, VolumeX, GitBranch, User as UserIcon } from 'lucide-react'
 import { useAppStore } from '../store/useAppStore'
 import MessageContent from './Dialogue/MessageContent'
+import { MissionPanel } from './Dialogue/MissionPanel'
 import { useDevice } from '../hooks/useMediaQuery'
 import { useDialog } from './GlobalDialog'
 import { ttsService } from '../utils/ttsService'
@@ -28,7 +29,8 @@ const MessageRow = memo<{
   onSpeak: (text: string, charId?: string, msgId?: string) => void;
   onStopAudio: () => void;
   onBranch: (idx: number) => void;
-}>(({ msg, idx, isAi, isLatest, isTyping, displayText, charForMsg, activePersona, userAvatarUrl, isMobile, isTouchDevice, showMenu, distanceFromEnd, ttsSettings, activeAudioId, onMenuToggle, onCopy, onRetry, onSpeak, onStopAudio, onBranch }) => {
+  onAvatarClick?: (e: React.MouseEvent<HTMLElement>) => void;
+}>(({ msg, idx, isAi, isLatest, isTyping, displayText, charForMsg, activePersona, userAvatarUrl, isMobile, isTouchDevice, showMenu, distanceFromEnd, ttsSettings, activeAudioId, onMenuToggle, onCopy, onRetry, onSpeak, onStopAudio, onBranch, onAvatarClick }) => {
   const avatar = isAi ? charForMsg?.image : userAvatarUrl;
   const name = isAi ? (charForMsg?.name ?? '') : (activePersona?.name || 'You');
   const isPlaying = activeAudioId === msg.content;
@@ -38,9 +40,16 @@ const MessageRow = memo<{
       {/* 头像部分 - 左右对等 */}
       <div className="echo-message-avatar flex-shrink-0 mt-1">
         {avatar ? (
-          <img src={avatar} alt={name} className="w-9 h-9 rounded-full object-cover border border-black/10 dark:border-white/10 shadow-sm" />
+          <img
+            src={avatar} alt={name}
+            onClick={isAi ? onAvatarClick : undefined}
+            className={`w-9 h-9 rounded-full object-cover border border-black/10 dark:border-white/10 shadow-sm ${isAi && onAvatarClick ? 'cursor-pointer hover:ring-2 hover:ring-echo-border-md transition-all' : ''}`}
+          />
         ) : (
-          <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-white/5 flex items-center justify-center border border-black/5 dark:border-white/5">
+          <div
+            onClick={isAi ? onAvatarClick : undefined}
+            className={`w-9 h-9 rounded-full bg-echo-surface flex items-center justify-center border border-black/5 dark:border-white/5 ${isAi && onAvatarClick ? 'cursor-pointer hover:ring-2 hover:ring-echo-border-md transition-all' : ''}`}
+          >
             <UserIcon size={16} className="text-gray-400" />
           </div>
         )}
@@ -65,7 +74,7 @@ const MessageRow = memo<{
                 initial={{ opacity: 0, scale: 0.9, x: isAi ? -10 : 10 }} 
                 animate={{ opacity: 1, scale: 1, x: 0 }} 
                 exit={{ opacity: 0, scale: 0.9 }}
-                className={`absolute top-0 flex items-center gap-1 bg-white/95 dark:bg-black/95 backdrop-blur-md border border-gray-200 dark:border-white/10 rounded-full px-2 py-1 shadow-lg z-20 ${isAi ? 'left-10' : 'right-10'}`}
+                className={`absolute top-0 flex items-center gap-1 bg-white/95 dark:bg-black/95 backdrop-blur-md border border-echo-border-md rounded-full px-2 py-1 shadow-lg z-20 ${isAi ? 'left-10' : 'right-10'}`}
               >
                 <button onClick={(e) => { e.stopPropagation(); onCopy(msg.content) }} title="复制内容" className={`${isMobile ? 'p-2.5' : 'p-1.5'} text-gray-500 hover:text-blue-500 transition-all`}><Copy size={isMobile ? 14 : 12} /></button>
                 {ttsSettings.enabled && (
@@ -84,9 +93,19 @@ const MessageRow = memo<{
           </AnimatePresence>
         </div>
 
-        <div className={`echo-message-bubble max-w-full`}>
+        <div className={`echo-message-bubble max-w-full relative`}>
           {isAi && isLatest && isTyping ? (
-            <div className="font-serif leading-relaxed text-gray-700 dark:text-gray-300 whitespace-pre-wrap text-left" style={{ fontSize: 'var(--app-font-size, 1.125rem)' }}>{displayText}</div>
+            <div className="flex flex-col gap-1">
+              <div className="font-serif leading-relaxed text-gray-700 dark:text-gray-300 whitespace-pre-wrap text-left" style={{ fontSize: 'var(--app-font-size, 1.125rem)' }}>
+                {displayText}
+                <motion.span
+                  animate={{ opacity: [0, 1, 0] }}
+                  transition={{ duration: 0.8, repeat: Infinity }}
+                  className="inline-block w-1.5 h-4 ml-1 align-middle"
+                  style={{ backgroundColor: 'var(--echo-typing-cursor-color, #3b82f6)' }}
+                />
+              </div>
+            </div>
           ) : isAi && msg.content.startsWith('错误') ? (
             <span className="text-red-500 dark:text-red-400 text-sm text-left block w-full">{msg.content}</span>
           ) : (
@@ -113,14 +132,15 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
   const { 
     messages, selectedCharacter, config, isLoading,
     setCurrentView, rollbackMessages, secondaryCharacter,
-    isDialogueFullscreen, setDialogueFullscreen,
     ttsSettings, branchGame, hasMoreOlder, fetchOlderMessages,
-    loadInitialMessages, currentAutoSlotId, activeAudioId
+    loadInitialMessages, currentAutoSlotId, activeAudioId, missions
   } = useAppStore()
   const { confirm, prompt } = useDialog()
   const { isMobile, isTouchDevice } = useDevice()
 
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [missionPopupOpen, setMissionPopupOpen] = useState(false)
+  const [missionPopupPos, setMissionPopupPos] = useState<{ top: number; left: number } | null>(null)
   const [activeMenuIndex, setActiveMenuIndex] = useState<number | null>(null)
   const [activeIdx, setActiveIdx] = useState<number | null>(null)
   const pressTimer = useRef<any>(null)
@@ -298,33 +318,11 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
   return (
     <motion.div
       initial={false}
-      animate={{ y: isLoading ? 50 : 0, opacity: isLoading ? 0 : 1 }}
+      animate={{ opacity: isLoading ? 0 : 1 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-      className={`echo-dialogue-container relative h-full ${isMobile ? 'max-w-full' : 'max-w-4xl'} glass-morphism ${isMobile ? 'rounded-2xl' : 'rounded-3xl'} shadow-lg flex flex-col overflow-hidden select-text z-30 mx-auto safe-area-padding`}
+      className="relative h-full w-full flex flex-col overflow-hidden select-text z-30"
       onClick={() => setActiveMenuIndex(null)}
     >
-      {/* 恢复原来的状态条布局 */}
-      <div className="echo-dialogue-toolbar flex-shrink-0 z-40 border-b border-gray-300/10 dark:border-white/5 bg-echo-base/90 dark:bg-black/90 backdrop-blur-xl" onClick={e => e.stopPropagation()}>
-        <div className={`flex justify-between items-center ${isMobile ? 'px-4 py-2' : 'px-6 py-1.5'} min-h-[44px]`}>
-          <span className="text-[9px] tracking-widest text-gray-400 uppercase font-serif">{selectedCharacter.name}</span>
-          <div className={`flex ${isMobile ? 'gap-2' : 'gap-3'}`}>
-            {[
-              { label: isDialogueFullscreen ? <Minimize2 size={12}/> : <Maximize2 size={12}/>, action: () => setDialogueFullscreen(!isDialogueFullscreen) },
-              { label: '存档', action: () => setCurrentView('save') },
-              { label: '读档', action: () => setCurrentView('load') },
-            ].map((btn, i) => (
-              <button
-                key={i}
-                onClick={(e) => { e.stopPropagation(); btn.action() }}
-                className={`${isMobile ? 'text-[10px] min-w-[44px] min-h-[44px] -my-2 px-2' : 'text-[9px]'} font-serif tracking-widest text-gray-500 dark:text-gray-400 hover:text-blue-500 active:scale-95 transition-all uppercase touch-manipulation flex items-center`}
-              >
-                {btn.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
       {/* 消息列表 - 优化留白平衡 */}
       <div
         ref={scrollRef}
@@ -333,11 +331,11 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {visibleMessages.length === 0 ? (
-          <div className="text-gray-400 dark:text-gray-500 font-serif leading-relaxed italic text-center mt-8" style={{ fontSize: 'var(--app-font-size, 1.125rem)' }}>
+          <div className="text-echo-text-subtle font-serif leading-relaxed italic text-center mt-8" style={{ fontSize: 'var(--app-font-size, 1.125rem)' }}>
             " 我是 {selectedCharacter.name}，很高兴见到你。 "
           </div>
         ) : (
-          <div className="space-y-8 pb-4">
+          <div className="flex flex-col pb-4" style={{ gap: 'var(--echo-message-gap, 2rem)' }}>
             {/* 真分页历史加载按钮 */}
             {hasMoreOlder && (
               <div className="flex justify-center pt-2">
@@ -388,6 +386,11 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
                     onSpeak={handleSpeak}
                     onStopAudio={handleStopAudio}
                     onBranch={() => handleBranch(msg)}
+                    onAvatarClick={isAi && isLatest ? (e) => {
+                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                      setMissionPopupPos({ top: rect.bottom + 8, left: rect.left })
+                      setMissionPopupOpen(v => !v)
+                    } : undefined}
                   />
                 </div>
               )
@@ -395,6 +398,37 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
           </div>
         )}
       </div>
+
+      {/* Mission 浮層，由最新 AI 頭像觸發 */}
+      <AnimatePresence>
+        {missionPopupOpen && missionPopupPos && (
+          <>
+            <div className="fixed inset-0 z-[199]" onClick={() => setMissionPopupOpen(false)} />
+            <motion.div
+              initial={{ opacity: 0, y: -6, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: 0.97 }}
+              transition={{ duration: 0.15 }}
+              style={{ position: 'fixed', top: missionPopupPos.top, left: missionPopupPos.left }}
+              className="w-72 z-[200] rounded-2xl border border-echo-border-md bg-white dark:bg-[#1a1a1a] shadow-2xl overflow-hidden"
+            >
+              {(config.enabledSkillIds || []).includes('quest') && missions.length > 0
+                ? <MissionPanel missions={missions} isQuestSkillEnabled={true} isMobile />
+                : (
+                  <div className="px-5 py-4 flex flex-col gap-1">
+                    <p className="text-xs font-serif text-echo-text-base">尚無進行中的任務</p>
+                    <p className="text-[10px] text-echo-text-subtle">
+                      {!(config.enabledSkillIds || []).includes('quest')
+                        ? '在角色名處開啟 Quest 技能後，AI 可自動追蹤任務進度'
+                        : 'AI 尚未觸發任何任務狀態'}
+                    </p>
+                  </div>
+                )
+              }
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       <div className={`absolute ${isMobile ? 'bottom-3 right-4' : 'bottom-4 right-6'} pointer-events-none`}>
         <div className={`${isMobile ? 'w-2 h-2' : 'w-1.5 h-1.5'} rounded-full transition-all duration-500 ${getStatusLight()}`} />

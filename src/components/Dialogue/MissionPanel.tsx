@@ -29,7 +29,7 @@ export const MissionPanel: React.FC<MissionPanelProps> = ({ missions, isQuestSki
               <span className={`${isMobile ? 'text-[10px]' : 'text-[9px]'} tracking-widest text-blue-400 font-mono uppercase flex-shrink-0`}>
                 Main
               </span>
-              <span className={`${isMobile ? 'text-sm' : 'text-xs'} font-serif text-gray-700 dark:text-gray-200 ${isMobile ? 'line-clamp-1' : 'truncate'} font-medium`}>
+              <span className={`${isMobile ? 'text-sm' : 'text-xs'} font-serif text-echo-text-primary ${isMobile ? 'line-clamp-1' : 'truncate'} font-medium`}>
                 {mainMission.title}
               </span>
             </>
@@ -69,7 +69,7 @@ export const MissionPanel: React.FC<MissionPanelProps> = ({ missions, isQuestSki
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <p className={`${isMobile ? 'text-xs' : 'text-[10px]'} font-serif text-gray-500 dark:text-gray-400 mt-1 mb-1 leading-normal border-l border-blue-500/20 pl-2 italic`}>
+            <p className={`${isMobile ? 'text-xs' : 'text-[10px]'} font-serif text-echo-text-muted mt-1 mb-1 leading-normal border-l border-blue-500/20 pl-2 italic`}>
               {mainMission.description}
             </p>
           </motion.div>

@@ -171,47 +171,6 @@ const MainMenu: React.FC = () => {
         </motion.div>
       </div>
 
-      {/* 右侧角色立绘区域 */}
-      <div className="hidden md:flex relative z-10 flex-1 items-end justify-center perspective-1000">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={selectedCharacter.id}
-            initial={{ x: 100, opacity: 0, scale: 1.05 }}
-            animate={{ x: 0, opacity: 1, scale: 1 }}
-            exit={{ x: -100, opacity: 0 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 120 }}
-            className="relative h-[95%] w-full flex items-end justify-center"
-          >
-            {/* 角色倒影/阴影 */}
-            <div className="absolute bottom-0 w-[60%] h-32 bg-black/40 blur-[60px] rounded-full -z-10" />
-            
-            <motion.img 
-              animate={{ y: [0, -15, 0] }}
-              transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-              src={selectedCharacter.image} 
-              className="h-full w-auto object-contain drop-shadow-[0_0_60px_rgba(255,255,255,0.15)]"
-              alt={selectedCharacter.name}
-            />
-
-            {/* 角色介绍浮窗：加毛玻璃背景 */}
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8 }}
-              className="absolute bottom-24 right-24 max-w-xs text-right"
-            >
-              <div className="backdrop-blur-md bg-black/20 border border-white/10 rounded-2xl px-5 py-4">
-                <div className="text-white/40 text-[10px] tracking-[0.4em] uppercase mb-2">Current Identity</div>
-                <div className="text-white text-2xl font-light tracking-widest mb-3">{selectedCharacter.name}</div>
-                <div className="text-white/50 text-xs font-light leading-relaxed tracking-wide italic">
-                  "{selectedCharacter.description.slice(0, 100)}..."
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        </AnimatePresence>
-      </div>
-
       {/* 扫光装饰线 */}
       <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/5 to-transparent" />
       <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/5 to-transparent" />

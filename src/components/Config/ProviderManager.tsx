@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Edit3, Trash2, Check, MessageSquare, Brain, Volume2, ChevronRight, ChevronDown, Cpu } from 'lucide-react'
+import { Plus, Edit2, Trash2, MessageSquare, Brain, Volume2, ChevronRight, Cpu, Activity, FileText, Shuffle } from 'lucide-react'
 import { useAppStore } from '../../store/useAppStore'
 import { useDialog } from '../GlobalDialog'
 
@@ -8,31 +8,53 @@ interface ProviderManagerProps {
   onEdit: (id: string) => void
 }
 
-// 模型分配行
-const AssignRow: React.FC<{
+// 核心分配卡片
+const AssignCard: React.FC<{
   label: string
   sub: string
+  description: string
   value: string
+  icon: React.ReactNode
   options: { id: string; name: string; model: string }[]
   onChange: (id: string) => void
-}> = ({ label, sub, value, options, onChange }) => (
-  <div className="flex items-center gap-3 py-2">
-    <div className="w-20 shrink-0">
-      <p className="text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{label}</p>
-      <p className="text-[7px] text-gray-300 dark:text-gray-600 uppercase tracking-widest">{sub}</p>
+  colorClass: string
+}> = ({ label, sub, description, value, icon, options, onChange, colorClass }) => {
+  const activeNode = options.find(o => o.id === value)
+  const activeName = activeNode?.name || '未指定'
+  
+  return (
+    <div className="relative group overflow-hidden p-4 rounded-2xl border border-echo-border bg-white/40 dark:bg-white/[0.03] hover:bg-white/60 dark:hover:bg-white/5 transition-all">
+      <div className={`absolute top-0 right-0 w-16 h-16 -mr-4 -mt-4 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity ${colorClass}`}>
+        {icon}
+      </div>
+      
+      <div className="flex flex-col gap-2 relative z-10">
+        <div className="flex items-center gap-2">
+          <div className={`p-1.5 rounded-lg bg-current opacity-20 ${colorClass}`} />
+          <div className="flex flex-col">
+            <span className="text-[10px] font-bold text-echo-text-primary tracking-wide">{label} ({sub})</span>
+            <span className="text-[7px] text-echo-text-muted uppercase font-mono">{description}</span>
+          </div>
+        </div>
+
+        <select
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          className="w-full bg-transparent border-none p-0 text-[11px] font-serif text-echo-text-base focus:outline-none cursor-pointer appearance-none"
+        >
+          <option value="">— 点击分配 —</option>
+          {options.map(p => (
+            <option key={p.id} value={p.id}>{p.name}</option>
+          ))}
+        </select>
+        
+        <p className="text-[8px] font-mono text-blue-500/60 truncate uppercase tracking-tighter">
+          Current: {activeName}
+        </p>
+      </div>
     </div>
-    <select
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      className="flex-1 bg-white/60 dark:bg-white/5 border-0.5 border-gray-100 dark:border-white/5 rounded-xl px-3 py-1.5 text-[10px] text-gray-600 dark:text-gray-300 focus:outline-none focus:border-blue-400/50 transition-colors"
-    >
-      <option value="">— 未指定 —</option>
-      {options.map(p => (
-        <option key={p.id} value={p.id}>{p.name} · {p.model || 'default'}</option>
-      ))}
-    </select>
-  </div>
-)
+  )
+}
 
 const ProviderManager: React.FC<ProviderManagerProps> = ({ onEdit }) => {
   const { confirm } = useDialog()
@@ -42,13 +64,13 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ onEdit }) => {
   } = useAppStore()
   
   const [activeTab, setActiveTab] = useState<'chat' | 'embedding' | 'tts'>('chat')
-  const [assignOpen, setAssignOpen] = useState(true)
-  const providers = (config?.providers || []).filter(p => p.type === activeTab || (!p.type && activeTab === 'chat'))
-
+  
   const mc = config.modelConfig
   const chatProviders = (config.providers || []).filter(p => p.type === 'chat' || !p.type)
   const embProviders = (config.providers || []).filter(p => p.type === 'embedding')
   const ttsProviders = (config.providers || []).filter(p => p.type === 'tts')
+
+  const providers = (config?.providers || []).filter(p => p.type === activeTab || (!p.type && activeTab === 'chat'))
 
   const getActiveId = () => {
     if (activeTab === 'chat') return mc?.chatProviderId || config.activeProviderId
@@ -62,72 +84,73 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ onEdit }) => {
     else setModelConfig({ ttsProviderId: id })
   }
 
-  const tabs = [
-    { id: 'chat', label: 'LLM', icon: <MessageSquare size={12} /> },
-    { id: 'embedding', label: 'Embed', icon: <Brain size={12} /> },
-    { id: 'tts', label: 'TTS', icon: <Volume2 size={12} /> },
-  ]
-
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col h-full bg-transparent">
-
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col h-full bg-transparent px-6 pb-10">
+      
       {/* ── 模型分配 ── */}
-      <div className="px-6 pt-5 pb-3 border-b-0.5 border-gray-100 dark:border-white/5">
-        <button
-          onClick={() => setAssignOpen(v => !v)}
-          className="w-full flex items-center justify-between mb-1"
-        >
-          <div className="flex items-center gap-2">
-            <Cpu size={11} className="text-blue-400" />
-            <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">模型分配</span>
+      <section className="mt-4 mb-8">
+        <div className="flex items-center gap-2 mb-4 px-2">
+          <Activity size={12} className="text-echo-text-dim" />
+          <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-echo-text-muted">模型映射 // ALLOCATION</h3>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-3">
+          <AssignCard 
+            label="对话" sub="Chat" description="默认对话模型建议高级模型" colorClass="text-blue-500"
+            icon={<MessageSquare size={48} />}
+            value={mc?.chatProviderId || ''} options={chatProviders}
+            onChange={id => { setActiveProvider(id); setModelConfig({ chatProviderId: id }) }}
+          />
+          <AssignCard 
+            label="摘要 " sub="Summary" description="RAG分段模型建议轻量模型" colorClass="text-emerald-500"
+            icon={<FileText size={48} />}
+            value={mc?.summaryProviderId || ''} options={chatProviders}
+            onChange={id => setModelConfig({ summaryProviderId: id })}
+          />
+          <AssignCard 
+            label="路由 " sub="Router" description="多角色路由建议轻量模型" colorClass="text-amber-500"
+            icon={<Shuffle size={48} />}
+            value={mc?.routerProviderId || ''} options={chatProviders}
+            onChange={id => setModelConfig({ routerProviderId: id })}
+          />
+          <AssignCard 
+            label="嵌入" sub="Embed" description="长效记忆与知识库搜索" colorClass="text-purple-500"
+            icon={<Brain size={48} />}
+            value={mc?.embeddingProviderId || ''} options={embProviders}
+            onChange={id => setModelConfig({ embeddingProviderId: id })}
+          />
+          <div className="col-span-2">
+            <AssignCard 
+              label="语音" sub="TTS" description="角色语音合成与朗读" colorClass="text-orange-500"
+              icon={<Volume2 size={48} />}
+              value={mc?.ttsProviderId || ''} options={ttsProviders}
+              onChange={id => setModelConfig({ ttsProviderId: id })}
+            />
           </div>
-          {assignOpen ? <ChevronDown size={12} className="text-gray-300" /> : <ChevronRight size={12} className="text-gray-300" />}
-        </button>
+        </div>
+      </section>
 
-        <AnimatePresence initial={false}>
-          {assignOpen && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden"
-            >
-              <div className="pt-1 divide-y-0.5 divide-gray-50 dark:divide-white/5">
-                <AssignRow label="主对话" sub="Chat" value={mc?.chatProviderId || ''} options={chatProviders} onChange={id => { setActiveProvider(id); setModelConfig({ chatProviderId: id }) }} />
-                <AssignRow label="摘要" sub="Summary" value={mc?.summaryProviderId || ''} options={chatProviders} onChange={id => setModelConfig({ summaryProviderId: id })} />
-                <AssignRow label="路由" sub="Router" value={mc?.routerProviderId || ''} options={chatProviders} onChange={id => setModelConfig({ routerProviderId: id })} />
-                <AssignRow label="嵌入" sub="Embedding" value={mc?.embeddingProviderId || ''} options={embProviders} onChange={id => setModelConfig({ embeddingProviderId: id })} />
-                <AssignRow label="语音" sub="TTS" value={mc?.ttsProviderId || ''} options={ttsProviders} onChange={id => setModelConfig({ ttsProviderId: id })} />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* ── 页签 ── */}
-      <div className="px-6 pt-4 pb-2 flex gap-3 overflow-x-auto no-scrollbar border-b-0.5 border-gray-100 dark:border-white/5">
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
-            className={`pb-3 px-2 text-[10px] uppercase tracking-[0.2em] font-bold transition-all relative ${activeTab === tab.id ? 'text-blue-500' : 'text-gray-400'}`}
-          >
-            <span className="flex items-center gap-2">{tab.icon} {tab.label}</span>
-            {activeTab === tab.id && <motion.div layoutId="tab-underline" className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 rounded-full" />}
-          </button>
-        ))}
-      </div>
-
-      <div className="p-6 space-y-4">
-        <div className="flex justify-between items-center px-2">
-          <label className="text-[8px] font-mono tracking-widest text-gray-400 uppercase italic">Nodes // {activeTab}</label>
+      {/* ── 节点列表 ── */}
+      <section className="flex-1 flex flex-col min-h-0">
+        <div className="flex items-center justify-between mb-4 px-2 border-t border-echo-border pt-6">
+          <div className="flex gap-4">
+            {(['chat', 'embedding', 'tts'] as const).map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`text-[9px] uppercase tracking-widest font-bold transition-all ${activeTab === tab ? 'text-echo-text-primary underline underline-offset-8 decoration-2 decoration-blue-500' : 'text-echo-text-dim'}`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+          
           <button 
             onClick={() => {
               const newId = `provider-${Date.now()}`;
               addProvider({ 
                 id: newId, 
-                name: 'New Node', 
+                name: '新 API 节点', 
                 apiKey: '', 
                 endpoint: 'https://api.openai.com/v1', 
                 model: activeTab === 'embedding' ? 'text-embedding-3-small' : 'gpt-4o',
@@ -135,50 +158,54 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ onEdit }) => {
               });
               onEdit(newId);
             }} 
-            className="w-7 h-7 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500 hover:bg-blue-500 hover:text-white transition-all shadow-sm"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500 text-white text-[9px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:scale-105 transition-all"
           >
-            <Plus size={14} strokeWidth={2.5} />
+            <Plus size={12} strokeWidth={3} /> 添加节点
           </button>
         </div>
 
-        <div className="space-y-2">
+        <div className="flex-1 overflow-y-auto no-scrollbar space-y-3 pb-8">
           <AnimatePresence mode="popLayout">
             {providers.length === 0 ? (
-              <div className="py-16 flex flex-col items-center gap-3 opacity-20">
-                <Plus size={32} strokeWidth={0.5} />
-                <p className="text-[8px] uppercase tracking-widest">点击上方 + 号添加节点</p>
+              <div className="py-12 border-2 border-dashed border-echo-border rounded-[2rem] flex flex-col items-center justify-center gap-3 opacity-20">
+                <Cpu size={32} strokeWidth={1} />
+                <p className="text-[10px] font-serif italic tracking-widest">请点击右上角添加 API 节点</p>
               </div>
             ) : (
               providers.map(p => (
                 <motion.div 
-                  layout key={p.id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
-                  className={`group relative p-4 rounded-2xl border transition-all flex items-center gap-4 ${getActiveId() === p.id ? 'border-blue-400/50 bg-blue-500/5 dark:bg-white/5' : 'border-gray-100 dark:border-white/5 bg-white/30 dark:bg-transparent hover:border-gray-200'}`}
+                  layout key={p.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                  className={`group relative p-5 rounded-2xl border transition-all flex items-center gap-4 ${getActiveId() === p.id ? 'border-blue-500/30 bg-blue-500/[0.03]' : 'border-echo-border bg-white/20 dark:bg-white/[0.01] hover:border-gray-300 dark:hover:border-gray-700'}`}
                 >
                   <div onClick={() => handleSetActive(p.id)} className="flex-1 cursor-pointer min-w-0">
-                    <h4 className="text-xs font-serif text-gray-700 dark:text-gray-200 flex items-center gap-2 truncate">
-                      {p.name}
-                      {getActiveId() === p.id && <div className="w-1 h-1 rounded-full bg-blue-500 animate-pulse" />}
-                    </h4>
-                    <p className="text-[7px] text-gray-400 uppercase mt-0.5 tracking-tighter truncate font-mono">{p.model || 'DEFAULT'}</p>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="text-sm font-serif text-echo-text-base truncate">{p.name}</h4>
+                      {getActiveId() === p.id && (
+                        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-500 text-[7px] font-bold uppercase tracking-tighter">
+                          <Activity size={8} className="animate-pulse" /> In Use
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-[8px] font-mono text-echo-text-muted uppercase tracking-widest truncate">{p.model || 'DEFAULT_MODEL'}</p>
                   </div>
-                  <div className="flex gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => onEdit(p.id)} className="p-2 text-gray-500 hover:text-blue-500 transition-colors"><Edit3 size={12} /></button>
+
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => onEdit(p.id)} className="p-2.5 rounded-full bg-white dark:bg-white/5 border border-echo-border text-gray-500 hover:text-blue-500 transition-all"><Edit2 size={12} /></button>
                     <button onClick={async () => { 
-                      const ok = await confirm('确定要删除该 API 配置节点吗？这将导致关联模型失效。', { 
-                        title: '确认删除节点？', 
-                        confirmText: '确认删除', 
+                      const ok = await confirm('确定要删除该 API 节点吗？', { 
+                        title: '删除节点', 
+                        confirmText: '删除', 
                         danger: true 
                       });
                       if(ok) removeProvider(p.id) 
-                    }} className="p-2 text-gray-400 hover:text-red-500 transition-colors"><Trash2 size={12} /></button>
+                    }} className="p-2.5 rounded-full bg-white dark:bg-white/5 border border-echo-border text-gray-400 hover:text-red-500 transition-all"><Trash2 size={12} /></button>
                   </div>
-                  <ChevronRight size={10} className="text-gray-300 group-hover:translate-x-1 transition-transform" />
                 </motion.div>
               ))
             )}
           </AnimatePresence>
         </div>
-      </div>
+      </section>
     </motion.div>
   )
 }

@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   /* 全局安全区域变量 */
@@ -8,11 +9,15 @@
   /* 基础配色 */
   --echo-base: #fdfdfd;
   --echo-white: #ffffff;
-  --echo-border: rgba(0, 0, 0, 0.08);
+  --echo-border: rgba(0, 0, 0, 0.06);
+  --echo-border-md: rgba(0, 0, 0, 0.12);
+  --echo-surface: rgba(0, 0, 0, 0.02);
+  --echo-surface-md: rgba(0, 0, 0, 0.04);
+  --echo-accent: #3b82f6;
   
-  /* 对话框背景（可通过 Custom CSS 覆盖） */
-  --dialogue-bg: rgba(255, 255, 255, 0.75);
-  --dialogue-backdrop: blur(24px) saturate(1.4);
+  /* 对话框背景 */
+  --dialogue-bg: rgba(255, 255, 255, 0.85);
+  --dialogue-backdrop: blur(40px) saturate(1.8);
 
   /* 对话文本配色 */
   --dialogue-text-narration: #666666;
@@ -20,7 +25,7 @@
   --dialogue-text-thought: #8e8e8e;
   --dialogue-text-action: #4a5568;
 
-  /* 状态条颜色（可通过 Custom CSS 覆盖任意 key） */
+  /* 状态条颜色 */
   --stat-color-love: #f43f5e;
   --stat-color-hate: #9333ea;
   --stat-color-hp: #ef4444;
@@ -28,25 +33,33 @@
   --stat-color-favor: #f59e0b;
   --stat-color-default: #94a3b8;
 
-  /* 双角色颜色 */
-  --char-a-color: #60a5fa;
-  --char-b-color: #c084fc;
+  /* 语义文字颜色 */
+  --echo-text-primary: #111827;
+  --echo-text-base: #374151;
+  --echo-text-muted: #6b7280;
+  --echo-text-subtle: #9ca3af;
+  --echo-text-dim: #d1d5db;
 
-  /* DIY 布局变量默认值 */
-  --echo-dialogue-max-width: 56rem;
-  --echo-dialogue-padding-x: 0.5rem;
-  --echo-input-bottom-offset: 0px;
+  /* --- UI 细节变量 (DIY 重点) --- */
+  --echo-header-primary: #374151;
+  --echo-header-secondary: #9ca3af;
+
   --echo-avatar-size: 2.25rem;
+  
+  --echo-input-radius: 2rem;
+  --echo-input-bg: rgba(0, 0, 0, 0.02);
+  --echo-input-focus-bg: rgba(255, 255, 255, 0.5);
+  --echo-input-border: rgba(0, 0, 0, 0.05);
+  --echo-input-focus-border: rgba(59, 130, 246, 0.3);
+  --echo-input-bottom-offset: 0px;
+  
+  --echo-send-btn-bg: #3b82f6;
+  --echo-send-btn-text: #ffffff;
+  --echo-stop-btn-text: #ef4444;
 
-  /* 全屏模式开关：设为 1 即可让对话容器铺满全屏（参考赛博沉浸主题）
-     用法：:root { --echo-fullscreen: 1; }
-     --------------------------------------------------------
-     --echo-fullscreen-top   : 对话容器距顶部偏移，默认 64px（header 高度）
-     --echo-fullscreen-bg    : 全屏时对话容器背景色
-  */
-  --echo-fullscreen: 0;
-  --echo-fullscreen-top: 64px;
-  --echo-fullscreen-bg: var(--dialogue-bg);
+  --echo-message-gap: 2rem;
+  --echo-message-bubble-radius: 1rem;
+  --echo-typing-cursor-color: #3b82f6;
 
   /* z-index 层级 */
   --z-dialogue: 30;
@@ -55,44 +68,83 @@
   --z-overlay: 101;
 }
 
-/* 深色模式适配 */
 .dark {
-  --echo-base: #0a0a0a;
-  --echo-white: #121212;
-  --echo-border: rgba(255, 255, 255, 0.1);
+  --echo-base: #080808;
+  --echo-white: #111111;
+  --echo-border: rgba(255, 255, 255, 0.05);
+  --echo-border-md: rgba(255, 255, 255, 0.10);
+  --echo-surface: rgba(255, 255, 255, 0.02);
+  --echo-surface-md: rgba(255, 255, 255, 0.05);
 
-  --dialogue-bg: rgba(10, 10, 10, 0.80);
-  --dialogue-backdrop: blur(24px) saturate(1.2);
+  --dialogue-bg: rgba(8, 8, 8, 0.85);
+  --dialogue-backdrop: blur(40px) saturate(1.5);
   
-  --dialogue-text-narration: #999999;
-  --dialogue-text-dialogue: #e2e8f0;
-  --dialogue-text-thought: #a0aec0;
-  --dialogue-text-action: #cbd5e0;
+  --dialogue-text-narration: #888888;
+  --dialogue-text-dialogue: #f1f5f9;
+  --dialogue-text-thought: #94a3b8;
+
+  --echo-text-primary: #f9fafb;
+  --echo-text-base: #f3f4f6;
+  --echo-text-muted: #9ca3af;
+  --echo-text-subtle: #6b7280;
+  --echo-text-dim: #4b5563;
+
+  --echo-header-primary: #ffffff;
+  --echo-header-secondary: #d1d5db;
+
+  --echo-input-bg: rgba(255, 255, 255, 0.02);
+  --echo-input-focus-bg: rgba(0, 0, 0, 0.5);
+  --echo-input-border: rgba(255, 255, 255, 0.05);
+  --echo-input-focus-border: rgba(59, 130, 246, 0.3);
 }
 
 @theme {
   --color-echo-base: var(--echo-base);
   --color-echo-white: var(--echo-white);
   --color-echo-border: var(--echo-border);
+  --color-echo-border-md: var(--echo-border-md);
+  --color-echo-surface: var(--echo-surface);
+  --color-echo-surface-md: var(--echo-surface-md);
+  --color-echo-text-primary: var(--echo-text-primary);
+  --color-echo-text-base: var(--echo-text-base);
+  --color-echo-text-muted: var(--echo-text-muted);
+  --color-echo-text-subtle: var(--echo-text-subtle);
+  --color-echo-text-dim: var(--echo-text-dim);
 }
 
 @layer base {
   body {
     @apply bg-echo-base text-gray-900 dark:text-gray-100 antialiased;
-    font-feature-settings: "cv11", "ss01";
+    font-feature-settings: "cv11", "ss01", "cv01";
     background-color: var(--echo-base) !important;
     margin: 0;
     padding: 0;
   }
+
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-200 dark:bg-gray-800 rounded-full transition-colors;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-300 dark:bg-gray-700;
+  }
+
+  ::placeholder {
+    color: #6b7280;
+    opacity: 1;
+  }
+  .dark ::placeholder {
+    color: #9ca3af;
+  }
 }
 
 @layer components {
-  /* 兼容 iOS 安全区域的工具类 */
-  .safe-area-padding {
-    padding-left: max(env(safe-area-inset-left), 0px);
-    padding-right: max(env(safe-area-inset-right), 0px);
-  }
-
   .safe-area-top {
     padding-top: var(--sat);
   }
@@ -101,13 +153,11 @@
     padding-bottom: var(--sab);
   }
 
-  /* 触摸优化 */
   .touch-manipulation {
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
   }
 
-  /* 隐藏滚动条但保留滚动功能 */
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
@@ -116,29 +166,12 @@
     scrollbar-width: none;
   }
 
-  /* 毛玻璃对话框（可通过 --dialogue-bg / --dialogue-backdrop 覆盖） */
   .glass-morphism {
     background: var(--dialogue-bg);
     backdrop-filter: var(--dialogue-backdrop);
     -webkit-backdrop-filter: var(--dialogue-backdrop);
-    border: 1px solid var(--echo-border);
   }
 
-  /* --- ECHO 语义化组件 (DIY 锚点) --- */
-  .echo-dialogue-container {
-    max-width: var(--echo-dialogue-max-width) !important;
-    z-index: var(--z-dialogue) !important;
-  }
-  
-  .echo-dialogue-toolbar {
-    z-index: var(--z-toolbar) !important;
-  }
-  
-  .echo-message-list {
-    padding-left: var(--echo-dialogue-padding-x) !important;
-    padding-right: var(--echo-dialogue-padding-x) !important;
-  }
-  
   .echo-message-avatar img,
   .echo-message-avatar > div {
     width: var(--echo-avatar-size) !important;
@@ -158,7 +191,6 @@
   }
 }
 
-/* Markdown 内容样式补全 */
 .md-body {
   @apply text-sm leading-relaxed;
 }

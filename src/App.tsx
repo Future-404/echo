@@ -24,8 +24,6 @@ import Header from './components/Header'
 import DialogueBox from './components/DialogueBox'
 import ChatInput from './components/ChatInput'
 import { MissionPanel } from './components/Dialogue/MissionPanel'
-import CharacterAvatar from './components/CharacterAvatar'
-import MultiCharAvatar from './components/MultiCharAvatar'
 import { HtmlGreeting } from './components/HtmlGreeting'
 import { GlobalDialog } from './components/GlobalDialog'
 
@@ -42,7 +40,7 @@ const App: React.FC = () => {
   const { 
     isLoading, setIsLoading, currentView, syncImagesFromDb, _hasHydrated, 
     multiCharMode, selectedCharacter, secondaryCharacter,
-    isDialogueFullscreen, config, messages, missions
+    config, messages, missions
   } = useAppStore()
   const setSelectedCharacter = useAppStore(s => s.setSelectedCharacter)
 
@@ -124,7 +122,7 @@ const App: React.FC = () => {
   const { isKeyboardVisible, viewportHeight, offsetTop } = useKeyboard()
   
   // 4. 抽离的对话逻辑
-  const { displayText, sendMessage, isTyping, skipGreeting, activeSpeakerId } = useChat()
+  const { displayText, sendMessage, isTyping, skipGreeting } = useChat()
   
   // 5. 抽离的背景交互逻辑
   const { handleStart, handleMove, handleStop } = useInteraction(isLoading, currentView)
@@ -168,7 +166,6 @@ const App: React.FC = () => {
       className="echo-app-root relative w-screen h-[100dvh] overflow-hidden font-sans cursor-crosshair select-none transition-colors duration-700"
       data-view={currentView}
       data-multi-char={multiCharMode}
-      data-fullscreen={isDialogueFullscreen}
       onMouseDown={handleStart}
       onMouseMove={handleMove}
       onMouseUp={handleStop}
@@ -196,7 +193,6 @@ const App: React.FC = () => {
 
       {/* UI 控制层 */}
       <Suspense fallback={null}>
-        <ConfigPanel />
         <CharacterSelection />
         <MultiCharSelection />
         
@@ -205,6 +201,7 @@ const App: React.FC = () => {
           {currentView === 'save' && <SaveScreen key="save" />}
           {currentView === 'load' && <LoadScreen key="load" />}
           {currentView === 'help' && <HelpScreen key="help" />}
+          {currentView === 'config' && <ConfigPanel key="config" />}
         </AnimatePresence>
       </Suspense>
 
@@ -227,13 +224,8 @@ const App: React.FC = () => {
             <FragmentNotification key="fragments" />
             
             {/* 对话框区域 */}
-            <div className="echo-dialogue-area flex-1 min-h-0 flex flex-col items-center pointer-events-auto px-4 pt-4">
-              {!isDialogueFullscreen && (
-                <div className="echo-char-avatar-wrapper mb-4 flex-shrink-0">
-                  {multiCharMode ? <MultiCharAvatar activeSpeakerId={activeSpeakerId} /> : <CharacterAvatar />}
-                </div>
-              )}
-              <div className="echo-dialogue-wrapper w-full flex-1 min-h-0 mb-4">
+            <div className="echo-dialogue-area flex-1 min-h-0 flex flex-col pointer-events-auto">
+              <div className="echo-dialogue-wrapper w-full flex-1 min-h-0">
                 <DialogueBox 
                   displayText={displayText} 
                   isTyping={isTyping} 
@@ -289,9 +281,9 @@ const App: React.FC = () => {
               onClick={e => e.stopPropagation()}
               className="w-full max-w-lg bg-echo-white dark:bg-[#0d0d0d] rounded-[2rem] border-0.5 border-echo-border shadow-2xl overflow-hidden"
             >
-              <div className="p-6 border-b border-gray-100 dark:border-white/5">
+              <div className="p-6 border-b border-echo-border">
                 <p className="text-[9px] tracking-[0.5em] text-gray-400 uppercase">选择开场白 // Select Greeting</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{selectedCharacter.name}</p>
+                <p className="text-xs text-echo-text-muted mt-1">{selectedCharacter.name}</p>
               </div>
               <div className="overflow-y-auto max-h-[60vh] no-scrollbar divide-y divide-gray-100 dark:divide-white/5">
                 {[selectedCharacter.greeting, ...(selectedCharacter.alternateGreetings || [])].map((g, i) => (
@@ -302,18 +294,18 @@ const App: React.FC = () => {
                         setSelectedCharacter(selectedCharacter, g ?? undefined)
                         setShowGreetingPicker(false)
                       }}
-                      className="w-full text-left px-6 py-4 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+                      className="w-full text-left px-6 py-4 hover:bg-echo-surface transition-colors"
                     >
                       <span className="text-[8px] tracking-widest text-gray-400 uppercase block mb-1">
                         {i === 0 ? '默认开场白' : `备选 ${i}`}
                       </span>
-                      <p className="text-xs text-gray-600 dark:text-gray-300 font-serif leading-relaxed line-clamp-3">
+                      <p className="text-xs text-echo-text-base font-serif leading-relaxed line-clamp-3">
                         {g?.replace(/<[^>]+>/g, '').slice(0, 120) || '（空）'}
                       </p>
                     </button>
                   ))}
               </div>
-              <div className="p-4 border-t border-gray-100 dark:border-white/5">
+              <div className="p-4 border-t border-echo-border">
                 <button onClick={() => { setShowGreetingPicker(false); skipGreeting() }} className="w-full py-2 text-[9px] tracking-widest uppercase text-gray-400 hover:text-gray-600 transition-colors">
                   使用默认
                 </button>

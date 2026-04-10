@@ -6,6 +6,7 @@ import type { CharacterCard } from '../types/chat'
 import CharacterEditor from './Config/CharacterEditor'
 import { extractPersonaFromPng } from '../utils/pngParser'
 import { exportCharacterAsJSON, exportCharacterAsPNG } from '../logic/characterExporter'
+import { readFileAsText, readFileAsDataURL } from '../utils/fileUtils'
 
 const CharacterSelection: React.FC = () => {
   const { currentView, setCurrentView, characters, setSelectedCharacter, addCharacter, messages } = useAppStore()
@@ -79,10 +80,8 @@ const CharacterSelection: React.FC = () => {
         return
       }
 
-      const reader = new FileReader()
-      reader.onload = async (event) => {
-        try {
-          const base64Image = event.target?.result as string
+      const base64Image = await readFileAsDataURL(file)
+      try {
         const charName = embeddedData.name
 
         const personality = [
@@ -143,27 +142,23 @@ const CharacterSelection: React.FC = () => {
           extensions
         })
         showToast('success', `「${charName}」导入成功`)
-        } catch {
-          showToast('error', '导入失败：处理角色数据时出错')
-        }
+      } catch {
+        showToast('error', '导入失败：处理角色数据时出错')
       }
-      reader.readAsDataURL(file)
       e.target.value = ''
       return
     }
 
     // 2. 如果是纯 JSON 文件
     if (file.type === 'application/json' || file.name.endsWith('.json')) {
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        try {
-          const rawJson = JSON.parse(event.target?.result as string)
-          const json = rawJson.data || rawJson
-          const items = Array.isArray(json) ? json : [json]
-          
-          let importedCount = 0;
-          items.forEach(item => {
-            const data = item.data || item;
+      try {
+        const rawJson = JSON.parse(await readFileAsText(file))
+        const json = rawJson.data || rawJson
+        const items = Array.isArray(json) ? json : [json]
+        
+        let importedCount = 0;
+        items.forEach(item => {
+          const data = item.data || item;
             if (data.name) {
               const charName = data.name;
               const greeting = data.first_mes || data.first_message || data.greeting || ''
@@ -230,8 +225,6 @@ const CharacterSelection: React.FC = () => {
             showToast('success', `成功导入 ${importedCount} 个角色`)
           }
         } catch { showToast('error', 'JSON 解析失败，格式可能不正确') }
-      }
-      reader.readAsText(file)
       e.target.value = ''
     }
   }
@@ -249,9 +242,9 @@ const CharacterSelection: React.FC = () => {
 
           <div className="relative z-10 w-full max-w-7xl cursor-default pt-[var(--sat)]">
             <header className="mb-12 md:mb-20 text-center">
-              <motion.h2 initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-[12px] md:text-[14px] tracking-[0.8em] text-gray-500 dark:text-gray-400 uppercase mb-4 font-medium">Neural Identifiers</motion.h2>
+              <motion.h2 initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-[12px] md:text-[14px] tracking-[0.8em] text-echo-text-muted uppercase mb-4 font-medium">Neural Identifiers</motion.h2>
               <div className="w-12 h-[1px] bg-gray-400 dark:bg-gray-700 mx-auto" />
-              <p className="mt-4 text-[8px] text-gray-400 dark:text-gray-500 uppercase tracking-[0.4em] opacity-80">Click card to select // 点击卡片选择角色</p>
+              <p className="mt-4 text-[8px] text-echo-text-subtle uppercase tracking-[0.4em] opacity-80">Click card to select // 点击卡片选择角色</p>
             </header>
 
             <div className="flex gap-8 md:gap-12 overflow-x-auto no-scrollbar pb-20 px-4 md:px-10 snap-x relative after:content-[''] after:w-4 after:md:w-10 after:flex-shrink-0">
@@ -268,34 +261,34 @@ const CharacterSelection: React.FC = () => {
                       setSelectedCharacter(char)
                     }
                   }}
-                  className="snap-center flex-shrink-0 w-64 md:w-72 h-[420px] md:h-[480px] bg-white/80 dark:bg-white/5 backdrop-blur-2xl border-0.5 border-gray-200 dark:border-white/10 rounded-[3rem] cursor-pointer group flex flex-col transition-all shadow-xl hover:shadow-2xl relative select-none"
+                  className="snap-center flex-shrink-0 w-64 md:w-72 h-[420px] md:h-[480px] bg-white/80 dark:bg-white/5 backdrop-blur-2xl border-0.5 border-echo-border-md rounded-[3rem] cursor-pointer group flex flex-col transition-all shadow-xl hover:shadow-2xl relative select-none"
                 >
                   <div className="absolute top-6 right-6 flex flex-col gap-2 z-20">
                     <button 
                       onClick={(e) => { e.stopPropagation(); setEditingId(char.id); }}
-                      className="p-3 rounded-full hover:bg-black/5 dark:hover:bg-white/10 opacity-40 hover:opacity-100 group-hover:opacity-100 transition-all"
+                      className="p-3 rounded-full hover:bg-black/5 dark:hover:bg-white/10 opacity-60 hover:opacity-100 group-hover:opacity-100 transition-all"
                       title="编辑角色"
                     >
-                      <Edit2 size={16} strokeWidth={1.5} className="text-gray-500 dark:text-gray-400" />
+                      <Edit2 size={16} strokeWidth={1.5} className="text-gray-600 dark:text-gray-300" />
                     </button>
                     <button 
                       onClick={(e) => { e.stopPropagation(); setExportMenu(char); }}
-                      className="p-3 rounded-full hover:bg-black/5 dark:hover:bg-white/10 opacity-40 hover:opacity-100 group-hover:opacity-100 transition-all"
+                      className="p-3 rounded-full hover:bg-black/5 dark:hover:bg-white/10 opacity-60 hover:opacity-100 group-hover:opacity-100 transition-all"
                       title="导出角色"
                     >
-                      <Download size={16} strokeWidth={1.5} className="text-gray-500 dark:text-gray-400" />
+                      <Download size={16} strokeWidth={1.5} className="text-gray-600 dark:text-gray-300" />
                     </button>
                   </div>
                   <div className="flex-1 flex flex-col items-center justify-center p-8 pointer-events-none">
                     <div className="w-28 h-28 md:w-32 md:h-32 mb-10 relative">
-                        <div className="absolute inset-0 rounded-full border-0.5 border-gray-100 dark:border-white/5 scale-125 animate-pulse" />
+                        <div className="absolute inset-0 rounded-full border-0.5 border-echo-border scale-125 animate-pulse" />
                         <img src={char.image} alt={char.name} className="w-full h-full object-cover rounded-full grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-1000 ease-out" />
                     </div>
                     <h3 className="text-lg md:text-xl font-serif text-gray-600 dark:text-gray-200 tracking-widest group-hover:text-black dark:group-hover:text-white transition-colors">{char.name}</h3>
                     <div className="mt-3 w-4 h-[0.5px] bg-gray-300 dark:bg-gray-600 group-hover:w-12 group-hover:bg-gray-500 transition-all duration-500" />
                   </div>
                   <div className="px-10 pb-12 pointer-events-none">
-                    <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center leading-relaxed tracking-widest uppercase italic pointer-events-none line-clamp-3">{char.description}</p>
+                    <p className="text-[10px] text-echo-text-subtle text-center leading-relaxed tracking-widest uppercase italic pointer-events-none line-clamp-3">{char.description}</p>
                   </div>
                 </motion.div>
               ))}
@@ -306,10 +299,10 @@ const CharacterSelection: React.FC = () => {
                 onClick={handleCreateBlank}
                 className="snap-center flex-shrink-0 w-64 md:w-72 h-[420px] md:h-[480px] border border-dashed border-gray-300 dark:border-gray-700 rounded-[3rem] flex flex-col items-center justify-center cursor-pointer group transition-all"
               >
-                <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-white/5 flex items-center justify-center mb-6 group-hover:bg-white dark:group-hover:bg-gray-800 transition-colors shadow-inner">
-                    <Plus strokeWidth={1} className="text-gray-400 dark:text-gray-500 group-hover:text-gray-800 dark:group-hover:text-gray-200" />
+                <div className="w-16 h-16 rounded-full bg-echo-surface flex items-center justify-center mb-6 group-hover:bg-white dark:group-hover:bg-gray-800 transition-colors shadow-inner">
+                    <Plus strokeWidth={1} className="text-echo-text-subtle group-hover:text-gray-800 dark:group-hover:text-gray-200" />
                 </div>
-                <span className="text-[10px] tracking-[0.4em] text-gray-400 dark:text-gray-500 uppercase group-hover:text-gray-700 dark:group-hover:text-gray-400 transition-colors">Blank Template // 空白模板</span>
+                <span className="text-[10px] tracking-[0.4em] text-echo-text-subtle uppercase group-hover:text-gray-700 dark:group-hover:text-gray-400 transition-colors">Blank Template // 空白模板</span>
                 <span className="text-[8px] mt-2 text-gray-400/60 dark:text-gray-600">Create new // 创建新角色</span>
               </motion.div>
 
@@ -319,13 +312,13 @@ const CharacterSelection: React.FC = () => {
                 onClick={() => importStatus !== 'loading' && fileInputRef.current?.click()}
                 className="snap-center flex-shrink-0 w-64 md:w-72 h-[420px] md:h-[480px] border border-dashed border-gray-300 dark:border-gray-700 rounded-[3rem] flex flex-col items-center justify-center cursor-pointer group transition-all"
               >
-                <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-white/5 flex items-center justify-center mb-6 group-hover:bg-white dark:group-hover:bg-gray-800 transition-colors shadow-inner">
+                <div className="w-16 h-16 rounded-full bg-echo-surface flex items-center justify-center mb-6 group-hover:bg-white dark:group-hover:bg-gray-800 transition-colors shadow-inner">
                   {importStatus === 'loading'
                     ? <svg className="animate-spin w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
-                    : <FileUp strokeWidth={1} className="text-gray-400 dark:text-gray-500 group-hover:text-gray-800 dark:group-hover:text-gray-200" />
+                    : <FileUp strokeWidth={1} className="text-echo-text-subtle group-hover:text-gray-800 dark:group-hover:text-gray-200" />
                   }
                 </div>
-                <span className="text-[10px] tracking-[0.4em] text-gray-400 dark:text-gray-500 uppercase group-hover:text-gray-700 dark:group-hover:text-gray-400 transition-colors">
+                <span className="text-[10px] tracking-[0.4em] text-echo-text-subtle uppercase group-hover:text-gray-700 dark:group-hover:text-gray-400 transition-colors">
                   {importStatus === 'loading' ? 'Uploading // 上传中...' : 'Import Data // 导入数据'}
                 </span>
                 <span className="text-[8px] mt-2 text-gray-400/60 dark:text-gray-600">JSON / PNG / V3</span>
@@ -334,7 +327,7 @@ const CharacterSelection: React.FC = () => {
             </div>
 
             <footer className="text-center mt-4">
-                <button onClick={handleBack} className="text-[9px] tracking-[0.6em] text-gray-400 dark:text-gray-600 uppercase hover:text-gray-800 dark:hover:text-gray-400 transition-all">Discard // 返回</button>
+                <button onClick={handleBack} className="text-[9px] tracking-[0.6em] text-echo-text-dim uppercase hover:text-gray-800 dark:hover:text-gray-400 transition-all">Discard // 返回</button>
             </footer>
           </div>
 
@@ -370,7 +363,7 @@ const CharacterSelection: React.FC = () => {
                 >
                   <div className="text-center space-y-2">
                     <p className="text-[10px] tracking-[0.5em] text-gray-400 uppercase">数据导出 // EXPORT</p>
-                    <h4 className="text-lg font-serif text-gray-700 dark:text-gray-200">{exportMenu.name}</h4>
+                    <h4 className="text-lg font-serif text-echo-text-primary">{exportMenu.name}</h4>
                   </div>
 
                   <div className="grid grid-cols-1 gap-3">
@@ -382,7 +375,7 @@ const CharacterSelection: React.FC = () => {
                         <ImageIcon size={22} />
                       </div>
                       <div className="text-left">
-                        <p className="text-sm font-serif text-gray-700 dark:text-gray-200">PNG 角色卡</p>
+                        <p className="text-sm font-serif text-echo-text-primary">PNG 角色卡</p>
                         <p className="text-[8px] text-gray-400 uppercase mt-1 tracking-widest">SillyTavern Standard</p>
                       </div>
                     </button>
@@ -395,7 +388,7 @@ const CharacterSelection: React.FC = () => {
                         <FileJson size={22} />
                       </div>
                       <div className="text-left">
-                        <p className="text-sm font-serif text-gray-700 dark:text-gray-200">JSON 档案</p>
+                        <p className="text-sm font-serif text-echo-text-primary">JSON 档案</p>
                         <p className="text-[8px] text-gray-400 uppercase mt-1 tracking-widest">Raw Data Backup</p>
                       </div>
                     </button>
@@ -421,27 +414,27 @@ const CharacterSelection: React.FC = () => {
                   onClick={e => e.stopPropagation()}
                   className="w-full max-w-lg bg-echo-white dark:bg-[#0d0d0d] rounded-[2rem] border-0.5 border-echo-border shadow-2xl overflow-hidden"
                 >
-                  <div className="p-6 border-b border-gray-100 dark:border-white/5">
+                  <div className="p-6 border-b border-echo-border">
                     <p className="text-[9px] tracking-[0.5em] text-gray-400 uppercase">选择开场白 // Select Greeting</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{greetingPicker.name}</p>
+                    <p className="text-xs text-echo-text-muted mt-1">{greetingPicker.name}</p>
                   </div>
                   <div className="overflow-y-auto max-h-[60vh] no-scrollbar divide-y divide-gray-100 dark:divide-white/5">
                     {[greetingPicker.greeting, ...(greetingPicker.alternateGreetings || [])].map((g, i) => (
                       <button
                         key={i}
                         onClick={() => { setSelectedCharacter(greetingPicker, g ?? undefined); setGreetingPicker(null) }}
-                        className="w-full text-left px-6 py-4 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group"
+                        className="w-full text-left px-6 py-4 hover:bg-echo-surface transition-colors group"
                       >
                         <span className="text-[8px] tracking-widest text-gray-400 uppercase block mb-1">
                           {i === 0 ? '默认开场白' : `备选 ${i}`}
                         </span>
-                        <p className="text-xs text-gray-600 dark:text-gray-300 font-serif leading-relaxed line-clamp-3">
+                        <p className="text-xs text-echo-text-base font-serif leading-relaxed line-clamp-3">
                           {g?.replace(/<[^>]+>/g, '').slice(0, 120) || '（空）'}
                         </p>
                       </button>
                     ))}
                   </div>
-                  <div className="p-4 border-t border-gray-100 dark:border-white/5">
+                  <div className="p-4 border-t border-echo-border">
                     <button onClick={() => setGreetingPicker(null)} className="w-full py-2 text-[9px] tracking-widest uppercase text-gray-400 hover:text-gray-600 transition-colors">
                       取消
                     </button>

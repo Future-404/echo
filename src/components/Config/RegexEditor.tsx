@@ -32,10 +32,10 @@ const RegexEditor: React.FC<RegexEditorProps> = ({ id, onClose }) => {
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="p-8 space-y-8 flex flex-col h-full">
       <header className="flex justify-between items-start">
         <div>
-          <h3 className="text-sm font-serif text-gray-600 dark:text-gray-300">规则编辑 // EDITOR</h3>
-          <p className="text-[8px] text-gray-400 dark:text-gray-500 uppercase mt-0.5 tracking-widest">Configure Regex Rule</p>
+          <h3 className="text-sm font-serif text-echo-text-base">规则编辑 // EDITOR</h3>
+          <p className="text-[8px] text-echo-text-subtle uppercase mt-0.5 tracking-widest">Configure Regex Rule</p>
         </div>
-        <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+        <button onClick={onClose} className="p-2 text-gray-400 hover:text-echo-text-base transition-colors">
           <X size={20} strokeWidth={1} />
         </button>
       </header>
@@ -43,7 +43,7 @@ const RegexEditor: React.FC<RegexEditorProps> = ({ id, onClose }) => {
       <div className="flex-1 space-y-8 overflow-y-auto no-scrollbar pb-10">
         {/* 名称 */}
         <div className="space-y-2">
-          <label className="text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-widest px-1">名称 // Name</label>
+          <label className="text-[10px] text-echo-text-dim uppercase tracking-widest px-1">名称 // Name</label>
           <input 
             type="text"
             value={rule.name}
@@ -55,7 +55,7 @@ const RegexEditor: React.FC<RegexEditorProps> = ({ id, onClose }) => {
 
         {/* 正则表达式 */}
         <div className="space-y-2">
-          <label className="text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-widest px-1">正则表达式 // Regex</label>
+          <label className="text-[10px] text-echo-text-dim uppercase tracking-widest px-1">正则表达式 // Regex</label>
           <div className="relative">
              <textarea 
                value={rule.regex}
@@ -78,7 +78,7 @@ const RegexEditor: React.FC<RegexEditorProps> = ({ id, onClose }) => {
 
         {/* 替换文本 */}
         <div className="space-y-2">
-          <label className="text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-widest px-1">替换为 // Replacement</label>
+          <label className="text-[10px] text-echo-text-dim uppercase tracking-widest px-1">替换为 // Replacement</label>
           <textarea 
             value={rule.replacement}
             onChange={e => handleChange({ replacement: e.target.value })}
@@ -90,7 +90,7 @@ const RegexEditor: React.FC<RegexEditorProps> = ({ id, onClose }) => {
 
         {/* 作用域 */}
         <div className="space-y-4">
-          <label className="text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-widest px-1">生效范围 // Scope</label>
+          <label className="text-[10px] text-echo-text-dim uppercase tracking-widest px-1">生效范围 // Scope</label>
           <div className="grid grid-cols-1 gap-2">
             {[
               { id: 'ui', label: '显示层 (UI)', desc: '修改你在对话框看到的内容' },

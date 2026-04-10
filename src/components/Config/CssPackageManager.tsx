@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Plus, ToggleLeft, ToggleRight, Pencil, Trash2, GripVertical } from 'lucide-react'
+import { Plus, ToggleLeft, ToggleRight, Trash2, GripVertical, Edit2 } from 'lucide-react'
 import { useAppStore, type CssPackage } from '../../store/useAppStore'
 import { CSS_SNIPPETS } from '../../styles/themePresets'
 
@@ -67,7 +67,7 @@ const CssPackageManager: React.FC<Props> = ({ onEdit }) => {
           <p className="text-xs font-serif tracking-[0.3em] text-gray-400 uppercase">CSS 样式包</p>
           <p className="text-[9px] text-gray-500 mt-0.5">拖动 <GripVertical size={9} className="inline" /> 排序，靠上优先级更高</p>
         </div>
-        <button onClick={handleAdd} className="p-1.5 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-full text-gray-400 hover:text-black dark:hover:text-white transition-all">
+        <button onClick={handleAdd} className="p-1.5 bg-echo-surface border border-echo-border-md rounded-full text-gray-400 hover:text-black dark:hover:text-white transition-all">
           <Plus size={14} />
         </button>
       </div>
@@ -94,7 +94,7 @@ const CssPackageManager: React.FC<Props> = ({ onEdit }) => {
               data-pkg-index={i}
               className={`flex items-center gap-2 p-3 rounded-2xl border-0.5 transition-all ${
                 dragOver === i ? 'border-blue-400 bg-blue-500/10' :
-                pkg.enabled ? 'border-blue-400/20 bg-blue-500/5' : 'border-gray-100 dark:border-white/5 bg-white/50 dark:bg-white/5'
+                pkg.enabled ? 'border-blue-400/20 bg-blue-500/5' : 'border-echo-border bg-white/50 dark:bg-white/5'
               }`}
             >
               <GripVertical
@@ -106,10 +106,10 @@ const CssPackageManager: React.FC<Props> = ({ onEdit }) => {
                 {pkg.enabled ? <ToggleRight size={18} className="text-blue-400" /> : <ToggleLeft size={18} />}
               </button>
               <div className="flex-1 min-w-0">
-                <p className={`text-xs font-serif truncate ${pkg.enabled ? 'text-gray-700 dark:text-gray-200' : 'text-gray-400'}`}>{pkg.name}</p>
+                <p className={`text-xs font-serif truncate ${pkg.enabled ? 'text-echo-text-primary' : 'text-gray-400'}`}>{pkg.name}</p>
               </div>
               <button onClick={() => onEdit(pkg.id)} className="p-1 text-gray-400 hover:text-blue-400 transition-colors shrink-0">
-                <Pencil size={12} />
+                <Edit2 size={12} />
               </button>
               <button onClick={() => removeCssPackage(pkg.id)} className="p-1 text-gray-400 hover:text-red-400 transition-colors shrink-0">
                 <Trash2 size={12} />

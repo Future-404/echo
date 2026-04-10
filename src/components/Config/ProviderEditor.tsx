@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Toggle } from '../ui'
 import { RefreshCw, Check, MessageSquare, Brain, Volume2, ChevronLeft, Trash2, Settings2, ChevronDown, ChevronUp, Zap } from 'lucide-react'
 import { useAppStore } from '../../store/useAppStore'
 import { useDialog } from '../GlobalDialog'
@@ -124,7 +125,7 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
       <div className="flex-1 overflow-y-auto p-8 space-y-8 no-scrollbar pb-32">
 
         <div className="flex items-center justify-between">
-          <div className="flex gap-1 p-1 bg-gray-50 dark:bg-white/5 rounded-2xl border-0.5 border-gray-100 dark:border-white/5 w-fit">
+          <div className="flex gap-1 p-1 bg-echo-surface rounded-2xl border-0.5 border-echo-border w-fit">
             {roleTabs.map((t) => (
               <button
                 key={t.id}
@@ -153,13 +154,13 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
           <div className="space-y-2">
             <label className="text-[8px] uppercase tracking-widest text-gray-400 font-bold ml-1 italic">Node Identifier // 名称</label>
             <input type="text" value={provider.name} onChange={(e) => updateProvider(id, { name: e.target.value })} 
-              className="w-full bg-white dark:bg-white/5 border-0.5 border-gray-100 dark:border-white/5 rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-blue-400 transition-all shadow-sm" />
+              className="w-full bg-white dark:bg-white/5 border-0.5 border-echo-border rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-blue-400 transition-all shadow-sm" />
           </div>
 
           <div className="space-y-2">
             <label className="text-[8px] uppercase tracking-widest text-gray-400 font-bold ml-1 italic">API Protocol // 协议</label>
             <select value={provider.apiFormat || 'openai'} onChange={(e) => updateProvider(id, { apiFormat: e.target.value as Provider['apiFormat'] })}
-              className="w-full bg-white dark:bg-white/5 border-0.5 border-gray-100 dark:border-white/5 rounded-2xl px-4 py-3 text-xs focus:outline-none appearance-none cursor-pointer shadow-sm">
+              className="w-full bg-white dark:bg-white/5 border-0.5 border-echo-border rounded-2xl px-4 py-3 text-xs text-gray-800 dark:text-gray-200 focus:outline-none appearance-none cursor-pointer shadow-sm">
               <option value="openai">OpenAI Standard</option>
               <option value="anthropic">Anthropic Native</option>
               <option value="gemini">Google Gemini</option>
@@ -170,14 +171,14 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
             <label className="text-[8px] uppercase tracking-widest text-gray-400 font-bold ml-1 italic">Access Endpoint // 地址</label>
             <input type="text" value={provider.endpoint} onChange={(e) => updateProvider(id, { endpoint: e.target.value })}
               placeholder="https://api.openai.com/v1" 
-              className="w-full bg-white dark:bg-white/5 border-0.5 border-gray-100 dark:border-white/5 rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-blue-400 transition-all shadow-sm" />
+              className="w-full bg-white dark:bg-white/5 border-0.5 border-echo-border rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-blue-400 transition-all shadow-sm" />
           </div>
 
           <div className="md:col-span-2 space-y-2">
             <label className="text-[8px] uppercase tracking-widest text-gray-400 font-bold ml-1 italic">Neural Token // API Key</label>
             <input type="password" value={provider.apiKey} onChange={(e) => updateProvider(id, { apiKey: e.target.value })}
               placeholder="sk-..." 
-              className="w-full bg-white dark:bg-white/5 border-0.5 border-gray-100 dark:border-white/5 rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-blue-400 transition-all shadow-sm" />
+              className="w-full bg-white dark:bg-white/5 border-0.5 border-echo-border rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-blue-400 transition-all shadow-sm" />
           </div>
 
           <div className="md:col-span-2 space-y-2">
@@ -203,15 +204,15 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
                 onFocus={() => modelList.length > 0 && setShowDropdown(true)}
                 onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
                 placeholder="gpt-4o, tts-1, etc..."
-                className={`w-full bg-white dark:bg-white/5 border-0.5 ${error ? 'border-red-400' : 'border-gray-100 dark:border-white/5'} rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-blue-400 transition-all shadow-sm`} />
+                className={`w-full bg-white dark:bg-white/5 border-0.5 ${error ? 'border-red-400' : 'border-echo-border'} rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-blue-400 transition-all shadow-sm`} />
               
               {error && <p className="text-[7px] text-red-400 mt-1 ml-1 uppercase font-bold tracking-tighter italic animate-pulse">Error: {error}</p>}
 
               {showDropdown && modelList.length > 0 && (
-                <div className="absolute top-full left-0 right-0 z-50 mt-2 max-h-48 overflow-y-auto no-scrollbar glass-morphism rounded-2xl shadow-xl border-0.5 border-gray-100 dark:border-white/5 bg-white/95 dark:bg-black/90">
+                <div className="absolute top-full left-0 right-0 z-50 mt-2 max-h-48 overflow-y-auto no-scrollbar glass-morphism rounded-2xl shadow-xl border-0.5 border-echo-border bg-white/95 dark:bg-black/90">
                   {modelList.map(m => (
                     <div key={m} onMouseDown={() => { updateProvider(id, { model: m }); setShowDropdown(false); }}
-                      className={`px-5 py-3 text-[10px] cursor-pointer transition-colors border-b-0.5 border-gray-50 dark:border-gray-900 last:border-none uppercase tracking-widest ${m === provider.model ? 'text-blue-500 bg-blue-50/10' : 'text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5'}`}>{m}</div>
+                      className={`px-5 py-3 text-[10px] cursor-pointer transition-colors border-b-0.5 border-gray-50 dark:border-gray-900 last:border-none uppercase tracking-widest ${m === provider.model ? 'text-blue-500 bg-blue-50/10' : 'text-gray-400 hover:bg-echo-surface'}`}>{m}</div>
                   ))}
                 </div>
               )}
@@ -221,12 +222,10 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
 
         {/* 动态常规参数 */}
         {isChat && (
-          <div className="pt-6 border-t-0.5 border-gray-100 dark:border-white/5 space-y-6">
+          <div className="pt-6 border-t-0.5 border-echo-border space-y-6">
             <div className="flex justify-between items-center group cursor-pointer" onClick={() => updateProvider(id, { stream: provider.stream !== false ? false : true })}>
               <label className="text-[9px] tracking-wide text-gray-400 uppercase italic cursor-pointer">Streaming // 流式传输</label>
-              <div className={`w-8 h-4 rounded-full flex items-center transition-colors px-0.5 ${provider.stream !== false ? 'bg-green-400/50' : 'bg-gray-300 dark:bg-gray-700'}`}>
-                <motion.div layout className="w-3 h-3 rounded-full bg-white shadow-sm" animate={{ x: provider.stream !== false ? 16 : 0 }} />
-              </div>
+              <Toggle checked={provider.stream !== false} onChange={() => updateProvider(id, { stream: provider.stream !== false ? false : true })} color="bg-green-400/50" />
             </div>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
@@ -293,7 +292,7 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
                         type="number" 
                         value={provider.contextWindow ?? 128000} 
                         onChange={(e) => updateProvider(id, { contextWindow: parseInt(e.target.value) || 0 })}
-                        className="flex-1 bg-white dark:bg-white/5 border-0.5 border-gray-100 dark:border-white/5 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-blue-400"
+                        className="flex-1 bg-white dark:bg-white/5 border-0.5 border-echo-border rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-blue-400"
                       />
                       <span className="text-[8px] text-gray-400 uppercase font-mono">Tokens</span>
                     </div>
@@ -306,7 +305,7 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
                       value={provider.assistantPrefill || ''} 
                       onChange={(e) => updateProvider(id, { assistantPrefill: e.target.value })}
                       placeholder="e.g. {char} 微微点头，轻声说道："
-                      className="w-full bg-white dark:bg-white/5 border-0.5 border-gray-100 dark:border-white/5 rounded-2xl p-4 text-xs font-serif leading-relaxed focus:outline-none focus:border-blue-400 min-h-[80px] resize-none"
+                      className="w-full bg-white dark:bg-white/5 border-0.5 border-echo-border rounded-2xl p-4 text-xs font-serif leading-relaxed focus:outline-none focus:border-blue-400 min-h-[80px] resize-none"
                     />
                   </div>
 
@@ -320,7 +319,7 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
                       value={provider.customHeaders || ''} 
                       onChange={(e) => handleJsonChange(e.target.value)}
                       placeholder='{"HTTP-Referer": "https://echo.vn"}'
-                      className={`w-full bg-white dark:bg-white/5 border-0.5 ${jsonError ? 'border-red-400/50' : 'border-gray-100 dark:border-white/5'} rounded-2xl p-4 text-[10px] font-mono leading-relaxed focus:outline-none focus:border-blue-400 min-h-[80px] resize-none transition-all shadow-sm`}
+                      className={`w-full bg-white dark:bg-white/5 border-0.5 ${jsonError ? 'border-red-400/50' : 'border-echo-border'} rounded-2xl p-4 text-[10px] font-mono leading-relaxed focus:outline-none focus:border-blue-400 min-h-[80px] resize-none transition-all shadow-sm`}
                     />
                   </div>
                 </motion.div>
@@ -331,7 +330,7 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
 
         {/* TTS 专用参数 */}
         {isTts && (
-          <div className="pt-6 border-t-0.5 border-gray-100 dark:border-white/5 space-y-6">
+          <div className="pt-6 border-t-0.5 border-echo-border space-y-6">
             <div className="space-y-2">
               <label className="text-[9px] text-gray-400 uppercase italic">Default Voice // 默认音色 ID</label>
               <input
@@ -339,7 +338,7 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
                 value={provider.ttsVoice || ''}
                 onChange={(e) => updateProvider(id, { ttsVoice: e.target.value })}
                 placeholder="alloy / nova / shimmer ..."
-                className="w-full bg-white dark:bg-white/5 border-0.5 border-gray-100 dark:border-white/5 rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-blue-400 transition-all shadow-sm"
+                className="w-full bg-white dark:bg-white/5 border-0.5 border-echo-border rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-blue-400 transition-all shadow-sm"
               />
             </div>
             <div className="space-y-2">
@@ -347,7 +346,7 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
               <select
                 value={provider.ttsFormat || 'mp3'}
                 onChange={(e) => updateProvider(id, { ttsFormat: e.target.value as Provider['ttsFormat'] })}
-                className="w-full bg-white dark:bg-white/5 border-0.5 border-gray-100 dark:border-white/5 rounded-2xl px-4 py-3 text-xs focus:outline-none appearance-none cursor-pointer shadow-sm"
+                className="w-full bg-white dark:bg-white/5 border-0.5 border-echo-border rounded-2xl px-4 py-3 text-xs focus:outline-none appearance-none cursor-pointer shadow-sm"
               >
                 <option value="mp3">MP3</option>
                 <option value="opus">Opus</option>
@@ -360,7 +359,7 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
 
         {/* Embedding 专用参数 */}
         {isEmbedding && (
-          <div className="pt-6 border-t-0.5 border-gray-100 dark:border-white/5 space-y-6">
+          <div className="pt-6 border-t-0.5 border-echo-border space-y-6">
             <div className="space-y-2">
               <label className="text-[9px] text-gray-400 uppercase italic">Dimensions // 向量维度（留空使用模型默认）</label>
               <div className="flex items-center gap-3">
@@ -369,7 +368,7 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
                   value={provider.embeddingDimensions ?? ''}
                   onChange={(e) => updateProvider(id, { embeddingDimensions: e.target.value ? parseInt(e.target.value) : undefined })}
                   placeholder="1536"
-                  className="flex-1 bg-white dark:bg-white/5 border-0.5 border-gray-100 dark:border-white/5 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-blue-400"
+                  className="flex-1 bg-white dark:bg-white/5 border-0.5 border-echo-border rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-blue-400"
                 />
                 <span className="text-[8px] text-gray-400 uppercase font-mono">Dims</span>
               </div>

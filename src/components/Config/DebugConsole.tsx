@@ -18,10 +18,10 @@ const DebugConsole: React.FC = () => {
     >
       <div className="flex justify-between items-end px-2">
         <div className="flex flex-col">
-          <label className="text-xs font-serif tracking-widest text-gray-500 dark:text-gray-400 font-medium flex items-center gap-2">
+          <label className="text-xs font-serif tracking-widest text-echo-text-muted font-medium flex items-center gap-2">
             <Terminal size={14} /> 调试控制台
           </label>
-          <span className="text-[7px] text-gray-400 dark:text-gray-600 uppercase tracking-[0.2em] mt-0.5">Real-time API Monitor</span>
+          <span className="text-[7px] text-echo-text-dim uppercase tracking-[0.2em] mt-0.5">Real-time API Monitor</span>
         </div>
         <button 
           onClick={clearDebugLogs}
@@ -40,7 +40,7 @@ const DebugConsole: React.FC = () => {
           </div>
         ) : (
           debugLogs.map((log) => (
-            <div key={log.id} className="bg-gray-50 dark:bg-white/5 border-0.5 border-gray-100 dark:border-white/5 rounded-xl p-4 space-y-2 group relative">
+            <div key={log.id} className="bg-echo-surface border-0.5 border-echo-border rounded-xl p-4 space-y-2 group relative">
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
                   {log.direction === 'OUT' ? <ArrowUpRight size={12} className="text-blue-400" /> : 
@@ -66,7 +66,7 @@ const DebugConsole: React.FC = () => {
 
               <button 
                 onClick={() => handleCopy(log.data)}
-                className="absolute bottom-2 right-2 p-1.5 bg-white dark:bg-black border border-gray-200 dark:border-white/10 rounded-md shadow-sm text-gray-400 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-all"
+                className="absolute bottom-2 right-2 p-1.5 bg-white dark:bg-black border border-echo-border-md rounded-md shadow-sm text-gray-400 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-all"
               >
                 <Copy size={10} />
               </button>

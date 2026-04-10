@@ -29,7 +29,7 @@ const ThinkingBlock: React.FC<{ content: string }> = ({ content }) => {
   const [expanded, setExpanded] = useState(false);
   return (
     <details className="mb-2 text-xs opacity-60 cursor-pointer" open={expanded} onClick={(e) => { e.preventDefault(); setExpanded(v => !v); }}>
-      <summary className="font-mono text-gray-500 dark:text-gray-400 select-none">💭 思考中...</summary>
+      <summary className="font-mono text-echo-text-muted select-none">💭 思考中...</summary>
       <div className="mt-1 pl-4 border-l-2 border-gray-300 dark:border-gray-600 whitespace-pre-wrap font-mono text-gray-600 dark:text-gray-400">
         {content}
       </div>
@@ -263,7 +263,7 @@ const MessageContent: React.FC<MessageContentProps> = React.memo(({ content, isA
       {envBadges.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-4 opacity-70">
           {envBadges.map((b, i) => (
-            <div key={i} className="px-2 py-0.5 rounded bg-gray-100 dark:bg-white/5 border border-black/5 dark:border-white/5 text-[9px] tracking-[0.1em] uppercase font-mono text-gray-500">
+            <div key={i} className="px-2 py-0.5 rounded bg-echo-surface border border-black/5 dark:border-white/5 text-[9px] tracking-[0.1em] uppercase font-mono text-gray-500">
               <span className="opacity-50 mr-1.5">{b.label}:</span>{b.content}
             </div>
           ))}

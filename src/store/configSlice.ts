@@ -179,7 +179,7 @@ export const createConfigSlice = (INITIAL_CONFIG: ConfigSlice['config']): StateC
 
   updateWorldBookEntry: async (bookId, entryId, updates) => {
     const state = get();
-    const book = (s.config.worldBookLibrary || []).find((b) => b.id === bookId);
+    const book = (state.config.worldBookLibrary || []).find((b) => b.id === bookId);
     const entry = book?.entries?.find((e) => e.id === entryId);
     if (!entry) return;
 

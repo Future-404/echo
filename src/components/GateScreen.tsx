@@ -130,7 +130,7 @@ export const GateScreen: React.FC<Props> = ({ onUnlock }) => {
             <button
               onClick={handleSubmit}
               disabled={loading || !password || lockedUntil > Date.now()}
-              className="w-full group relative overflow-hidden py-4 bg-white/90 hover:bg-white text-black rounded-2xl text-[11px] font-bold tracking-[0.4em] uppercase transition-all disabled:opacity-20 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(255,255,255,0.1)] active:scale-[0.98]"
+              className="w-full group relative overflow-hidden py-4 bg-white/90 hover:bg-white dark:bg-white/10 dark:hover:bg-white/20 text-black dark:text-white rounded-2xl text-[11px] font-bold tracking-[0.4em] uppercase transition-all disabled:opacity-20 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(255,255,255,0.1)] active:scale-[0.98]"
             >
               <div className="relative z-10 flex items-center justify-center gap-2">
                 {loading ? (

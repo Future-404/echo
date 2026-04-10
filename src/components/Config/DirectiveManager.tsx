@@ -4,6 +4,8 @@ import { Plus, Upload, Trash2, ChevronDown, ChevronUp, ToggleLeft, ToggleRight }
 import { useAppStore } from '../../store/useAppStore'
 import type { PromptPreset, Directive } from '../../store/useAppStore'
 import { db } from '../../storage/db'
+import { useDialog } from '../GlobalDialog'
+import { readFileAsText, genId } from '../../utils/fileUtils'
 
 interface DirectiveManagerProps {
   onEdit: (id: string) => void
@@ -11,11 +13,11 @@ interface DirectiveManagerProps {
 }
 
 const DirectiveManager: React.FC<DirectiveManagerProps> = ({ onAdd }) => {
-  const { config, addPromptPreset, removePromptPreset, updatePromptPresetDirective, addDirective, updateDirective, removeDirective } = useAppStore()
+  const { config, addPromptPreset, removePromptPreset, updatePromptPresetDirective, updateDirective, removeDirective } = useAppStore()
+  const { alert } = useDialog()
   const presets: PromptPreset[] = config.promptPresets || []
   const globalDirectives: Directive[] = config.directives || []
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [toast, setToast] = useState('')
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [presetEntries, setPresetEntries] = useState<Record<string, Directive[]>>({})
 
@@ -38,36 +40,31 @@ const DirectiveManager: React.FC<DirectiveManagerProps> = ({ onAdd }) => {
     })
   }, [presets.length])
 
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000) }
-
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = (ev) => {
-      try {
-        const json = JSON.parse(ev.target?.result as string)
-        const prompts: any[] = json.prompts
-        if (!Array.isArray(prompts)) { showToast('❌ 文件格式不匹配，請確認是 Instruct 預設 JSON'); return }
-        const directives: Directive[] = prompts
-          .filter(p => !p.marker && p.content)
-          .map(p => ({
-            id: p.identifier || `st-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-            title: p.name || p.identifier || 'Unnamed',
-            content: p.content,
-            enabled: p.enabled !== false,
-            depth: p.injection_depth || undefined,
-            role: (p.role === 'assistant' || p.role === 'user') ? p.role : 'system',
-            position: (p.injection_position === 0 ? 0 : 1) as 0 | 1,
-          }))
-        const presetName = file.name.replace(/\.json$/i, '')
-        const preset: PromptPreset = { id: `preset-${Date.now()}`, name: presetName, directives }
-        addPromptPreset(preset)
-          .then(() => showToast(`✓ 已導入「${presetName}」${directives.length} 條指令`))
-          .catch(() => showToast('❌ 寫入數據庫失敗'))
-      } catch { showToast('❌ JSON 解析失敗') }
+    try {
+      const json = JSON.parse(await readFileAsText(file))
+      const prompts: any[] = json.prompts
+      if (!Array.isArray(prompts)) { alert('❌ 文件格式不匹配，請確認是 Instruct 預設 JSON'); return }
+      const directives: Directive[] = prompts
+        .filter(p => !p.marker && p.content)
+        .map(p => ({
+          id: p.identifier || genId('st'),
+          title: p.name || p.identifier || 'Unnamed',
+          content: p.content,
+          enabled: p.enabled !== false,
+          depth: p.injection_depth || undefined,
+          role: (p.role === 'assistant' || p.role === 'user') ? p.role : 'system',
+          position: (p.injection_position === 0 ? 0 : 1) as 0 | 1,
+        }))
+      const presetName = file.name.replace(/\.json$/i, '')
+      const preset: PromptPreset = { id: genId('preset'), name: presetName, directives }
+      await addPromptPreset(preset)
+      alert(`✓ 已導入「${presetName}」${directives.length} 條指令`)
+    } catch {
+      alert('❌ JSON 解析失敗')
     }
-    reader.readAsText(file)
     e.target.value = ''
   }
 
@@ -89,14 +86,10 @@ const DirectiveManager: React.FC<DirectiveManagerProps> = ({ onAdd }) => {
     <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="p-6 space-y-6">
       <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleImport} />
 
-      {toast && (
-        <div className="px-4 py-2 rounded-2xl bg-gray-100 dark:bg-white/10 text-xs text-gray-600 dark:text-gray-300 text-center">{toast}</div>
-      )}
-
       <div className="flex justify-between items-center px-4">
         <div className="flex flex-col">
-          <label className="text-xs font-serif tracking-widest text-gray-500 dark:text-gray-400 font-medium">預設包管理</label>
-          <span className="text-[7px] text-gray-400 dark:text-gray-600 uppercase tracking-[0.2em] mt-0.5">Prompt Presets</span>
+          <label className="text-xs font-serif tracking-widest text-echo-text-muted font-medium">預設包管理</label>
+          <span className="text-[7px] text-echo-text-dim uppercase tracking-[0.2em] mt-0.5">Prompt Presets</span>
         </div>
         <div className="flex items-center gap-3">
           <button onClick={() => fileInputRef.current?.click()} title="導入預設" className="text-gray-400 hover:text-gray-600 transition-colors">
@@ -126,7 +119,7 @@ const DirectiveManager: React.FC<DirectiveManagerProps> = ({ onAdd }) => {
                     </p>
                   </div>
                 </button>
-                <button onClick={() => removePromptPreset(preset.id).catch(() => showToast('❌ 刪除失敗'))} className="text-gray-300 dark:text-gray-700 hover:text-red-400 transition-colors">
+                <button onClick={() => removePromptPreset(preset.id).catch(() => alert('❌ 刪除失敗'))} className="text-gray-300 dark:text-gray-700 hover:text-red-400 transition-colors">
                   <Trash2 size={13} strokeWidth={1} />
                 </button>
               </div>
@@ -135,7 +128,7 @@ const DirectiveManager: React.FC<DirectiveManagerProps> = ({ onAdd }) => {
                   {entries.map(d => (
                     <div key={d.id} className="flex items-center gap-3 px-5 py-3">
                       <div className="flex-1 min-w-0">
-                        <p className={`text-xs font-serif truncate ${d.enabled ? 'text-gray-700 dark:text-gray-200' : 'text-gray-400 dark:text-gray-500 line-through'}`}>{d.title}</p>
+                        <p className={`text-xs font-serif truncate ${d.enabled ? 'text-echo-text-primary' : 'text-echo-text-subtle line-through'}`}>{d.title}</p>
                         {d.depth && <span className="text-[7px] text-gray-400 uppercase tracking-widest">depth {d.depth}</span>}
                       </div>
                       <button onClick={() => handleToggleEntry(preset.id, d)} className="text-gray-400 shrink-0">
@@ -158,7 +151,7 @@ const DirectiveManager: React.FC<DirectiveManagerProps> = ({ onAdd }) => {
             {globalDirectives.map(d => (
               <div key={d.id} className="flex items-center gap-3 px-5 py-3 rounded-2xl border-0.5 border-gray-100 dark:border-gray-800 bg-white/20 dark:bg-white/3">
                 <div className="flex-1 min-w-0">
-                  <p className={`text-xs font-serif truncate ${d.enabled ? 'text-gray-700 dark:text-gray-200' : 'text-gray-400 dark:text-gray-500 line-through'}`}>{d.title}</p>
+                  <p className={`text-xs font-serif truncate ${d.enabled ? 'text-echo-text-primary' : 'text-echo-text-subtle line-through'}`}>{d.title}</p>
                 </div>
                 <button onClick={() => updateDirective(d.id, { enabled: !d.enabled })} className="text-gray-400 shrink-0">
                   {d.enabled ? <ToggleRight size={18} strokeWidth={1} className="text-green-300 dark:text-green-800" /> : <ToggleLeft size={18} strokeWidth={1} />}

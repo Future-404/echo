@@ -8,7 +8,7 @@ const StorageGuide: React.FC = () => {
       {/* 数据库结构 */}
       <div className="space-y-2">
         <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">本地数据库表</p>
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+        <div className="rounded-2xl border border-echo-border overflow-hidden">
           <div className="divide-y divide-white/5 text-[10px] font-mono">
             {[
               ['messages', '对话消息，按 slotId 分组，支持 vState 标记蒸馏状态'],
@@ -30,7 +30,7 @@ const StorageGuide: React.FC = () => {
       {/* 存档机制 */}
       <div className="space-y-2">
         <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">存档机制</p>
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+        <div className="rounded-2xl border border-echo-border overflow-hidden">
           <div className="divide-y divide-white/5 text-[10px]">
             {[
               ['自动存档', '每次 AI 回复完成后自动快照，覆盖上一条自动档'],
@@ -39,7 +39,7 @@ const StorageGuide: React.FC = () => {
               ['事务保护', 'saveMessages 使用 Dexie 事务，delete + bulkAdd 原子执行，中途失败不丢数据'],
             ].map(([title, desc]) => (
               <div key={title} className="flex gap-3 px-4 py-2.5">
-                <span className="font-bold text-gray-600 dark:text-gray-300 shrink-0 w-16">{title}</span>
+                <span className="font-bold text-echo-text-base shrink-0 w-16">{title}</span>
                 <span className="opacity-60">{desc}</span>
               </div>
             ))}
@@ -51,7 +51,7 @@ const StorageGuide: React.FC = () => {
       <div className="space-y-2">
         <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">备份与恢复</p>
 
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+        <div className="rounded-2xl border border-echo-border overflow-hidden">
           <div className="px-4 py-2 bg-blue-500/10">
             <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400">全量备份 .echo</span>
           </div>
@@ -63,14 +63,14 @@ const StorageGuide: React.FC = () => {
               ['适用场景', '换设备迁移、完整数据备份、灾难恢复'],
             ].map(([title, desc]) => (
               <div key={title} className="flex gap-3 px-4 py-2.5">
-                <span className="font-bold text-gray-600 dark:text-gray-300 shrink-0 w-16">{title}</span>
+                <span className="font-bold text-echo-text-base shrink-0 w-16">{title}</span>
                 <span className="opacity-60">{desc}</span>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+        <div className="rounded-2xl border border-echo-border overflow-hidden">
           <div className="px-4 py-2 bg-purple-500/10">
             <span className="text-[10px] font-bold uppercase tracking-widest text-purple-400">单存档备份 .echo-slot</span>
           </div>
@@ -82,7 +82,7 @@ const StorageGuide: React.FC = () => {
               ['适用场景', '分享单个剧情存档、跨账号迁移特定角色的对话进度'],
             ].map(([title, desc]) => (
               <div key={title} className="flex gap-3 px-4 py-2.5">
-                <span className="font-bold text-gray-600 dark:text-gray-300 shrink-0 w-16">{title}</span>
+                <span className="font-bold text-echo-text-base shrink-0 w-16">{title}</span>
                 <span className="opacity-60">{desc}</span>
               </div>
             ))}
@@ -110,7 +110,7 @@ AUTH_TOKEN=your_secret node server.js
       {/* API 协议 */}
       <div className="space-y-2">
         <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">后端 API 协议</p>
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+        <div className="rounded-2xl border border-echo-border overflow-hidden">
           <div className="divide-y divide-white/5 text-[10px] font-mono">
             {[
               ['POST',   '/api/auth',         '验证密码，返回 token（无需鉴权）'],

@@ -15,7 +15,7 @@ const SkillsGuide: React.FC = () => {
       {/* 四个 Action */}
       <div className="space-y-2">
         <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">Action 类型</p>
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+        <div className="rounded-2xl border border-echo-border overflow-hidden">
           <div className="divide-y divide-white/5 text-[10px]">
             {[
               ['CREATE', 'text-green-400', '创建新任务。需提供 quest_id、title，可选 description、progress_delta（初始进度）。'],
@@ -35,7 +35,7 @@ const SkillsGuide: React.FC = () => {
       {/* 任务类型 */}
       <div className="space-y-2">
         <p className="text-[10px] uppercase tracking-widest opacity-50 font-bold">任务类型</p>
-        <div className="rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden">
+        <div className="rounded-2xl border border-echo-border overflow-hidden">
           <div className="divide-y divide-white/5 text-[10px]">
             {[
               ['MAIN', '主线任务', '始终显示在任务栏顶部，带进度条。quest_id 以 main_ 开头时自动识别，或在 CREATE 时指定 quest_type: MAIN。同时只建议存在一个激活的主线任务。'],
