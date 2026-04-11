@@ -140,7 +140,8 @@ export async function callAIAssist(
 
   if (!res.ok) throw new Error(`API Error ${res.status}: ${await res.text()}`)
   const data = await res.json() as any
-  const raw = data.choices?.[0]?.message?.content || ''
+  const raw = (data.choices?.[0]?.message?.content || '')
+    .replace(/<think>[\s\S]*?<\/think>/g, '').trim()
 
   try {
     return JSON.parse(raw) as AIAssistResponse

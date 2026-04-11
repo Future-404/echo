@@ -28,6 +28,7 @@ export const processChatStream = async (
   let fullText = '';
   let buffer = ''; // 处理 SSE 碎片
   let lastUsage: UsageInfo | null = null;
+  let inThinking = false; // 是否在 <think> 块内
   
   // 用于收集流式的 tool_calls
   const toolCallsMap: Record<number, ToolCall> = {};
@@ -66,7 +67,8 @@ export const processChatStream = async (
         if (format === 'openai' && cleanedLine.startsWith('data: ')) {
           const dataStr = cleanedLine.slice(6);
           if (dataStr === '[DONE]') {
-            callbacks.onFinish(fullText, Object.values(toolCallsMap).length > 0 ? Object.values(toolCallsMap) : undefined, lastUsage);
+            const cleanedText = fullText.replace(/<think>[\s\S]*?<\/think>/g, '').trimStart();
+            callbacks.onFinish(cleanedText, Object.values(toolCallsMap).length > 0 ? Object.values(toolCallsMap) : undefined, lastUsage);
             return;
           }
           try {
@@ -76,7 +78,21 @@ export const processChatStream = async (
             if (!delta) continue;
             if (delta.content) {
               fullText += delta.content;
-              callbacks.onChunk(delta.content);
+              // 流式过滤 <think> 块
+              let visible = delta.content;
+              if (inThinking) {
+                const end = visible.indexOf('</think>');
+                if (end !== -1) { inThinking = false; visible = visible.slice(end + 8); }
+                else visible = '';
+              } else {
+                const start = visible.indexOf('<think>');
+                if (start !== -1) {
+                  const end = visible.indexOf('</think>', start);
+                  if (end !== -1) { visible = visible.slice(0, start) + visible.slice(end + 8); }
+                  else { inThinking = true; visible = visible.slice(0, start); }
+                }
+              }
+              if (visible) callbacks.onChunk(visible);
             }
             if (delta.tool_calls) {
               for (const tc of delta.tool_calls) {
@@ -120,7 +136,8 @@ export const processChatStream = async (
               };
             }
             if (json.type === 'message_stop') {
-              callbacks.onFinish(fullText, Object.values(toolCallsMap).length > 0 ? Object.values(toolCallsMap) : undefined, lastUsage);
+              const cleanedText = fullText.replace(/<think>[\s\S]*?<\/think>/g, '').trimStart();
+              callbacks.onFinish(cleanedText, Object.values(toolCallsMap).length > 0 ? Object.values(toolCallsMap) : undefined, lastUsage);
               return;
             }
           } catch (e) { console.warn('Incomplete Anthropic chunk', e); }
@@ -138,10 +155,13 @@ export const processChatStream = async (
                 total_tokens: json.usageMetadata.totalTokenCount
               };
             }
-            const part = json.candidates?.[0]?.content?.parts?.[0];
-            if (part?.text) {
-              fullText += part.text;
-              callbacks.onChunk(part.text);
+            const parts = json.candidates?.[0]?.content?.parts;
+            if (parts) {
+              for (const part of parts) {
+                if (part.thought || !part.text) continue; // 跳过 thinking part
+                fullText += part.text;
+                callbacks.onChunk(part.text);
+              }
             }
           } catch (e) { console.warn('Incomplete Gemini chunk', e); }
         }
@@ -149,7 +169,8 @@ export const processChatStream = async (
     }
     
     const finalToolCalls = Object.values(toolCallsMap);
-    callbacks.onFinish(fullText, finalToolCalls.length > 0 ? finalToolCalls : undefined, lastUsage);
+    const cleanedText = fullText.replace(/<think>[\s\S]*?<\/think>/g, '').trimStart();
+    callbacks.onFinish(cleanedText, finalToolCalls.length > 0 ? finalToolCalls : undefined, lastUsage);
     
   } catch (error) {
     callbacks.onError(error);
