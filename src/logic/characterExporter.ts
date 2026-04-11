@@ -1,5 +1,6 @@
 import type { CharacterCard } from '../types/chat';
 import { writeSillyTavernData } from '../utils/pngMetadata';
+import { getStorageAdapter } from '../storage';
 
 /**
  * 将 Echo 角色卡转换为 SillyTavern V2 规范的 JSON 对象
@@ -103,14 +104,18 @@ const ensurePNGData = async (imageUri: string): Promise<string> => {
 export const exportCharacterAsPNG = async (char: CharacterCard) => {
   const stData = convertToSillyTavernV2(char);
 
-  // 1. 确保有图片数据
-  if (!char.image || char.image.length < 100) {
+  // 1. 确保有图片数据（自定义角色图片存在 imageDb，需主动获取）
+  let image = char.image
+  if ((!image || image.length < 100) && char.id.startsWith('custom-')) {
+    image = await getStorageAdapter().getImage(char.id) || ''
+  }
+  if (!image || image.length < 100) {
     throw new Error('角色没有有效的头像图片，无法生成角色卡');
   }
 
   try {
     // 2. 强制转换/验证 PNG 格式 (解决 JPG/WebP 无法注入元数据的问题)
-    const pngImage = await ensurePNGData(char.image);
+    const pngImage = await ensurePNGData(image);
 
     // 3. 将数据嵌入 PNG
     const pngWithMetadata = await writeSillyTavernData(pngImage, stData);
