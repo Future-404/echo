@@ -150,7 +150,7 @@ export const useAppStore = create<AppState>()(
               ? db.getMessagesBySlot(state.currentAutoSlotId)
               : Promise.resolve(null),
             db.worldEntries.toArray(),
-            // 从 Dexie characters 表恢复自定义角色
+            // 从 Dexie characters 表恢复自定义角色（包含私设 worldBook）
             db.characters.toArray(),
           ]).then(([saveSlots, multiSaveSlots, storedMessages, allWorldEntries, dbChars]) => {
             const patch: Partial<AppState> = { saveSlots, multiSaveSlots }
@@ -171,7 +171,7 @@ export const useAppStore = create<AppState>()(
               })
             }
 
-            // 回填 worldBook entries
+            // worldEntries 表只存全局世界书（按 ownerId 分组）
             const entriesByOwner = allWorldEntries.reduce<Record<string, typeof allWorldEntries>>((acc, e) => {
               ;(acc[e.ownerId] ||= []).push(e)
               return acc
@@ -185,18 +185,9 @@ export const useAppStore = create<AppState>()(
               })),
             }
 
-            const rehydrateChar = (c: CharacterCard): CharacterCard => ({
-              ...c,
-              extensions: c.extensions ? {
-                ...c.extensions,
-                worldBook: (entriesByOwner[c.id] || []).map(({ ownerId: _o, updatedAt: _u, ...e }) => e),
-              } : c.extensions,
-            })
-
-            patch.characters = characters.map(rehydrateChar)
-            patch.selectedCharacter = rehydrateChar(
-              characters.find(c => c.id === currentState.selectedCharacter.id) || currentState.selectedCharacter
-            )
+            // 角色私设已在 characters 表中，无需从 worldEntries 回填
+            patch.characters = characters
+            patch.selectedCharacter = characters.find(c => c.id === currentState.selectedCharacter.id) || currentState.selectedCharacter
             if (currentState.secondaryCharacter) {
               patch.secondaryCharacter = rehydrateChar(
                 characters.find(c => c.id === currentState.secondaryCharacter!.id) || currentState.secondaryCharacter
@@ -214,28 +205,19 @@ export const useAppStore = create<AppState>()(
             worldBookLibrary: (state.config.worldBookLibrary || []).map(({ entries: _e, ...meta }) => meta),
           },
           currentView: state.currentView,
-          // 角色卡只存轻量元数据，剥离 image 和 extensions.worldBook（已存 Dexie）
+          // 角色卡存完整数据（包含私设 worldBook），只剥离 image（存 imageDb）
           characters: state.characters.map(c => ({
             ...c,
             image: c.id.startsWith('custom-') ? '' : c.image,
-            extensions: c.extensions ? { ...c.extensions, worldBook: [] } : c.extensions,
           })),
-          selectedCharacter: {
-            ...(state.selectedCharacter.id.startsWith('custom-')
-              ? { ...state.selectedCharacter, image: '' }
-              : state.selectedCharacter),
-            extensions: state.selectedCharacter.extensions
-              ? { ...state.selectedCharacter.extensions, worldBook: [] }
-              : state.selectedCharacter.extensions,
-          },
-          secondaryCharacter: state.secondaryCharacter ? {
-            ...(state.secondaryCharacter.id.startsWith('custom-')
-              ? { ...state.secondaryCharacter, image: '' }
-              : state.secondaryCharacter),
-            extensions: state.secondaryCharacter.extensions
-              ? { ...state.secondaryCharacter.extensions, worldBook: [] }
-              : state.secondaryCharacter.extensions,
-          } : null,
+          selectedCharacter: state.selectedCharacter.id.startsWith('custom-')
+            ? { ...state.selectedCharacter, image: '' }
+            : state.selectedCharacter,
+          secondaryCharacter: state.secondaryCharacter
+            ? (state.secondaryCharacter.id.startsWith('custom-')
+                ? { ...state.secondaryCharacter, image: '' }
+                : state.secondaryCharacter)
+            : null,
           multiCharMode: state.multiCharMode,
           isGreetingSession: state.isGreetingSession,
           messages: state.currentAutoSlotId ? [] : state.messages,

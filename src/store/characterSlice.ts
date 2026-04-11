@@ -49,16 +49,10 @@ export const createCharacterSlice = (DEFAULT_CHARACTERS: CharacterCard[]): State
   addCharacter: async (char) => {
     if (char.image.startsWith('data:')) await getStorageAdapter().saveImage(char.id, char.image);
     
-    // 如果角色带了私设世界书，同步到 Dexie
-    if (char.extensions?.worldBook?.length) {
-      const entries = char.extensions.worldBook.map(e => ({ ...e, ownerId: char.id, updatedAt: Date.now() }));
-      await db.worldEntries.bulkPut(entries);
-    }
-
-    // 自定义角色存入 characters 表（剥离 image 和 worldBook，分别存独立位置）
+    // 自定义角色存入 characters 表（包含私设 worldBook，只剥离 image）
     if (char.id.startsWith('custom-')) {
-      const { image: _img, extensions, ...rest } = char
-      await db.characters.put({ ...rest, extensions: extensions ? { ...extensions, worldBook: [] } : extensions, updatedAt: Date.now() })
+      const { image: _img, ...rest } = char
+      await db.characters.put({ ...rest, updatedAt: Date.now() })
     }
 
     set((s) => ({ characters: [...(s.characters || []), char] }));
@@ -67,13 +61,13 @@ export const createCharacterSlice = (DEFAULT_CHARACTERS: CharacterCard[]): State
   updateCharacter: async (id, updates) => {
     if (updates.image?.startsWith('data:')) await getStorageAdapter().saveImage(id, updates.image);
 
-    // 同步更新 Dexie characters 表
+    // 同步更新 Dexie characters 表（包含私设 worldBook）
     if (id.startsWith('custom-')) {
       const existing = (get().characters || []).find(c => c.id === id)
       if (existing) {
         const merged = { ...existing, ...updates }
-        const { image: _img, extensions, ...rest } = merged
-        await db.characters.put({ ...rest, extensions: extensions ? { ...extensions, worldBook: [] } : extensions, updatedAt: Date.now() })
+        const { image: _img, ...rest } = merged
+        await db.characters.put({ ...rest, updatedAt: Date.now() })
       }
     }
 
@@ -85,7 +79,6 @@ export const createCharacterSlice = (DEFAULT_CHARACTERS: CharacterCard[]): State
 
   removeCharacter: async (id) => {
     await getStorageAdapter().removeImage(id);
-    await db.worldEntries.where('ownerId').equals(id).delete();
     if (id.startsWith('custom-')) await db.characters.delete(id);
 
     set((s) => ({
@@ -143,7 +136,11 @@ export const createCharacterSlice = (DEFAULT_CHARACTERS: CharacterCard[]): State
     const currentEntries = char.extensions?.worldBook || [];
     const updatedChar = { ...char, extensions: { ...char.extensions, worldBook: [...currentEntries, entry] } };
     
-    await db.worldEntries.put({ ...entry, ownerId: char.id, updatedAt: Date.now() });
+    // 角色私设直接存在角色卡中，不存 worldEntries 表
+    if (char.id.startsWith('custom-')) {
+      const { image: _img, ...rest } = updatedChar
+      await db.characters.put({ ...rest, updatedAt: Date.now() })
+    }
 
     set((s) => ({
       selectedCharacter: updatedChar,
@@ -164,7 +161,11 @@ export const createCharacterSlice = (DEFAULT_CHARACTERS: CharacterCard[]): State
     const updatedEntries = currentEntries.map((e) => e.id === id ? updatedEntry : e);
     const updatedChar = { ...char, extensions: { ...char.extensions, worldBook: updatedEntries } };
     
-    await db.worldEntries.put({ ...updatedEntry, ownerId: char.id, updatedAt: Date.now() });
+    // 角色私设直接存在角色卡中
+    if (char.id.startsWith('custom-')) {
+      const { image: _img, ...rest } = updatedChar
+      await db.characters.put({ ...rest, updatedAt: Date.now() })
+    }
 
     set((s) => ({
       selectedCharacter: updatedChar,
@@ -181,7 +182,11 @@ export const createCharacterSlice = (DEFAULT_CHARACTERS: CharacterCard[]): State
     const updatedEntries = currentEntries.filter((e) => e.id !== id);
     const updatedChar = { ...char, extensions: { ...char.extensions, worldBook: updatedEntries } };
     
-    await db.worldEntries.delete(id);
+    // 角色私设直接存在角色卡中
+    if (char.id.startsWith('custom-')) {
+      const { image: _img, ...rest } = updatedChar
+      await db.characters.put({ ...rest, updatedAt: Date.now() })
+    }
 
     set((s) => ({
       selectedCharacter: updatedChar,

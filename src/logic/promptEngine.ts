@@ -71,10 +71,10 @@ export const scanActiveWorldInfo = async (ctx: PromptContext, fullHistory?: Mess
   const validOwnerIds = [character.id, ...boundBookIds];
 
   // 2. 从数据库拉取所有潜在条目 (仅限当前对话相关的 owner)
+  // 角色绑定的书库条目无视 enabled 状态，由条目自身的 enabled 控制
   const allAvailableEntries = await db.worldEntries
     .where('ownerId')
     .anyOf(validOwnerIds)
-    .filter(e => e.enabled)
     .toArray();
 
   const activatedEntries = new Map<string, DBWorldEntry>();
@@ -109,6 +109,9 @@ export const scanActiveWorldInfo = async (ctx: PromptContext, fullHistory?: Mess
     for (let i = 0; i < allAvailableEntries.length; i++) {
       const entry = allAvailableEntries[i]
       if (activatedEntries.has(entry.id)) continue
+      
+      // 跳过禁用的条目
+      if (!entry.enabled) continue
       
       // 常驻条目直接激活
       if (entry.constant || !entry.keys || entry.keys.length === 0) {

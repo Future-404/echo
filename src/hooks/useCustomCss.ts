@@ -21,17 +21,17 @@ export const useCustomCss = () => {
         document.head.appendChild(el)
       }
 
-      // 全局包：反转后注入，靠上的包后注入优先级更高
+      // 全局包：反转后注入，靠上的包后注入优先级更高（排除角色绑定的包）
       const globalCss = [...cssPackages]
         .reverse()
         .filter((p) => p.enabled && !boundIds.includes(p.id))
         .map((p) => `/* [CSS包] ${p.name} */\n${p.css}`)
         .join('\n\n')
 
-      // 角色绑定包：最后注入，优先级最高
+      // 角色绑定包：最后注入，优先级最高（无视全局 enabled 状态）
       const charCss = boundIds.length
         ? cssPackages
-            .filter((p) => p.enabled && boundIds.includes(p.id))
+            .filter((p) => boundIds.includes(p.id))
             .map((p) => `/* [CSS包·角色] ${p.name} */\n${p.css}`)
             .join('\n\n')
         : ''
