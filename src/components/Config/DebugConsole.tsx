@@ -66,7 +66,7 @@ const DebugConsole: React.FC = () => {
 
               <button 
                 onClick={() => handleCopy(log.data)}
-                className="absolute bottom-2 right-2 p-1.5 bg-white dark:bg-black border border-echo-border-md rounded-md shadow-sm text-gray-400 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-all"
+                className="absolute bottom-2 right-2 p-1.5 bg-white dark:bg-black border border-echo-border-md rounded-md shadow-sm text-gray-400 hover:text-blue-500 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all"
               >
                 <Copy size={10} />
               </button>

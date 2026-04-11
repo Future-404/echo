@@ -1,6 +1,9 @@
 import type { CharacterCard } from '../types/chat';
 import { parseUniversalStatus } from './statusParser';
 
+// 优化：正则缓存
+const regexCache = new Map<string, RegExp>()
+
 // layer: 1=存储层, 2=渲染层
 export const applyCharacterRegexScripts = (text: string, char: CharacterCard, layer: 1 | 2 = 1): string => {
   if (!text) return '';
@@ -17,25 +20,32 @@ export const applyCharacterRegexScripts = (text: string, char: CharacterCard, la
     if (!placement.includes(layer)) return;
     
     try {
-      let pattern = String(tpl.originalRegex).trim();
-      let flags = 'g';
+      const cacheKey = `${tpl.id}-${tpl.originalRegex}`
+      let regex = regexCache.get(cacheKey)
       
-      if (pattern.startsWith('/') && pattern.lastIndexOf('/') > 0) {
-        const lastSlash = pattern.lastIndexOf('/');
-        flags = pattern.substring(lastSlash + 1) || 'g';
-        pattern = pattern.substring(1, lastSlash);
+      if (!regex) {
+        let pattern = String(tpl.originalRegex).trim();
+        let flags = 'g';
         
-        // 处理 ST 特有的 /s 修饰符 (dotAll)
-        if (flags.includes('s')) {
-          flags = flags.replace('s', '');
-          // 只替换字符类外部的独立 .，避免污染 [^.] 等字符类内部
-          pattern = pattern.replace(/(?<!\[(?:[^\]]*))\./g, '[\\s\\S]');
+        if (pattern.startsWith('/') && pattern.lastIndexOf('/') > 0) {
+          const lastSlash = pattern.lastIndexOf('/');
+          flags = pattern.substring(lastSlash + 1) || 'g';
+          pattern = pattern.substring(1, lastSlash);
+          
+          // 处理 ST 特有的 /s 修饰符 (dotAll)
+          if (flags.includes('s')) {
+            flags = flags.replace('s', '');
+            // 只替换字符类外部的独立 .，避免污染 [^.] 等字符类内部
+            pattern = pattern.replace(/(?<!\[(?:[^\]]*))\./g, '[\\s\\S]');
+          }
         }
+        
+        // 关键修复：将转义的 \n \t 还原为实际字符
+        pattern = pattern.replace(/\\n/g, '\n').replace(/\\t/g, '\t');
+        
+        regex = new RegExp(pattern, flags)
+        regexCache.set(cacheKey, regex)
       }
-
-      // 关键修复：将转义的 \n \t 还原为实际字符
-      pattern = pattern.replace(/\\n/g, '\n').replace(/\\t/g, '\t');
-      const regex = new RegExp(pattern, flags);
       
       // 关键修复：处理替换字符串中的换行符和反向引用
       const replacement = String(tpl.replaceString)

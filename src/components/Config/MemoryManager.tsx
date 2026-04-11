@@ -121,7 +121,7 @@ const MemoryManager: React.FC = () => {
                     <span key={tag} className="px-2 py-0.5 bg-echo-surface text-[8px] text-echo-text-subtle rounded-full uppercase tracking-tighter">#{tag}</span>
                   ))}
                 </div>
-                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                   {editingId === ep.id ? (
                     <button onClick={() => setEditingId(null)} className="p-1.5 text-gray-400 hover:text-red-400"><X size={14} /></button>
                   ) : (

@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, startTransition } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAppStore } from '../store/useAppStore'
-import { X, Square, Plus } from 'lucide-react'
+import { X, Square, LayoutGrid } from 'lucide-react'
 import { readFileAsDataURL } from '../utils/fileUtils'
 import AppsSheet, { type AppDefinition } from './AppsSheet'
 import { useDialog } from './GlobalDialog'
@@ -16,6 +16,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
   const [userInput, setUserInput] = useState('')
   const [attachedImages, setAttachedImages] = useState<string[]>([])
   const [appsOpen, setAppsOpen] = useState(false)
+  const [isProcessingImage, setIsProcessingImage] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { alert } = useDialog()
@@ -29,7 +30,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
   }, [userInput])
 
   const handleSend = () => {
-    if ((userInput.trim() || attachedImages.length > 0) && !disabled) {
+    if ((userInput.trim() || attachedImages.length > 0) && !disabled && !isProcessingImage) {
       onSend(userInput.trim(), attachedImages.length > 0 ? attachedImages : undefined)
       setUserInput('')
       setAttachedImages([])
@@ -39,7 +40,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     // 移动端不绑 Enter 发送，让键盘自然换行
     const isMobile = /Mobi|Android/i.test(navigator.userAgent)
-    if (e.key === 'Enter' && !e.shiftKey && !disabled && !isMobile) {
+    if (e.key === 'Enter' && !e.shiftKey && !disabled && !isProcessingImage && !isMobile) {
       e.preventDefault()
       handleSend()
     }
@@ -60,7 +61,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
         }
         canvas.width = width; canvas.height = height
         canvas.getContext('2d')?.drawImage(img, 0, 0, width, height)
-        resolve(canvas.toDataURL('image/jpeg', 0.8))
+        resolve(canvas.toDataURL('image/webp', 0.6))
       }
       img.src = dataUrl
     })
@@ -68,12 +69,14 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
+    setIsProcessingImage(true)
     for (const file of files) {
       try {
         const resized = await resizeImage(file)
         setAttachedImages(prev => [...prev, resized].slice(0, 4))
       } catch (err) { console.error('Failed to resize image:', err) }
     }
+    setIsProcessingImage(false)
     if (fileInputRef.current) fileInputRef.current.value = ''
     setAppsOpen(false)
   }
@@ -81,6 +84,13 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
   const handleOpenApp = (app: AppDefinition) => {
     if (app.id === 'send-image') {
       fileInputRef.current?.click()
+      return
+    }
+    if (app.id === 'tweet-square') {
+      setAppsOpen(false)
+      React.startTransition(() => {
+        useAppStore.getState().setCurrentView('tweet-square')
+      })
       return
     }
     setAppsOpen(false)
@@ -141,8 +151,12 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
           />
 
           <div className="flex items-center mb-0.5 ml-1 gap-0.5">
-            <button onClick={() => setAppsOpen(true)} className="p-1.5 text-gray-400 hover:text-purple-500 transition-colors flex-shrink-0" title="应用中心">
-              <Plus size={18} strokeWidth={1.5} />
+            <button 
+              onClick={() => setAppsOpen(true)} 
+              className="p-1.5 text-gray-400 hover:text-indigo-500 hover:bg-indigo-500/5 rounded-xl transition-all duration-300 flex-shrink-0 group/appbtn" 
+              title="应用中心"
+            >
+              <LayoutGrid size={18} strokeWidth={1.2} className="group-hover/appbtn:rotate-90 transition-transform duration-500" />
             </button>
             <AnimatePresence mode="wait">
               {isTyping ? (
@@ -152,6 +166,15 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
                 >
                   <Square size={14} fill="currentColor" strokeWidth={0} />
                 </motion.button>
+              ) : isProcessingImage ? (
+                <motion.div key="processing" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}
+                  className="p-2 rounded-full flex items-center justify-center"
+                  style={{ color: 'var(--echo-send-btn-bg, #3b82f6)' }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="animate-spin">
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                  </svg>
+                </motion.div>
               ) : (userInput.trim() || attachedImages.length > 0) ? (
                 <motion.button key="send" initial={{ opacity: 0, scale: 0.8, x: 5 }} animate={{ opacity: 1, scale: 1, x: 0 }} exit={{ opacity: 0, scale: 0.8, x: 5 }}
                   onClick={handleSend} disabled={disabled}
@@ -171,7 +194,10 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
       </div>
 
       <div className="echo-input-hint px-10 flex justify-between items-center mt-1">
-        {attachedImages.length > 0 && (
+        {isProcessingImage && (
+          <span className="text-[8px] text-purple-500/60 font-mono uppercase tracking-tighter animate-pulse">Processing...</span>
+        )}
+        {!isProcessingImage && attachedImages.length > 0 && (
           <span className="text-[8px] text-blue-500/60 font-mono uppercase tracking-tighter">{attachedImages.length}/4 Images</span>
         )}
         <span className="ml-auto text-[8px] text-gray-400 dark:text-gray-700 italic tracking-tighter opacity-0 group-hover/input:opacity-100 transition-opacity">

@@ -74,6 +74,17 @@ export interface DBPresetEntry {
   role?: 'system' | 'user' | 'assistant';
 }
 
+export interface DBDirective {
+  id: string;
+  title: string;
+  content: string;
+  enabled: boolean;
+  depth?: number;
+  role?: 'system' | 'user' | 'assistant';
+  position?: 0 | 1;
+  insertionOrder?: number;
+}
+
 export interface DBCharacter extends CharacterCard {
   updatedAt: number;
 }
@@ -87,6 +98,8 @@ export class EchoDatabase extends Dexie {
   memoryEpisodes!: Table<DBMemoryEpisode>;
   kvStore!: Table<DBKVStore>;
   promptPresetEntries!: Table<DBPresetEntry>;
+  globalDirectives!: Table<DBDirective>;
+  tweets!: Table<any>;
 
   constructor() {
     super('EchoDatabase');
@@ -108,6 +121,33 @@ export class EchoDatabase extends Dexie {
       memoryEpisodes: '++id, slotId, timestamp, *tags',
       kvStore: 'key',
       promptPresetEntries: 'id, presetId'
+    });
+
+    this.version(6).stores({
+      characters: 'id, name, updatedAt',
+      messages: '++id, slotId, timestamp, vState',
+      saveSlots: 'id, characterId, timestamp',
+      worldEntries: 'id, ownerId, *keys',
+      memoryEpisodes: '++id, slotId, timestamp, *tags',
+      kvStore: 'key',
+      promptPresetEntries: 'id, presetId',
+      globalDirectives: 'id'
+    });
+
+    this.version(7).stores({
+      characters: 'id, name, updatedAt',
+      messages: '++id, slotId, timestamp, vState',
+      saveSlots: 'id, characterId, timestamp',
+      worldEntries: 'id, ownerId, *keys',
+      memoryEpisodes: '++id, slotId, timestamp, *tags',
+      kvStore: 'key',
+      promptPresetEntries: 'id, presetId',
+      globalDirectives: 'id',
+      blogPosts: '++id, characterId, createdAt, [characterId+createdAt]'
+    });
+
+    this.version(8).stores({
+      tweets: '++id, characterId, createdAt, [characterId+createdAt]'
     });
   }
 

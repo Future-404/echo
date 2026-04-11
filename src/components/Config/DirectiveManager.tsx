@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Plus, Upload, Trash2, ChevronDown, ChevronUp, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Plus, Upload, Trash2, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Edit2 } from 'lucide-react'
 import { useAppStore } from '../../store/useAppStore'
 import type { PromptPreset, Directive } from '../../store/useAppStore'
 import { db } from '../../storage/db'
@@ -10,9 +10,10 @@ import { readFileAsText, genId } from '../../utils/fileUtils'
 interface DirectiveManagerProps {
   onEdit: (id: string) => void
   onAdd: () => void
+  onEditPresetEntry: (entryId: string, presetId: string) => void
 }
 
-const DirectiveManager: React.FC<DirectiveManagerProps> = ({ onAdd }) => {
+const DirectiveManager: React.FC<DirectiveManagerProps> = ({ onEdit, onAdd, onEditPresetEntry }) => {
   const { config, addPromptPreset, removePromptPreset, updatePromptPresetDirective, updateDirective, removeDirective } = useAppStore()
   const { alert } = useDialog()
   const presets: PromptPreset[] = config.promptPresets || []
@@ -131,6 +132,9 @@ const DirectiveManager: React.FC<DirectiveManagerProps> = ({ onAdd }) => {
                         <p className={`text-xs font-serif truncate ${d.enabled ? 'text-echo-text-primary' : 'text-echo-text-subtle line-through'}`}>{d.title}</p>
                         {d.depth && <span className="text-[7px] text-gray-400 uppercase tracking-widest">depth {d.depth}</span>}
                       </div>
+                      <button onClick={() => onEditPresetEntry(d.id, preset.id)} className="text-gray-300 dark:text-gray-700 hover:text-blue-400 transition-colors">
+                        <Edit2 size={12} strokeWidth={1} />
+                      </button>
                       <button onClick={() => handleToggleEntry(preset.id, d)} className="text-gray-400 shrink-0">
                         {d.enabled ? <ToggleRight size={18} strokeWidth={1} className="text-green-300 dark:text-green-800" /> : <ToggleLeft size={18} strokeWidth={1} />}
                       </button>
@@ -155,6 +159,9 @@ const DirectiveManager: React.FC<DirectiveManagerProps> = ({ onAdd }) => {
                 </div>
                 <button onClick={() => updateDirective(d.id, { enabled: !d.enabled })} className="text-gray-400 shrink-0">
                   {d.enabled ? <ToggleRight size={18} strokeWidth={1} className="text-green-300 dark:text-green-800" /> : <ToggleLeft size={18} strokeWidth={1} />}
+                </button>
+                <button onClick={() => onEdit(d.id)} className="text-gray-300 dark:text-gray-700 hover:text-blue-400 transition-colors">
+                  <Edit2 size={12} strokeWidth={1} />
                 </button>
                 <button onClick={() => removeDirective(d.id)} className="text-gray-300 dark:text-gray-700 hover:text-red-400 transition-colors">
                   <Trash2 size={12} strokeWidth={1} />

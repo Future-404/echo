@@ -12,7 +12,7 @@ import type {
 export interface UISlice {
   isLoading: boolean;
   isConfigOpen: boolean;
-  currentView: 'home' | 'main' | 'selection' | 'multi-selection' | 'save' | 'load' | 'help' | 'config';
+  currentView: 'home' | 'main' | 'selection' | 'multi-selection' | 'save' | 'load' | 'help' | 'config' | 'archive' | 'tweet-square';
   configSubView: 'main' | 'advanced' | 'gateway' | 'world' | 'prompt' | 'provider-edit' | 'directive-edit' | 'skills' | 'persona' | 'debug' | 'parsers' | 'appearance' | 'tts' | 'memory-palace' | 'global-management' | 'regex' | 'regex-edit' | 'css-packages' | 'css-package-edit';
   lastInteraction: { x: number; y: number } | null;
   isInteracting: boolean;

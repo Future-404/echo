@@ -73,7 +73,7 @@ const LoadScreen: React.FC = () => {
         </button>
 
         <div className="flex flex-col items-end">
-          <h2 className="text-xs font-serif tracking-[0.3em] text-echo-text-muted font-medium uppercase">读取记忆 // ARCHIVES</h2>
+          <h2 className="text-xs font-serif tracking-[0.3em] text-echo-text-muted font-medium uppercase">读取记忆 // LOAD MEMORY</h2>
           <p className="text-[7px] text-echo-text-dim uppercase tracking-widest mt-1">Memory Chronology</p>
         </div>
       </header>
@@ -139,7 +139,7 @@ const LoadScreen: React.FC = () => {
                       </h4>
                       <button 
                         onClick={(e) => handleRename(e, slot.id, slot.name)}
-                        className="opacity-0 group-hover:opacity-100 p-1 text-echo-text-dim hover:text-blue-500 transition-all"
+                        className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-1 text-echo-text-dim hover:text-blue-500 transition-all"
                       >
                         <Edit2 size={10} />
                       </button>
@@ -164,7 +164,7 @@ const LoadScreen: React.FC = () => {
                   {/* 删除按钮 */}
                   <button
                     onClick={(e) => handleDelete(e, slot.id)}
-                    className="opacity-0 group-hover:opacity-100 p-2 text-echo-text-dim hover:text-red-500 transition-all self-start"
+                    className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-2 text-echo-text-dim hover:text-red-500 transition-all self-start"
                   >
                     <Trash2 size={16} />
                   </button>

@@ -103,7 +103,8 @@ export const useChat = () => {
       missions,
       userName: config.userName || 'Observer',
       enabledSkillIds: config.enabledSkillIds,
-      slotId: requestSlotId, // 告知引擎从哪个存档拉取 AI 上下文
+      deviceContextEnabled: config.deviceContextEnabled,
+      slotId: requestSlotId,
       recentMessages: currentMessages,
       isMultiChar: !!secondaryCharacter,
       otherCharName: secondaryCharacter ? (charId === selectedCharacter.id ? secondaryCharacter.name : selectedCharacter.name) : undefined,
@@ -185,12 +186,14 @@ export const useChat = () => {
             if (skillResult.success) {
               useAppStore.getState().addFragment(`✅ [${displayName}] 感知同步完成`);
             }
-            const toolMsg: Message = { role: 'tool', tool_call_id: tc.id, name: tc.function.name, content: skillResult.message };
+            const contentStr = skillResult.data 
+              ? JSON.stringify({ message: skillResult.message, data: skillResult.data }) 
+              : skillResult.message;
+            const toolMsg: Message = { role: 'tool', tool_call_id: tc.id, name: tc.function.name, content: contentStr };
             await addMessage(toolMsg, requestSlotId);
             toolResults.push(toolMsg);
           } catch (e) { console.error('Skill error:', e); }
         }
-
         if (toolResults.length > 0) {
           try {
             const followUpController = new AbortController();

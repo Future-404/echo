@@ -72,11 +72,12 @@ const NavItem: React.FC<{ id: string; label: string; icon: string; sub: string; 
 
 const ConfigPanel: React.FC = () => {
   const { 
-    setCurrentView, addProvider, addDirective, config, updateConfig, 
+    setCurrentView, addProvider, addDirective, addRegexRule, config, updateConfig, 
     configSubView, setConfigSubView, multiCharMode, setMultiCharMode 
   } = useAppStore()
   
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingPresetId, setEditingPresetId] = useState<string | null>(null)
 
   const activeView = configSubView as SubView
   const setActiveView = (view: SubView) => setConfigSubView(view as any)
@@ -208,8 +209,8 @@ const ConfigPanel: React.FC = () => {
 
           {activeView === 'gateway' && <ProviderManager onEdit={(id) => { setEditingId(id); setActiveView('provider-edit') }} />}
           {activeView === 'provider-edit' && editingId && <ProviderEditor id={editingId} onClose={() => setActiveView('gateway')} />}
-          {activeView === 'prompt' && <DirectiveManager onEdit={(id) => { setEditingId(id); setActiveView('directive-edit') }} onAdd={() => { const newId = `dir-${Date.now()}`; addDirective({ id: newId, title: '新指令', content: '', enabled: true }); setEditingId(newId); setActiveView('directive-edit') }} />}
-          {activeView === 'directive-edit' && editingId && <DirectiveEditor id={editingId} onClose={() => setActiveView('prompt')} />}
+          {activeView === 'prompt' && <DirectiveManager onEdit={(id) => { setEditingPresetId(null); setEditingId(id); setActiveView('directive-edit') }} onAdd={() => { const newId = `dir-${Date.now()}`; addDirective({ id: newId, title: '新指令', content: '', enabled: true }); setEditingPresetId(null); setEditingId(newId); setActiveView('directive-edit') }} onEditPresetEntry={(entryId, presetId) => { setEditingId(entryId); setEditingPresetId(presetId); setActiveView('directive-edit') }} />}
+          {activeView === 'directive-edit' && editingId && <DirectiveEditor id={editingId} presetId={editingPresetId ?? undefined} onClose={() => setActiveView('prompt')} />}
           {activeView === 'world' && <WorldBookEditor />}
           {activeView === 'skills' && <SkillArsenal />}
           {activeView === 'persona' && <PersonaManager />}
@@ -217,7 +218,7 @@ const ConfigPanel: React.FC = () => {
           {activeView === 'appearance' && <AppearanceEditor onOpenCssPackages={() => setActiveView('css-packages')} />}
           {activeView === 'css-packages' && <CssPackageManager onEdit={(id) => { setEditingId(id); setActiveView('css-package-edit') }} />}
           {activeView === 'css-package-edit' && editingId && <CssPackageEditor id={editingId} onClose={() => setActiveView('css-packages')} />}
-          {activeView === 'regex' && <RegexManager onEdit={(id) => { setEditingId(id); setActiveView('regex-edit') }} onAdd={() => { /* Assume regex rule adding logic here */ }} />}
+          {activeView === 'regex' && <RegexManager onEdit={(id) => { setEditingId(id); setActiveView('regex-edit') }} onAdd={() => { const newId = `regex-${Date.now()}`; addRegexRule({ id: newId, name: '新规则', regex: '', replacement: '', flags: 'g', enabled: true, runOn: ['ui'] }); setEditingId(newId); setActiveView('regex-edit') }} />}
           {activeView === 'regex-edit' && editingId && <RegexEditor id={editingId} onClose={() => setActiveView('regex')} />}
           {activeView === 'storage' && <StorageSettings />}
           {activeView === 'tts' && <TtsSettings />}

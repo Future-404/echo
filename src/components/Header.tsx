@@ -47,12 +47,12 @@ const Header: React.FC = () => {
                   >
                     {selectedCharacter.name}
                   </button>
-                  <CharCard
-                    open={charCardOpen}
-                    onClose={() => setCharCardOpen(false)}
-                    anchorRef={charNameRef}
-                  />
                 </div>
+                <CharCard
+                  open={charCardOpen}
+                  onClose={() => setCharCardOpen(false)}
+                  anchorRef={charNameRef}
+                />
 
                 {/* 环境信息：双排小字展示 */}
                 <div className="flex flex-col justify-center leading-none ml-1 border-l border-white/10 pl-2">

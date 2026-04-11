@@ -1,9 +1,10 @@
 export interface ModelConfig {
-  chatProviderId: string       // 全局主对话 LLM
-  embeddingProviderId: string  // 嵌入模型
-  ttsProviderId: string        // TTS
-  routerProviderId: string     // 多角色路由 LLM
-  summaryProviderId: string    // 记忆摘要 LLM（独立小模型）
+  chatProviderId: string
+  embeddingProviderId: string
+  ttsProviderId: string
+  routerProviderId: string
+  summaryProviderId: string
+  toolProviderId: string         // AI 工具協助，從 chat providers 中選取
 }
 
 export const DEFAULT_MODEL_CONFIG: ModelConfig = {
@@ -12,4 +13,5 @@ export const DEFAULT_MODEL_CONFIG: ModelConfig = {
   ttsProviderId: '',
   routerProviderId: '',
   summaryProviderId: '',
+  toolProviderId: '',
 }

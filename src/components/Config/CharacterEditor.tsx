@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Trash2, Check, Globe, Plus, Book, Settings2, Edit2, ChevronDown, ChevronUp, Key, Camera, Palette } from 'lucide-react'
+import { X, Trash2, Check, Globe, Plus, Book, Settings2, Edit2, ChevronDown, ChevronUp, Key, Camera, Palette, Sparkles } from 'lucide-react'
 import { useAppStore } from '../../store/useAppStore'
 import type { WorldBook } from '../../types/store'
 import { Toggle } from '../ui'
@@ -8,6 +8,9 @@ import TagTemplateEditor from './TagTemplateEditor'
 import { extractPersonaFromPng } from '../../utils/pngParser'
 import { useDialog } from '../GlobalDialog'
 import { readFileAsDataURL } from '../../utils/fileUtils'
+import AIAssistPanel from '../AIAssist/AIAssistPanel'
+import type { AIAssistChange } from '../../types/aiAssist'
+import { applyChanges } from '../../utils/aiAssistEngine'
 
 interface CharacterEditorProps {
   charId: string
@@ -34,7 +37,8 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
   const [isAddingPrivate, setIsAddingPrivate] = useState(false)
   const [expandedPrivateId, setExpandedPrivateId] = useState<string | null>(null)
   const [newContent, setNewContent] = useState('')
-  const [isParsersExpanded, setIsParsersExpanded] = React.useState(false);
+  const [isParsersExpanded, setIsParsersExpanded] = React.useState(false)
+  const [aiAssistOpen, setAiAssistOpen] = useState(false)
 
   if (!char) return null
 
@@ -146,7 +150,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
   const handleAddPrivate = () => {
     if (!newContent.trim()) return
     const entry: WorldBookEntry = {
-      id: `private_${Date.now()}`,
+      id: `wb-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
       keys: [],
       content: newContent,
       enabled: true,
@@ -178,12 +182,59 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
             <h2 className="text-[10px] tracking-[0.6em] text-gray-400 uppercase">Core // Identifier</h2>
             <p className="text-[8px] text-gray-400 uppercase mt-1 italic">Rewrite Neural Pattern</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-500 transition-colors">
-            <X size={20} strokeWidth={1} />
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setAiAssistOpen(v => !v)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] uppercase tracking-widest transition-all ${aiAssistOpen ? 'bg-purple-500 text-white' : 'text-gray-400 hover:text-purple-500'}`}
+            >
+              <Sparkles size={11} /> AI 協助
+            </button>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-500 transition-colors">
+              <X size={20} strokeWidth={1} />
+            </button>
+          </div>
         </header>
 
         <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-8 md:space-y-10 no-scrollbar text-left pb-32">
+          {/* AI 協助面板 */}
+          <AnimatePresence>
+            {aiAssistOpen && (
+              <AIAssistPanel
+                char={char}
+                onApply={async (changes: AIAssistChange[]) => {
+                  const updated = applyChanges(char, changes)
+                  const patch: any = {}
+                  const scalarChanges = changes.filter(c => c.field !== 'worldBook')
+                  scalarChanges.forEach(c => { if (c.op === 'set') patch[c.field] = c.value })
+                  if (updated.alternateGreetings !== char.alternateGreetings) patch.alternateGreetings = updated.alternateGreetings
+
+                  // worldBook 走專用方法，不走 updateCharacter（避免清空 worldEntries）
+                  const wbChanges = changes.filter(c => c.field === 'worldBook')
+                  if (wbChanges.length) {
+                    const newEntries = updated.extensions?.worldBook || []
+                    const oldEntries = char.extensions?.worldBook || []
+                    // 新增的條目
+                    for (const e of newEntries) {
+                      if (!oldEntries.find(o => o.id === e.id)) {
+                        await addPrivateWorldBookEntry(e, charId)
+                      } else {
+                        await updatePrivateWorldBookEntry(e.id, e, charId)
+                      }
+                    }
+                    // 刪除的條目
+                    for (const o of oldEntries) {
+                      if (!newEntries.find(n => n.id === o.id)) {
+                        await removePrivateWorldBookEntry(o.id, charId)
+                      }
+                    }
+                  }
+
+                  if (Object.keys(patch).length) updateCharacter(charId, patch)
+                }}
+                onClose={() => setAiAssistOpen(false)}
+              />
+            )}
+          </AnimatePresence>
           {/* 头像 */}
           <div className="flex flex-col items-center gap-6 text-center">
             <input 
@@ -198,7 +249,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
               className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-echo-surface border-0.5 border-gray-100 dark:border-gray-800 flex items-center justify-center overflow-hidden p-0 group relative cursor-pointer"
             >
               <img src={char.image} alt={char.name} className="w-full h-full object-cover transition-all group-hover:brightness-50" />
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="absolute inset-0 flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                 <Camera size={20} className="text-white" />
               </div>
             </button>

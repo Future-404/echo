@@ -13,7 +13,7 @@ interface CharCardProps {
 }
 
 const CharCard: React.FC<CharCardProps> = ({ open, onClose, anchorRef }) => {
-  const { selectedCharacter, config, toggleSkill, setIsConfigOpen, setCurrentView, updateCharacter } = useAppStore()
+  const { selectedCharacter, config, toggleSkill, toggleDeviceContext, setIsConfigOpen, setCurrentView, updateCharacter } = useAppStore()
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const cardRef = useRef<HTMLDivElement>(null)
 
@@ -110,17 +110,24 @@ const CharCard: React.FC<CharCardProps> = ({ open, onClose, anchorRef }) => {
               <span className="text-[10px] font-bold uppercase tracking-widest text-echo-text-subtle">Skills</span>
             </div>
             <div className="space-y-1.5">
+              <div
+                onClick={toggleDeviceContext}
+                className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-echo-surface transition-colors cursor-pointer"
+              >
+                <span className="text-[11px] text-left text-gray-700 dark:text-gray-300">设备感知</span>
+                <Toggle checked={config.deviceContextEnabled ?? false} onChange={toggleDeviceContext} />
+              </div>
               {ALL_SKILLS.map(skill => {
                 const enabled = (config.enabledSkillIds || []).includes(skill.name)
                 return (
-                  <button
+                  <div
                     key={skill.name}
                     onClick={() => toggleSkill(skill.name)}
-                    className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-echo-surface transition-colors"
+                    className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-echo-surface transition-colors cursor-pointer"
                   >
                     <span className="text-[11px] text-left text-gray-700 dark:text-gray-300">{skill.displayName}</span>
                     <Toggle checked={enabled} onChange={() => toggleSkill(skill.name)} />
-                  </button>
+                  </div>
                 )
               })}
             </div>

@@ -162,7 +162,7 @@ const WorldBookEditor: React.FC = () => {
                 </div>
                 <button 
                   onClick={(e) => { e.stopPropagation(); removeWorldBook(book.id); }}
-                  className="p-2 text-gray-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                  className="p-2 text-gray-400 hover:text-red-400 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all"
                 >
                   <Trash2 size={14} />
                 </button>
@@ -234,7 +234,7 @@ const WorldBookEditor: React.FC = () => {
               <div className="flex items-center gap-2">
                 <button 
                   onClick={(e) => { e.stopPropagation(); removeWorldBookEntry(selectedBookId, entry.id); }}
-                  className="p-1.5 text-gray-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                  className="p-1.5 text-gray-400 hover:text-red-400 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all"
                 >
                   <Trash2 size={12} />
                 </button>

@@ -11,6 +11,8 @@ import { createCharacterSlice, type CharacterSlice } from './characterSlice'
 import { createConfigSlice, type ConfigSlice } from './configSlice'
 import { createSaveSlice, type SaveSlice, loadSlotsFromStorage, SAVE_KEY, MULTI_SAVE_KEY } from './saveSlice'
 import { createUISlice, type UISlice } from './uiSlice'
+import { createArchiveSlice, type ArchiveSlice } from './archiveSlice'
+import { createTweetSlice, type TweetSlice } from './tweetSlice'
 import type { AppState } from './storeTypes'
 
 // 导入统一的类型定义
@@ -72,6 +74,7 @@ const INITIAL_CONFIG = {
   activeProviderId: 'default',
   modelConfig: DEFAULT_MODEL_CONFIG,
   enabledSkillIds: [],
+  deviceContextEnabled: false,
   personas: [{ id: 'p1', name: 'Observer', description: '最初的观察者', background: '你是一个意识，正在通过回声系统与外界通讯。' }],
   activePersonaId: 'p1',
   isDebugEnabled: false,
@@ -92,6 +95,8 @@ export const useAppStore = create<AppState>()(
       ...createConfigSlice(INITIAL_CONFIG)(set, get),
       ...createSaveSlice(set, get),
       ...createUISlice(set, get),
+      ...createArchiveSlice(set, get),
+      ...createTweetSlice(set, get),
 
       _hasHydrated: false,
       setHasHydrated: (val) => set({ _hasHydrated: val }),
@@ -99,10 +104,13 @@ export const useAppStore = create<AppState>()(
     {
       name: STORE_KEY,
       storage: createJSONStorage(() => ({
+        // 底層是 IndexedDB（DexieStorageAdapter），不是 window.localStorage
         getItem: (key) => getStorageAdapter().getItem(key),
         setItem: (key, value) => getStorageAdapter().setItem(key, value),
         removeItem: (key) => getStorageAdapter().removeItem(key),
       })),
+      // 优化：节流持久化，减少写入频率
+      skipHydration: false,
       onRehydrateStorage: () => (state, error) => {
         if (error) console.error('[echo] rehydrate failed:', error)
         if (state) {
@@ -235,7 +243,16 @@ export const useAppStore = create<AppState>()(
           fragments: state.fragments,
           currentAutoSlotId: state.currentAutoSlotId,
           ttsSettings: state.ttsSettings,
+          archiveStats: state.archiveStats, // ← 添加档案统计数据
         }),
     }
   )
 )
+
+// 开发环境暴露 store 到 window 用于测试
+if (import.meta.env.DEV) {
+  ;(window as any).__ECHO_STORE__ = useAppStore.getState()
+  useAppStore.subscribe(() => {
+    ;(window as any).__ECHO_STORE__ = useAppStore.getState()
+  })
+}

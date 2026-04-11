@@ -1,5 +1,6 @@
 import type { CharacterCard } from '../types/chat';
 import { getEnabledSkillPrompts } from '../skills';
+import { collectDeviceContext, formatDeviceContext } from '../utils/deviceContext';
 import { estimateTokens } from '../utils/tokenCounter';
 import { generateFormattingPrompt } from '../store/constants';
 import { db } from '../storage/db';
@@ -18,8 +19,9 @@ export interface PromptContext {
   missions: Mission[];
   userName: string;
   enabledSkillIds?: string[];
-  slotId?: string; // 支持从数据库异步拉取
-  recentMessages?: Message[]; // 向后兼容
+  deviceContextEnabled?: boolean;
+  slotId?: string;
+  recentMessages?: Message[];
   isMultiChar?: boolean;
   otherCharName?: string;
 }
@@ -80,54 +82,77 @@ export const scanActiveWorldInfo = async (ctx: PromptContext, fullHistory?: Mess
   // 3. 获取扫描文本：优先用完整历史，fallback 到 recentMessages
   const scanSource = fullHistory || recentMessages || [];
   const scanDepth = 3; 
-  const messageContext = scanSource.slice(-scanDepth).map(m => m.content).join('\n').toLowerCase();
+  // 优化：预编译正则，避免重复创建
+  const regexCache = new Map<string, RegExp>()
+  const getRegex = (pattern: string): RegExp | null => {
+    if (regexCache.has(pattern)) return regexCache.get(pattern)!
+    
+    const reMatch = pattern.match(/^\/(.+)\/([gimsuy]*)$/)
+    if (reMatch) {
+      try {
+        const regex = new RegExp(reMatch[1], reMatch[2])
+        regexCache.set(pattern, regex)
+        return regex
+      } catch { return null }
+    }
+    
+    const escaped = pattern.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const regex = new RegExp(`\\b${escaped}\\b`, 'i')
+    regexCache.set(pattern, regex)
+    return regex
+  }
+
+  const messageContext = scanSource.slice(-scanDepth).map(m => m.content).join('\n').toLowerCase()
 
   const performScan = (text: string): boolean => {
-    let newlyAdded = false;
-    for (const entry of allAvailableEntries) {
-      if (activatedEntries.has(entry.id)) continue;
+    let newlyAdded = false
+    for (let i = 0; i < allAvailableEntries.length; i++) {
+      const entry = allAvailableEntries[i]
+      if (activatedEntries.has(entry.id)) continue
       
       // 常驻条目直接激活
       if (entry.constant || !entry.keys || entry.keys.length === 0) {
-        activatedEntries.set(entry.id, entry);
-        newlyAdded = true;
-        continue;
+        activatedEntries.set(entry.id, entry)
+        newlyAdded = true
+        continue
       }
 
-      // 关键词匹配
-      const matched = entry.keys.some(k => {
-        const trimmed = k.trim();
-        if (!trimmed) return false;
-        // 支持正则格式 /regex/flags
-        const reMatch = trimmed.match(/^\/(.+)\/([gimsuy]*)$/);
-        if (reMatch) {
-          try { return new RegExp(reMatch[1], reMatch[2]).test(text); } catch { return false; }
+      // 关键词匹配（优化：提前退出）
+      let matched = false
+      for (let j = 0; j < entry.keys.length; j++) {
+        const trimmed = entry.keys[j].trim()
+        if (!trimmed) continue
+        
+        const regex = getRegex(trimmed)
+        if (regex && regex.test(text)) {
+          matched = true
+          break
         }
-        // 普通字符串匹配 (全字匹配转义)
-        const lower = trimmed.toLowerCase();
-        const escaped = lower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        return new RegExp(`\\b${escaped}\\b`, 'i').test(text);
-      });
+      }
 
       if (matched) {
-        activatedEntries.set(entry.id, entry);
-        newlyAdded = true;
+        activatedEntries.set(entry.id, entry)
+        newlyAdded = true
       }
     }
-    return newlyAdded;
-  };
+    return newlyAdded
+  }
 
   // 第一轮：基于消息内容扫描
-  performScan(messageContext);
+  performScan(messageContext)
 
   // 递归扫描：基于已激活条目的内容扫描 (最大深度 2 层)
   for (let i = 0; i < 2; i++) {
-    const currentActiveContent = Array.from(activatedEntries.values()).map(e => e.content).join('\n').toLowerCase();
-    if (currentActiveContent && performScan(currentActiveContent)) {
-      continue;
-    } else {
-      break;
+    const activeEntries = Array.from(activatedEntries.values())
+    if (activeEntries.length === 0) break
+    
+    let currentActiveContent = ''
+    for (let j = 0; j < activeEntries.length; j++) {
+      currentActiveContent += activeEntries[j].content + '\n'
     }
+    currentActiveContent = currentActiveContent.toLowerCase()
+    
+    if (!currentActiveContent || !performScan(currentActiveContent)) break
   }
 
   // 排序规则：角色私设优先 (insertionOrder + 权重)
@@ -145,7 +170,7 @@ export const scanActiveWorldInfo = async (ctx: PromptContext, fullHistory?: Mess
 export const buildPromptMessages = async (ctx: PromptContext, contextWindow: number = 128000): Promise<Message[]> => {
   const { 
     character, persona, directives, 
-    missions, userName, enabledSkillIds, recentMessages,
+    missions, userName, enabledSkillIds, deviceContextEnabled, recentMessages,
     isMultiChar, otherCharName, slotId
   } = ctx;
 
@@ -216,11 +241,13 @@ export const buildPromptMessages = async (ctx: PromptContext, contextWindow: num
   const allDirectives = [...(directives || []), ...boundPresetDirectives]
   const currentAttributes = character.attributes || {};
   const attributeContext = Object.keys(currentAttributes).length > 0 ? `\n### STATE\n${Object.entries(currentAttributes).map(([k, v]) => `- ${k}: ${v}`).join('\n')}` : '';
+  const deviceCtx = deviceContextEnabled ? await collectDeviceContext() : null;
+  const deviceSection = deviceCtx ? `\n\n### CONTEXT\n${formatDeviceContext(deviceCtx)}` : '';
   const skillPrompts = getEnabledSkillPrompts(enabledSkillIds);
   const skillSection = skillPrompts ? `\n\n### MODULES\n${fastReplace(skillPrompts).replace(/\[角色名\]/g, charName)}` : '';
   const missionStatus = (missions || []).filter(m => m.status === 'ACTIVE').map(m => `- ${m.title}: (${m.progress}%)`).join('\n');
 
-  const systemBase = `### CORE IDENTITY\n${fastReplace(character.systemPrompt)}\n${character.scenario ? '\n### SCENARIO\n' + fastReplace(character.scenario) : ''}${attributeContext}${recallContext}${skillSection}\n\n### PARTNER: ${actualUserName}\n${fastReplace(persona?.background || '')}\n\n### OBJECTIVE\n${missionStatus || 'Narrative exploration.'}`.trim();
+  const systemBase = `### CORE IDENTITY\n${fastReplace(character.systemPrompt)}\n${character.scenario ? '\n### SCENARIO\n' + fastReplace(character.scenario) : ''}${attributeContext}${recallContext}${deviceSection}${skillSection}\n\n### PARTNER: ${actualUserName}\n${fastReplace(persona?.background || '')}\n\n### OBJECTIVE\n${missionStatus || 'Narrative exploration.'}`.trim();
   
   const RESPONSE_RESERVE = 1024;
   const allDirectivesText = allDirectives.filter(d => d.enabled && !d.depth).map(d => d.content).join('\n\n');

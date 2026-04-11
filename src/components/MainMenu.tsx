@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
 import { getDisplayVersion } from '../version';
 
@@ -12,7 +12,7 @@ const GithubIcon = () => (
 )
 
 const MainMenu: React.FC = () => {
-  const { setCurrentView, setIsConfigOpen, selectedCharacter, startNewGame, messages } = useAppStore();
+  const { setCurrentView, messages } = useAppStore();
 
   const menuItems = [
     { 
@@ -40,9 +40,9 @@ const MainMenu: React.FC = () => {
       action: () => setCurrentView('load') 
     },
     { 
-      label: '档案图鉴', 
-      subLabel: 'ARCHIVE',
-      action: () => setCurrentView('selection') 
+      label: '数据图鉴', 
+      subLabel: 'STATISTICS',
+      action: () => setCurrentView('archive') 
     },
     { 
       label: '系统设定', 
@@ -75,17 +75,15 @@ const MainMenu: React.FC = () => {
         />
 
         {/* 毛玻璃遮罩层 */}
-        <div className="absolute inset-0 backdrop-blur-sm bg-black/40" />
+        <div className="absolute inset-0 bg-black/30" />
 
-        {/* 左侧光照：从左边缘向内渐变，营造聚光感 */}
-        <div className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-white/8 via-white/3 to-transparent pointer-events-none" />
-        {/* 左侧边缘竖线光 */}
-        <div className="absolute inset-y-0 left-0 w-[2px] bg-gradient-to-b from-transparent via-white/20 to-transparent pointer-events-none" />
-
-        {/* 右侧光照 */}
-        <div className="absolute inset-y-0 right-0 w-1/3 bg-gradient-to-l from-white/8 via-white/3 to-transparent pointer-events-none" />
+        {/* 右侧光照：从右边缘向内渐变，营造聚光感 */}
+        <div className="absolute inset-y-0 right-0 w-2/3 bg-gradient-to-l from-white/15 via-white/5 to-transparent pointer-events-none" />
         {/* 右侧边缘竖线光 */}
-        <div className="absolute inset-y-0 right-0 w-[2px] bg-gradient-to-b from-transparent via-white/20 to-transparent pointer-events-none" />
+        <div className="absolute inset-y-0 right-0 w-[2px] bg-gradient-to-b from-transparent via-white/30 to-transparent pointer-events-none" />
+
+        {/* 左侧压暗 */}
+        <div className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-black/70 via-black/40 to-transparent pointer-events-none" />
 
         {/* 顶部暗角 */}
         <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
@@ -93,7 +91,7 @@ const MainMenu: React.FC = () => {
         <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/70 to-transparent pointer-events-none" />
 
         {/* 左侧菜单区域局部加深，确保文字可读 */}
-        <div className="absolute inset-y-0 left-0 w-[55%] bg-gradient-to-r from-black/65 via-black/30 to-transparent pointer-events-none" />
+        <div className="absolute inset-y-0 left-0 w-[55%] bg-gradient-to-r from-black/75 via-black/40 to-transparent pointer-events-none" />
       </div>
 
       {/* 左侧菜单区域 */}
@@ -106,7 +104,7 @@ const MainMenu: React.FC = () => {
         >
           <h1 className="text-7xl font-light tracking-[0.2em] text-white flex items-center gap-4">
             ECHO
-            <span className="text-xs tracking-[0.5em] text-white/30 border-l border-white/20 pl-4 mt-2 uppercase font-sans">
+            <span className="text-xs tracking-[0.5em] text-white/60 border-l border-white/30 pl-4 mt-2 uppercase font-sans">
               Visual Novel<br/>Engine
             </span>
           </h1>
@@ -130,7 +128,7 @@ const MainMenu: React.FC = () => {
                 <span className="text-3xl font-light tracking-widest text-white/90 group-hover:text-white transition-colors">
                   {item.label}
                 </span>
-                <span className="text-[10px] tracking-[0.3em] text-white/20 group-hover:text-white/50 transition-colors uppercase font-sans">
+                <span className="text-[10px] tracking-[0.3em] text-white/50 group-hover:text-white/80 transition-colors uppercase font-sans">
                   {item.subLabel}
                 </span>
               </div>
@@ -153,17 +151,17 @@ const MainMenu: React.FC = () => {
           transition={{ delay: 1 }}
           className="absolute bottom-12 left-12 md:left-24 flex flex-col gap-2"
         >
-          <div className="text-[9px] tracking-[0.3em] text-white/30 uppercase flex items-center gap-4">
+          <div className="text-[9px] tracking-[0.3em] text-white/55 uppercase flex items-center gap-4">
             <span>Feedback Q-Group</span>
-            <span className="w-8 h-[0.5px] bg-white/10" />
-            <span className="text-white/50 font-mono tracking-widest">616353694</span>
+            <span className="w-8 h-[0.5px] bg-white/20" />
+            <span className="text-white/70 font-mono tracking-widest">616353694</span>
           </div>
           <div className="flex items-center gap-4">
-            <div className="text-[8px] tracking-[0.2em] text-white/30 uppercase">
+            <div className="text-[8px] tracking-[0.2em] text-white/50 uppercase">
               &copy; 2026 ECHO PROJECT. ALL RIGHTS RESERVED. {getDisplayVersion()}
             </div>
             <a href={REPO_URL} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-white/20 hover:text-white/60 transition-colors">
+              className="flex items-center gap-1.5 text-white/50 hover:text-white/80 transition-colors">
               <GithubIcon />
               <span className="text-[8px] tracking-[0.2em] uppercase">GitHub</span>
             </a>

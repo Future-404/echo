@@ -46,6 +46,13 @@ export const createChatSlice: StateCreator<AppState, [], [], ChatSlice> = (set, 
     const slotId = targetSlotId || state.currentAutoSlotId || `auto_${Date.now()}`;
     if (!state.currentAutoSlotId && !targetSlotId) set({ currentAutoSlotId: slotId });
 
+    // 统计逻辑：更新档案数据
+    const isUserMessage = msg.role === 'user';
+    state.updateGlobalStats(isUserMessage);
+    if (msg.speakerId) {
+      state.updateCharacterStat(msg.speakerId, 1);
+    }
+
     // 1. 异步写入数据库 (精准定向写入)
     await db.messages.add({ ...msg, slotId, timestamp: Date.now() });
 

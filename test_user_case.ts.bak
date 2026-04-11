@@ -1,0 +1,48 @@
+
+import { parseStreamingNovelText } from './src/utils/novelParser';
+
+const inputText = `*？* *现在的碰瓷技术都变得这么差了，20年前的老把戏现在还有人用。* 她抱起手臂，身体的重心微微后移，嘴角勾起一个很浅的弧度，纯粹是看热闹不嫌事大的趣味。她清了清嗓子开口。 “碰瓷？” 她顿了顿，视线在你身上又停留了几秒，似乎在评估着什么，然后才不紧不慢地补充道。 “这种技术可有点太老套了。现在都流行网络碰瓷，实体业务已经很不景气了，这位小姐。”`;
+
+console.log('Testing User Real Case:');
+const segments = parseStreamingNovelText(inputText);
+
+segments.forEach((seg, i) => {
+  console.log(`Segment ${i} [${seg.type}]: [${seg.content}]`);
+});
+
+// ========== Archive Stats Test ==========
+console.log('\n========== Testing Archive Stats ==========');
+
+function testArchiveStats() {
+  const store = useAppStore.getState();
+  
+  console.log('Initial stats:', store.archiveStats);
+  
+  // 测试更新角色统计
+  const testCharId = 'test-char-001';
+  console.log(`\nUpdating character stat for ${testCharId}...`);
+  store.updateCharacterStat(testCharId, 5);
+  
+  console.log('After update:', store.archiveStats.characterStats[testCharId]);
+  
+  // 测试更新全局统计
+  console.log('\nUpdating global stats...');
+  store.updateGlobalStats(true);  // user message
+  store.updateGlobalStats(false); // ai message
+  
+  console.log('Global stats:', store.archiveStats.globalStats);
+  
+  // 测试初始化（每日活跃）
+  console.log('\nInitializing archive stats...');
+  store.initializeArchiveStats();
+  
+  console.log('Active dates:', store.archiveStats.activeDates);
+  console.log('Total days:', store.archiveStats.globalStats.totalDays);
+}
+
+try {
+  testArchiveStats();
+  console.log('\n✅ All tests passed!');
+} catch (error) {
+  console.error('\n❌ Test failed:', error);
+}

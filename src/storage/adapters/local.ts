@@ -70,6 +70,8 @@ export class DexieStorageAdapter implements StorageAdapter {
   }
 }
 
+// 注意：此 adapter 底層是 IndexedDB（Dexie kvStore 表），並非 window.localStorage
+// 命名 "local" 指「本地存儲」而非「localStorage API」
 export const localAdapter = new DexieStorageAdapter();
 
 if (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.persist) {

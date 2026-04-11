@@ -32,7 +32,7 @@ const AssignCard: React.FC<{
         <div className="flex items-center gap-2">
           <div className={`p-1.5 rounded-lg bg-current opacity-20 ${colorClass}`} />
           <div className="flex flex-col">
-            <span className="text-[10px] font-bold text-echo-text-primary tracking-wide">{label} ({sub})</span>
+            <span className="text-[10px] font-bold text-echo-text-primary tracking-wide">{label}</span>
             <span className="text-[7px] text-echo-text-muted uppercase font-mono">{description}</span>
           </div>
         </div>
@@ -114,19 +114,23 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ onEdit }) => {
             onChange={id => setModelConfig({ routerProviderId: id })}
           />
           <AssignCard 
+            label="工具" sub="Tool" description="AI 协助创作、角色卡生成" colorClass="text-pink-500"
+            icon={<Cpu size={48} />}
+            value={mc?.toolProviderId || ''} options={chatProviders}
+            onChange={id => setModelConfig({ toolProviderId: id })}
+          />
+          <AssignCard 
             label="嵌入" sub="Embed" description="长效记忆与知识库搜索" colorClass="text-purple-500"
             icon={<Brain size={48} />}
             value={mc?.embeddingProviderId || ''} options={embProviders}
             onChange={id => setModelConfig({ embeddingProviderId: id })}
           />
-          <div className="col-span-2">
-            <AssignCard 
-              label="语音" sub="TTS" description="角色语音合成与朗读" colorClass="text-orange-500"
-              icon={<Volume2 size={48} />}
-              value={mc?.ttsProviderId || ''} options={ttsProviders}
-              onChange={id => setModelConfig({ ttsProviderId: id })}
-            />
-          </div>
+          <AssignCard 
+            label="语音" sub="" description="角色语音合成与朗读" colorClass="text-orange-500"
+            icon={<Volume2 size={48} />}
+            value={mc?.ttsProviderId || ''} options={ttsProviders}
+            onChange={id => setModelConfig({ ttsProviderId: id })}
+          />
         </div>
       </section>
 
@@ -189,7 +193,7 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ onEdit }) => {
                     <p className="text-[8px] font-mono text-echo-text-muted uppercase tracking-widest truncate">{p.model || 'DEFAULT_MODEL'}</p>
                   </div>
 
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex gap-1 opacity-60 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                     <button onClick={() => onEdit(p.id)} className="p-2.5 rounded-full bg-white dark:bg-white/5 border border-echo-border text-gray-500 hover:text-blue-500 transition-all"><Edit2 size={12} /></button>
                     <button onClick={async () => { 
                       const ok = await confirm('确定要删除该 API 节点吗？', { 

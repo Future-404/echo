@@ -12,10 +12,6 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { LockScreen } from './components/LockScreen'
 import { pinHash } from './utils/pinHash'
 
-// 核心/重型组件：改回静态导入以确保 WebGL 上下文稳定
-import Stage from './engine/Stage'
-import Atmosphere from './engine/Atmosphere'
-
 // 核心/轻量组件：保持静态导入
 import Loading from './components/Loading'
 import FragmentNotification from './components/FragmentNotification'
@@ -27,14 +23,18 @@ import { MissionPanel } from './components/Dialogue/MissionPanel'
 import { HtmlGreeting } from './components/HtmlGreeting'
 import { GlobalDialog } from './components/GlobalDialog'
 
-// 仅限 UI/次要组件：保留懒加载 (Lazy Loading)
-const ConfigPanel = lazy(() => import('./components/ConfigPanel'))
-const CharacterSelection = lazy(() => import('./components/CharacterSelection'))
-const MultiCharSelection = lazy(() => import('./components/MultiCharSelection'))
-const MainMenu = lazy(() => import('./components/MainMenu'))
-const SaveScreen = lazy(() => import('./components/SaveScreen'))
-const LoadScreen = lazy(() => import('./components/LoadScreen'))
-const HelpScreen = lazy(() => import('./components/HelpScreen'))
+// 移除懒加载，改回静态导入以修复 Suspense 同步渲染报错
+import Stage from './engine/Stage'
+import Atmosphere from './engine/Atmosphere'
+import ConfigPanel from './components/ConfigPanel'
+import CharacterSelection from './components/CharacterSelection'
+import MultiCharSelection from './components/MultiCharSelection'
+import MainMenu from './components/MainMenu'
+import SaveScreen from './components/SaveScreen'
+import LoadScreen from './components/LoadScreen'
+import HelpScreen from './components/HelpScreen'
+import ArchiveScreen from './components/ArchiveScreen'
+import TweetSquare from './components/AppCenter/TweetSquare'
 
 const App: React.FC = () => {
   const { 
@@ -117,6 +117,24 @@ const App: React.FC = () => {
   useFont()
   useCustomCss()
   useCustomBg()
+
+  // 初始化档案统计（每日活跃）
+  const initializeArchiveStats = useAppStore(s => s.initializeArchiveStats)
+  const rebuildArchiveStats = useAppStore(s => s.rebuildArchiveStats)
+  const loadTweets = useAppStore(s => s.loadTweets)
+  React.useEffect(() => {
+    if (_hasHydrated) {
+      initializeArchiveStats()
+      loadTweets()
+      // 首次加载时从数据库回溯统计（仅执行一次）
+      const hasRebuilt = sessionStorage.getItem('echo-archive-rebuilt')
+      if (!hasRebuilt) {
+        rebuildArchiveStats().then(() => {
+          sessionStorage.setItem('echo-archive-rebuilt', '1')
+        })
+      }
+    }
+  }, [_hasHydrated, initializeArchiveStats, rebuildArchiveStats, loadTweets])
   
   // 3. 键盘检测
   const { isKeyboardVisible, viewportHeight, offsetTop } = useKeyboard()
@@ -177,9 +195,11 @@ const App: React.FC = () => {
       <AnimatePresence>{isLoading && <Loading key="loading" />}</AnimatePresence>
       
       {/* 核心渲染层 */}
-      <Stage>
-        {!isLoading && <Atmosphere />}
-      </Stage>
+      <Suspense fallback={null}>
+        <Stage>
+          {!isLoading && <Atmosphere />}
+        </Stage>
+      </Suspense>
 
       {/* 自定义背景图层（在 PixiJS 之上，UI 之下） */}
       <div
@@ -202,6 +222,8 @@ const App: React.FC = () => {
           {currentView === 'load' && <LoadScreen key="load" />}
           {currentView === 'help' && <HelpScreen key="help" />}
           {currentView === 'config' && <ConfigPanel key="config" />}
+          {currentView === 'archive' && <ArchiveScreen key="archive" />}
+          {currentView === 'tweet-square' && <TweetSquare key="tweet-square" />}
         </AnimatePresence>
       </Suspense>
 
@@ -219,7 +241,7 @@ const App: React.FC = () => {
             <Header />
             <MissionPanel
               missions={missions}
-              isQuestSkillEnabled={(config.enabledSkillIds || []).includes('manage_quest_state')}
+              isQuestSkillEnabled={true}
             />
             <FragmentNotification key="fragments" />
             

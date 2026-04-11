@@ -1,36 +1,53 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import { Zap, ToggleLeft, ToggleRight, Info } from 'lucide-react'
+import { Zap, ToggleLeft, ToggleRight, Cpu } from 'lucide-react'
 import { useAppStore } from '../../store/useAppStore'
 import { ALL_SKILLS } from '../../skills'
 
 const SkillArsenal: React.FC = () => {
-  const { config, toggleSkill } = useAppStore()
+  const { config, toggleSkill, toggleDeviceContext } = useAppStore()
   const enabledSkillIds = config?.enabledSkillIds || []
+  const deviceEnabled = config?.deviceContextEnabled ?? false
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, x: 10 }} 
-      animate={{ opacity: 1, x: 0 }} 
+    <motion.div
+      initial={{ opacity: 0, x: 10 }}
+      animate={{ opacity: 1, x: 0 }}
       className="p-6 space-y-6"
     >
       <div className="px-4 flex flex-col">
         <label className="text-xs font-serif tracking-widest text-echo-text-muted font-medium">核心能力库</label>
         <span className="text-[7px] text-echo-text-dim uppercase tracking-[0.2em] mt-0.5">Extensions</span>
       </div>
-      
+
+      {/* 设备感知 */}
+      <div className={`w-full p-5 rounded-3xl border-0.5 transition-all flex items-start gap-4 ${deviceEnabled ? 'border-gray-300 dark:border-gray-500 bg-white/60 dark:bg-white/10' : 'border-gray-100 dark:border-gray-800 bg-white/20 dark:bg-white/5 opacity-60'}`}>
+        <div className="w-10 h-10 rounded-2xl border-0.5 border-gray-100 dark:border-gray-800 flex items-center justify-center shrink-0">
+          <Cpu size={16} strokeWidth={1} className={deviceEnabled ? 'text-echo-text-base' : 'text-gray-400 dark:text-gray-700'} />
+        </div>
+        <div className="flex-1">
+          <h4 className={`text-sm font-serif tracking-wide ${deviceEnabled ? 'text-gray-600 dark:text-gray-200' : 'text-echo-text-dim'}`}>设备感知</h4>
+          <p className="text-[9px] text-echo-text-subtle leading-relaxed mt-1">
+            自动注入时间、电量、网络状态至每次对话上下文。
+          </p>
+        </div>
+        <button onClick={toggleDeviceContext} className="text-echo-text-dim hover:text-gray-500 transition-colors pt-1">
+          {deviceEnabled ? <ToggleRight size={20} strokeWidth={1} className="text-green-300 dark:text-green-800" /> : <ToggleLeft size={20} strokeWidth={1} />}
+        </button>
+      </div>
+
+      {/* 可开关的 Skills */}
       <div className="space-y-3">
         {ALL_SKILLS.map(skill => {
           const isEnabled = enabledSkillIds.includes(skill.name)
           return (
-            <div 
-              key={skill.name} 
+            <div
+              key={skill.name}
               className={`w-full p-5 rounded-3xl border-0.5 transition-all flex items-start gap-4 ${isEnabled ? 'border-gray-300 dark:border-gray-500 bg-white/60 dark:bg-white/10' : 'border-gray-100 dark:border-gray-800 bg-white/20 dark:bg-white/5 opacity-60'}`}
             >
               <div className="w-10 h-10 rounded-2xl border-0.5 border-gray-100 dark:border-gray-800 flex items-center justify-center shrink-0">
                 <Zap size={16} strokeWidth={1} className={isEnabled ? 'text-echo-text-base' : 'text-gray-400 dark:text-gray-700'} />
               </div>
-              
               <div className="flex-1">
                 <h4 className={`text-sm font-serif tracking-wide ${isEnabled ? 'text-gray-600 dark:text-gray-200' : 'text-echo-text-dim'}`}>
                   {skill.displayName}
@@ -39,23 +56,12 @@ const SkillArsenal: React.FC = () => {
                   {skill.description}
                 </p>
               </div>
-
-              <button 
-                onClick={() => toggleSkill(skill.name)} 
-                className="text-echo-text-dim hover:text-gray-500 transition-colors pt-1"
-              >
+              <button onClick={() => toggleSkill(skill.name)} className="text-echo-text-dim hover:text-gray-500 transition-colors pt-1">
                 {isEnabled ? <ToggleRight size={20} strokeWidth={1} className="text-green-300 dark:text-green-800" /> : <ToggleLeft size={20} strokeWidth={1} />}
               </button>
             </div>
           )
         })}
-      </div>
-
-      <div className="px-6 py-4 rounded-2xl bg-echo-surface flex gap-3 items-center">
-        <Info size={12} className="text-gray-400 dark:text-gray-700" />
-        <p className="text-[7px] text-echo-text-dim uppercase tracking-[0.2em] leading-normal">
-          开启技能后，AI 将获得对话以外的特定操作权限 // 实时生效
-        </p>
       </div>
     </motion.div>
   )

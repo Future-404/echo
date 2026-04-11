@@ -20,6 +20,7 @@ export const backupService = {
       const characters = await db.characters.toArray();
       const worldEntries = await db.worldEntries.toArray();
       const memoryEpisodes = await db.memoryEpisodes.toArray();
+      const promptPresetEntries = await db.promptPresetEntries.toArray();
       // kvStore 排除图片条目（图片单独存 images 字段，避免双写）
       const kvStore = await db.kvStore.filter(r => !r.key.startsWith('img-')).toArray();
 
@@ -38,6 +39,7 @@ export const backupService = {
           characters,
           worldEntries,
           memoryEpisodes,
+          promptPresetEntries,
           kvStore
         },
         images,
@@ -157,12 +159,13 @@ export const backupService = {
           }
 
           // --- 处理全量重构 (物理覆盖) ---
-          await db.transaction('rw', [db.messages, db.characters, db.worldEntries, db.memoryEpisodes, db.kvStore], async () => {
+          await db.transaction('rw', [db.messages, db.characters, db.worldEntries, db.memoryEpisodes, db.promptPresetEntries, db.kvStore], async () => {
             await Promise.all([
               db.messages.clear(),
               db.characters.clear(),
               db.worldEntries.clear(),
               db.memoryEpisodes.clear(),
+              db.promptPresetEntries.clear(),
               db.kvStore.filter(r => !r.key.startsWith('img-')).delete(),
             ]);
             await Promise.all([
@@ -170,6 +173,7 @@ export const backupService = {
               db.characters.bulkAdd(data.db.characters ?? []),
               db.worldEntries.bulkAdd(data.db.worldEntries ?? []),
               db.memoryEpisodes.bulkAdd(data.db.memoryEpisodes ?? []),
+              db.promptPresetEntries.bulkAdd(data.db.promptPresetEntries ?? []),
               db.kvStore.bulkAdd(data.db.kvStore ?? []),
             ]);
           });

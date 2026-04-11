@@ -97,7 +97,7 @@ const SaveScreen: React.FC = () => {
                 ) : (
                   <div className="flex items-center gap-3">
                     <span className="text-xl font-serif text-blue-400/90">{currentAutoSlot.name || '当前记忆线'}</span>
-                    <button onClick={() => startEdit(currentAutoSlot.id, currentAutoSlot.name)} className="opacity-0 group-hover:opacity-100 text-blue-400/50 hover:text-blue-400 transition-opacity">
+                    <button onClick={() => startEdit(currentAutoSlot.id, currentAutoSlot.name)} className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 text-blue-400/50 hover:text-blue-400 transition-opacity">
                       <Edit2 size={14} />
                     </button>
                   </div>
@@ -153,7 +153,7 @@ const SaveScreen: React.FC = () => {
                   ) : (
                     <div className="flex items-center gap-3">
                       <span className="text-xl font-serif text-white/90">{slot.name || `记忆碎片 ${index + 1}`}</span>
-                      <button onClick={() => startEdit(slot.id, slot.name)} className="opacity-0 group-hover:opacity-100 text-white/50 hover:text-white transition-opacity">
+                      <button onClick={() => startEdit(slot.id, slot.name)} className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 text-white/50 hover:text-white transition-opacity">
                         <Edit2 size={14} />
                       </button>
                     </div>
@@ -169,7 +169,7 @@ const SaveScreen: React.FC = () => {
                           if (ok) deleteSaveSlot(slot.id);
                         });
                       }}
-                      className="p-1 text-red-400/50 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="p-1 text-red-400/50 hover:text-red-400 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -181,7 +181,7 @@ const SaveScreen: React.FC = () => {
                 </div>
                 
                 {/* Hover overlay hint */}
-                <div className="absolute inset-0 bg-black/60 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center font-serif tracking-widest text-white/90 pointer-events-none">
+                <div className="absolute inset-0 bg-black/60 rounded-2xl opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center justify-center font-serif tracking-widest text-white/90 pointer-events-none">
                   点击覆盖此进度
                 </div>
               </motion.div>

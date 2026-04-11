@@ -29,7 +29,7 @@ export interface Provider {
   apiKey: string; 
   endpoint: string; 
   model: string;
-  type: 'chat' | 'embedding' | 'tts'; 
+  type: 'chat' | 'embedding' | 'tts';
   temperature?: number;
   topP?: number;
   frequencyPenalty?: number;

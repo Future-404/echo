@@ -412,16 +412,12 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
               style={{ position: 'fixed', top: missionPopupPos.top, left: missionPopupPos.left }}
               className="w-72 z-[200] rounded-2xl border border-echo-border-md bg-white dark:bg-[#1a1a1a] shadow-2xl overflow-hidden"
             >
-              {(config.enabledSkillIds || []).includes('quest') && missions.length > 0
+              {missions.length > 0
                 ? <MissionPanel missions={missions} isQuestSkillEnabled={true} isMobile />
                 : (
                   <div className="px-5 py-4 flex flex-col gap-1">
                     <p className="text-xs font-serif text-echo-text-base">尚無進行中的任務</p>
-                    <p className="text-[10px] text-echo-text-subtle">
-                      {!(config.enabledSkillIds || []).includes('quest')
-                        ? '在角色名處開啟 Quest 技能後，AI 可自動追蹤任務進度'
-                        : 'AI 尚未觸發任何任務狀態'}
-                    </p>
+                    <p className="text-[10px] text-echo-text-subtle">AI 尚未觸發任何任務狀態</p>
                   </div>
                 )
               }

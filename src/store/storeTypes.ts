@@ -4,8 +4,10 @@ import type { CharacterSlice } from './characterSlice'
 import type { ConfigSlice } from './configSlice'
 import type { SaveSlice } from './saveSlice'
 import type { UISlice } from './uiSlice'
+import type { ArchiveSlice } from './archiveSlice'
+import type { TweetSlice } from './tweetSlice'
 
-export interface AppState extends ChatSlice, CharacterSlice, ConfigSlice, SaveSlice, UISlice {
+export interface AppState extends ChatSlice, CharacterSlice, ConfigSlice, SaveSlice, UISlice, ArchiveSlice, TweetSlice {
   _hasHydrated: boolean
   setHasHydrated: (val: boolean) => void
 }

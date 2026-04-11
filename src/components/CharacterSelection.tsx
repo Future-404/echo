@@ -49,7 +49,7 @@ const CharacterSelection: React.FC = () => {
   }, [currentView, setCurrentView, editingId, messages.length])
 
   const handleCreateBlank = () => {
-    const newId = `custom-${Date.now()}`
+    const newId = `custom-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`
     addCharacter({
       id: newId,
       name: 'New Entity',
@@ -100,7 +100,7 @@ const CharacterSelection: React.FC = () => {
           const charBook = ext.world_book || embeddedData.character_book;
           if (charBook?.entries) {
             extensions.worldBook = charBook.entries.map((e: any) => ({
-              id: e.id || Math.random().toString(36).substr(2, 9),
+              id: `wb-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
               keys: Array.isArray(e.keys) ? e.keys : (e.key ? e.key.split(',').map((k: string) => k.trim()) : []),
               content: e.content || '',
               enabled: e.enabled !== false,
@@ -128,7 +128,7 @@ const CharacterSelection: React.FC = () => {
         }
 
         addCharacter({
-          id: `custom-${Date.now()}`,
+          id: `custom-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
           name: charName,
           image: base64Image,
           description: embeddedData.description || embeddedData.personality || 'Neural Data 打捞成功',
@@ -237,7 +237,7 @@ const CharacterSelection: React.FC = () => {
           className="fixed inset-0 z-[100] bg-echo-base dark:bg-[#050505] flex items-center justify-center p-6 md:p-10"
         >
           <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none select-none">
-             <span className="text-[25vh] font-serif font-black text-gray-200/20 dark:text-white/5 uppercase tracking-[0.3em]">Archive // 档案室</span>
+             <span className="text-[25vh] font-serif font-black text-gray-200/20 dark:text-white/5 uppercase tracking-[0.3em]">Characters // 角色档案</span>
           </div>
 
           <div className="relative z-10 w-full max-w-7xl cursor-default pt-[var(--sat)]">

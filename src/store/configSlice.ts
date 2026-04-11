@@ -21,6 +21,7 @@ export interface ConfigSlice {
     modelConfig: ModelConfig;
     theme: ThemeMode;
     enabledSkillIds: string[];
+    deviceContextEnabled: boolean;
     personas: UserPersona[];
     activePersonaId: string;
     isDebugEnabled: boolean;
@@ -71,6 +72,7 @@ export interface ConfigSlice {
   removePromptPreset: (id: string) => Promise<void>;
   updatePromptPresetDirective: (presetId: string, directiveId: string, updates: Partial<Directive>) => Promise<void>;
   toggleSkill: (skillId: string) => void;
+  toggleDeviceContext: () => void;
   addPersona: (persona: UserPersona) => void;
   updatePersona: (id: string, updates: Partial<UserPersona>) => void;
   removePersona: (id: string) => void;
@@ -214,16 +216,16 @@ export const createConfigSlice = (INITIAL_CONFIG: ConfigSlice['config']): StateC
     }));
   },
 
-  addDirective: (directive) => set((s) => ({ 
-    config: { ...s.config, directives: [...(s.config.directives || []), directive] } 
+  addDirective: (directive) => set((s) => ({
+    config: { ...s.config, directives: [...(s.config.directives || []), directive] }
   })),
 
-  updateDirective: (id, updates) => set((s) => ({ 
-    config: { ...s.config, directives: (s.config.directives || []).map((d: Directive) => d.id === id ? { ...d, ...updates } : d) } 
+  updateDirective: (id, updates) => set((s) => ({
+    config: { ...s.config, directives: (s.config.directives || []).map((d: Directive) => d.id === id ? { ...d, ...updates } : d) }
   })),
 
-  removeDirective: (id) => set((s) => ({ 
-    config: { ...s.config, directives: (s.config.directives || []).filter((d: Directive) => d.id !== id) } 
+  removeDirective: (id) => set((s) => ({
+    config: { ...s.config, directives: (s.config.directives || []).filter((d: Directive) => d.id !== id) }
   })),
 
   reorderDirectives: (directives) => set((s) => ({ config: { ...s.config, directives } })),
@@ -249,13 +251,17 @@ export const createConfigSlice = (INITIAL_CONFIG: ConfigSlice['config']): StateC
     await db.promptPresetEntries.update(directiveId, updates);
   },
 
-  toggleSkill: (skillId) => set((s) => ({ 
-    config: { 
-      ...s.config, 
-      enabledSkillIds: (s.config.enabledSkillIds || []).includes(skillId) 
-        ? (s.config.enabledSkillIds || []).filter((id: string) => id !== skillId) 
-        : [...(s.config.enabledSkillIds || []), skillId] 
-    } 
+  toggleSkill: (skillId) => set((s) => ({
+    config: {
+      ...s.config,
+      enabledSkillIds: (s.config.enabledSkillIds || []).includes(skillId)
+        ? (s.config.enabledSkillIds || []).filter((id: string) => id !== skillId)
+        : [...(s.config.enabledSkillIds || []), skillId]
+    }
+  })),
+
+  toggleDeviceContext: () => set((s) => ({
+    config: { ...s.config, deviceContextEnabled: !s.config.deviceContextEnabled }
   })),
 
   addPersona: (persona) => set((s) => ({ 

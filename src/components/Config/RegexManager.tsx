@@ -131,7 +131,7 @@ const RegexManager: React.FC<RegexManagerProps> = ({ onEdit, onAdd }) => {
                     ))}
                   </div>
                 </div>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                    <button onClick={() => moveRule(index, 'up')} disabled={index === 0} className="p-1.5 text-gray-400 hover:text-blue-500 disabled:opacity-20"><ArrowUp size={14} /></button>
                    <button onClick={() => moveRule(index, 'down')} disabled={index === rules.length - 1} className="p-1.5 text-gray-400 hover:text-blue-500 disabled:opacity-20"><ArrowDown size={14} /></button>
                 </div>
