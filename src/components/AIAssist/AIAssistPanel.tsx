@@ -9,6 +9,8 @@ import {
 } from '../../utils/aiAssistEngine'
 import ConfirmBar from './ConfirmBar'
 
+const MAX_HISTORY_MESSAGES = 100 // 限制上下文長度，防止無限增長
+
 interface AIAssistPanelProps {
   char: CharacterCard
   onApply: (changes: AIAssistChange[]) => void
@@ -22,6 +24,7 @@ const INITIAL_STATE: AgentState = {
   undoStack: [],
   currentRound: 0,
   trustMode: false,
+  history: [],
 }
 
 const AIAssistPanel: React.FC<AIAssistPanelProps> = ({ char, onApply, onClose }) => {
@@ -95,7 +98,7 @@ const AIAssistPanel: React.FC<AIAssistPanelProps> = ({ char, onApply, onClose })
           nextMessages[0] = { role: 'system', content: buildSystemPrompt(newChar) }
           await runRound(nextMessages, roundNum + 1, newAccumulated, newChar, trust)
         } else {
-          setState(s => ({ ...s, status: 'done' }))
+          setState(s => ({ ...s, status: 'done', history: [newMessages[0], ...newMessages.slice(1).slice(-MAX_HISTORY_MESSAGES)] }))
         }
       } else {
         // 審核模式：等待用戶確認
@@ -125,7 +128,11 @@ const AIAssistPanel: React.FC<AIAssistPanelProps> = ({ char, onApply, onClose })
     if (!toolProvider || !userPrompt.trim()) return
     const systemMsg = { role: 'system', content: buildSystemPrompt(char) }
     const userMsg = { role: 'user', content: userPrompt.trim() }
-    await runRound([systemMsg, userMsg], 1, [], char, state.trustMode)
+    // 若有歷史，拼接：system + 歷史（去掉舊 system）+ 新 user
+    const messages = state.history.length > 0
+      ? [systemMsg, ...state.history.slice(1), userMsg]
+      : [systemMsg, userMsg]
+    await runRound(messages, 1, [], char, state.trustMode)
   }
 
   const handleAllow = async () => {
@@ -139,8 +146,7 @@ const AIAssistPanel: React.FC<AIAssistPanelProps> = ({ char, onApply, onClose })
 
     setState(s => ({ ...s, pendingChanges: newAccumulated }))
 
-    const lastRound = state.rounds[state.rounds.length - 1]
-    if (lastRound && lastRound.next_intent && state.currentRound < MAX_ROUNDS) {
+    if (round.next_intent && state.currentRound < MAX_ROUNDS) {
       const nextMessages = [
         { role: 'system', content: buildSystemPrompt(newChar) },
         ...messages.slice(1),
@@ -148,7 +154,7 @@ const AIAssistPanel: React.FC<AIAssistPanelProps> = ({ char, onApply, onClose })
       ]
       await runRound(nextMessages, state.currentRound + 1, newAccumulated, newChar, false)
     } else {
-      setState(s => ({ ...s, status: 'done' }))
+      setState(s => ({ ...s, status: 'done', history: [messages[0], ...messages.slice(1).slice(-MAX_HISTORY_MESSAGES)] }))
     }
   }
 
@@ -175,7 +181,7 @@ const AIAssistPanel: React.FC<AIAssistPanelProps> = ({ char, onApply, onClose })
       ]
       await runRound(nextMessages, state.currentRound + 1, newAccumulated, newChar, true)
     } else {
-      setState(s => ({ ...s, status: 'done', pendingChanges: newAccumulated }))
+      setState(s => ({ ...s, status: 'done', pendingChanges: newAccumulated, history: [messages[0], ...messages.slice(1).slice(-MAX_HISTORY_MESSAGES)] }))
     }
   }
 

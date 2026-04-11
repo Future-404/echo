@@ -41,5 +41,6 @@ export interface AgentState {
   undoStack: Array<{ field: AIAssistFieldName; previousValue: any }> // 信任模式撤銷用
   currentRound: number
   trustMode: boolean             // 信任代理人，無需逐輪確認
+  history: Array<{ role: string; content: string }> // 跨任務對話歷史（內存，關閉面板清空）
   error?: string
 }
