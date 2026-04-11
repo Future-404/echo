@@ -57,7 +57,7 @@ export const tweetSkill: SkillModule = {
 - 只有当你确认自己还没有回复过别人时（needs_reply: true），才去回复。
 - 可以一次调用执行多个 action（如：同时点赞一条并回复另一条，然后自己发一条）。`,
 
-  execute: async (args: any) => {
+  execute: async (args: any, _ctx?: any) => {
     const { actions = [], fetch_feed = true } = args
     const store = useAppStore.getState()
     const { addTweet, incrementTweetLikes, incrementTweetReplies, selectedCharacter, getUnrepliedMentions } = store

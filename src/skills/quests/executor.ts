@@ -2,7 +2,7 @@ import { useAppStore } from '../../store/useAppStore';
 import type { Mission } from '../../store/useAppStore';
 import type { SkillExecuteResult } from '../core/types';
 
-export const executeQuestSkill = (args: any): SkillExecuteResult => {
+export const executeQuestSkill = (args: any, _ctx?: any): SkillExecuteResult => {
   const { action, quest_id, quest_type, title, description, progress_delta, ui_toast } = args;
 
   if (action === 'CREATE') {

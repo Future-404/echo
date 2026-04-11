@@ -176,13 +176,20 @@ export const useChat = () => {
         const assistantMsg: Message = { role: 'assistant', content: transformed, tool_calls: toolCalls, speakerId: charId };
         await addMessage(assistantMsg, requestSlotId);
         const toolResults: Message[] = [];
+        // 构建 skill 上下文
+        const skillCtx = {
+          messages: useAppStore.getState().messages as Array<{ role: string; content: string }>,
+          characterName: char.name,
+          userName,
+          attributes: char.attributes || {},
+        };
         for (const tc of toolCalls) {
           try {
             const skillName = tc.function.name;
             const displayName = registeredSkills[skillName]?.displayName || skillName;
             useAppStore.getState().addFragment(`✨ 正在激活 [${displayName}]...`);
             const args = JSON.parse(cleanJson(tc.function.arguments));
-            const skillResult = await executeSkill(skillName, args);
+            const skillResult = await executeSkill(skillName, args, skillCtx);
             if (skillResult.success) {
               useAppStore.getState().addFragment(`✅ [${displayName}] 感知同步完成`);
             }

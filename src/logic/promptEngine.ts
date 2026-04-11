@@ -246,7 +246,12 @@ export const buildPromptMessages = async (ctx: PromptContext, contextWindow: num
   const attributeContext = Object.keys(currentAttributes).length > 0 ? `\n### STATE\n${Object.entries(currentAttributes).map(([k, v]) => `- ${k}: ${v}`).join('\n')}` : '';
   const deviceCtx = deviceContextEnabled ? await collectDeviceContext() : null;
   const deviceSection = deviceCtx ? `\n\n### CONTEXT\n${formatDeviceContext(deviceCtx)}` : '';
-  const skillPrompts = getEnabledSkillPrompts(enabledSkillIds);
+  const skillPrompts = getEnabledSkillPrompts(enabledSkillIds, {
+    messages: (recentMessages || []) as Array<{ role: string; content: string }>,
+    characterName: charName,
+    userName: actualUserName,
+    attributes: character.attributes || {},
+  });
   const skillSection = skillPrompts ? `\n\n### MODULES\n${fastReplace(skillPrompts).replace(/\[角色名\]/g, charName)}` : '';
   const missionStatus = (missions || []).filter(m => m.status === 'ACTIVE').map(m => `- ${m.title}: (${m.progress}%)`).join('\n');
 

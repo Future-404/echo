@@ -3,7 +3,7 @@ import type { SkillExecuteResult } from '../core/types';
 /**
  * 设备感知技能执行器
  */
-export const executeDeviceStatus = async (args: { fields?: string[] }): Promise<SkillExecuteResult> => {
+export const executeDeviceStatus = async (args: { fields?: string[] }, _ctx?: any): Promise<SkillExecuteResult> => {
   const fields = args.fields || ["battery", "network", "time"];
   const results: Record<string, any> = {};
 
