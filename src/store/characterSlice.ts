@@ -5,6 +5,7 @@ import { getStorageAdapter } from '../storage'
 import { replaceMacros } from '../logic/promptEngine'
 import { db } from '../storage/db'
 
+
 export interface CharacterSlice {
   characters: CharacterCard[];
   selectedCharacter: CharacterCard;
@@ -25,7 +26,7 @@ export const createCharacterSlice = (DEFAULT_CHARACTERS: CharacterCard[]): State
   characters: DEFAULT_CHARACTERS,
   selectedCharacter: DEFAULT_CHARACTERS[0],
 
-  setSelectedCharacter: (char, overrideGreeting) => {
+  setSelectedCharacter: async (char, overrideGreeting) => {
     const state = get();
     const activePersona = state.config.personas.find((p) => p.id === state.config.activePersonaId) || state.config.personas[0];
     const userName = activePersona?.name || 'Observer';
@@ -33,17 +34,34 @@ export const createCharacterSlice = (DEFAULT_CHARACTERS: CharacterCard[]): State
     const finalGreeting = rawGreeting ? replaceMacros(rawGreeting, userName, char.name) : undefined;
     
     const charReset = { ...char, attributes: {} };
+    const slotId = `auto_${Date.now()}`;
+    const greetingMsg = finalGreeting ? { role: 'assistant' as const, content: finalGreeting } : null;
+
+    // 清理旧的空 auto slot（只有开场白，用户没有真正对话）
+    const oldSlotId = state.currentAutoSlotId;
+    if (oldSlotId?.startsWith('auto_')) {
+      const oldCount = await db.messages.where('slotId').equals(oldSlotId).count();
+      if (oldCount <= 1) {
+        await db.messages.where('slotId').equals(oldSlotId).delete();
+      }
+    }
+
     set((s) => ({ 
       selectedCharacter: charReset,
       characters: (s.characters || []).map((c) => c.id === char.id ? charReset : c),
       currentView: 'main', 
-      messages: finalGreeting ? [{ role: 'assistant', content: finalGreeting }] : [],
+      messages: greetingMsg ? [greetingMsg] : [],
       isGreetingSession: true,
       isTyping: false,
       missions: char.extensions?.missions || [],
       fragments: [],
-      currentAutoSlotId: null,
+      currentAutoSlotId: slotId,
     }));
+
+    // 开场白持久化写入 DB
+    if (greetingMsg) {
+      await db.messages.add({ ...greetingMsg, slotId, timestamp: Date.now() });
+    }
   },
 
   addCharacter: async (char) => {

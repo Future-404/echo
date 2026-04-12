@@ -8,6 +8,7 @@ import { useFont } from './hooks/useFont'
 import { useCustomCss } from './hooks/useCustomCss'
 import { useCustomBg } from './hooks/useCustomBg'
 import { useKeyboard } from './hooks/useKeyboardHeight'
+import { restoreInstalledSkills } from './skills/core/loader'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { LockScreen } from './components/LockScreen'
 import { pinHash } from './utils/pinHash'
@@ -96,6 +97,9 @@ const App: React.FC = () => {
       }
       // 异步同步图片，不再阻塞 UI
       syncImagesFromDb().catch(err => console.error('[echo] sync images failed:', err))
+      // rehydrate 完成后重新恢复已安装 skill（main.tsx 调用时 store 可能尚未就绪）
+      restoreInstalledSkills(useAppStore.getState().config.installedSkills || [])
+      useAppStore.getState().syncRegisteredSkillNames()
     }
   }, [_hasHydrated, setIsLoading, syncImagesFromDb])
 

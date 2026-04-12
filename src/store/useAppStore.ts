@@ -84,6 +84,10 @@ const INITIAL_CONFIG = {
   cssPackages: DEFAULT_CSS_PACKAGES,
   customBg: false,
   regexRules: [],
+  installedSkills: [],
+  installedApps: [],
+  appOrder: [],
+  appStorage: {},
   appLock: { enabled: false, pinHash: '', timeoutMinutes: 5 },
 };
 

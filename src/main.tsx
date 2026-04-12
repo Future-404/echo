@@ -6,6 +6,8 @@ import App from './App.tsx'
 import './styles/globals.css'
 import { initStorage, authenticateWithPassword } from './storage'
 import { GateScreen } from './components/GateScreen.tsx'
+import { useAppStore } from './store/useAppStore'
+import { restoreInstalledSkills } from './skills/core/loader'
 
 // 注册 Service Worker
 registerSW({ immediate: true })
@@ -13,6 +15,7 @@ registerSW({ immediate: true })
 const root = ReactDOM.createRoot(document.getElementById('root')!)
 
 function renderApp() {
+  restoreInstalledSkills(useAppStore.getState().config.installedSkills || [])
   flushSync(() => {
     root.render(<React.StrictMode><App /></React.StrictMode>)
   })

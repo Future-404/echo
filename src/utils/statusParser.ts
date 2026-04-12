@@ -1,5 +1,3 @@
-import { replaceMacros } from '../logic/promptEngine' 
-
 /**
  * 万能状态栏解析器 V1
  * 目标：无损提取 XML, HTML, Markdown, CSV, 键值对列表中的状态数据

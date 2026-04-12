@@ -31,7 +31,7 @@ export const useChat = () => {
     addMessage, isTyping, setIsTyping, addDebugLog,
     updateAttributes, isGreetingSession,
     secondaryCharacter, multiCharMode,
-    ttsSettings, setAbortController,
+    ttsSettings, setAbortController, setChatError,
   } = useAppStore()
 
   const [displayText, setDisplayText] = useState('')
@@ -168,12 +168,14 @@ export const useChat = () => {
 
       if (config.isDebugEnabled) addDebugLog({ direction: 'IN', label: `[${char.name}] Response`, data: { text: fullText, usage } });
       extractAndSyncTags(fullText, char, updateAttributes);
+      // 剥离 <echo-set> 标签（数据已写入 attributes，不需要显示在对话框）
+      const strippedText = fullText.replace(/<echo-set\s+key="[^"]*">[\s\S]*?<\/echo-set>/gi, '').trim();
       // 先应用全局正则（ai 范围），再应用角色卡正则脚本
-      const globalProcessed = applyRegexRules(fullText, config.regexRules || [], 'ai');
+      const globalProcessed = applyRegexRules(strippedText, config.regexRules || [], 'ai');
       const transformed = applyCharacterRegexScripts(globalProcessed, char, 1);
 
       if (toolCalls?.length) {
-        const assistantMsg: Message = { role: 'assistant', content: transformed, tool_calls: toolCalls, speakerId: charId };
+        const assistantMsg: Message = { role: 'assistant', content: transformed, tool_calls: toolCalls, speakerId: charId, ...(!transformed.trim() && { hidden: true }) };
         await addMessage(assistantMsg, requestSlotId);
         const toolResults: Message[] = [];
         // 构建 skill 上下文
@@ -190,8 +192,16 @@ export const useChat = () => {
             useAppStore.getState().addFragment(`✨ 正在激活 [${displayName}]...`);
             const args = JSON.parse(cleanJson(tc.function.arguments));
             const skillResult = await executeSkill(skillName, args, skillCtx);
+            tc._skillResult = skillResult // 存结果供后续判断 suppressFollowUp
             if (skillResult.success) {
-              useAppStore.getState().addFragment(`✅ [${displayName}] 感知同步完成`);
+              // 增强反馈：显示具体的执行结果消息，而不仅仅是通用提示
+              useAppStore.getState().addFragment(`✅ [${displayName}] ${skillResult.message}`);
+            } else {
+              useAppStore.getState().addFragment(`❌ [${displayName}] 执行失败: ${skillResult.message}`);
+            }
+            // 支持 skill 通过 data.writeAttrs 写入角色属性
+            if (skillResult.data?.writeAttrs && typeof skillResult.data.writeAttrs === 'object') {
+              updateAttributes(char.id, skillResult.data.writeAttrs);
             }
             const contentStr = skillResult.data 
               ? JSON.stringify({ message: skillResult.message, data: skillResult.data }) 
@@ -202,24 +212,70 @@ export const useChat = () => {
           } catch (e) { console.error('Skill error:', e); }
         }
         if (toolResults.length > 0) {
-          try {
-            const followUpController = new AbortController();
-            const followUpMessages = [...apiMessages, { role: 'assistant', content: transformed, tool_calls: toolCalls }, ...toolResults];
-            const followUpResult = await providerImpl.request({
-              messages: followUpMessages as Message[],
-              provider,
-              isStreaming: false,
-              signal: followUpController.signal
-            });
+          // suppressDisplay：隐藏触发 skill 的 assistant 消息
+          const shouldHideAssistant = toolCalls.some(tc => (tc._skillResult as any)?.suppressDisplay === true)
+          if (shouldHideAssistant) {
+            useAppStore.setState(s => ({
+              messages: s.messages.map(m => m.tool_calls === assistantMsg.tool_calls ? { ...m, hidden: true } : m)
+            }))
+          }
+
+          // injectContext：将 skill 返回的上下文注入为 hidden 消息（不触发 AI）
+          for (const tc of toolCalls) {
+            const ctx = (tc._skillResult as any)?.injectContext
+            if (ctx) {
+              await addMessage({ role: 'user', content: ctx, hidden: true, speakerId: 'system' }, requestSlotId)
+            }
+          }
+
+          const suppress = toolCalls.some(tc => {
+            const r = tc._skillResult as any
+            return r?.suppressFollowUp === true
+          })
+          if (!suppress) {
+            try {
+              // 动态注入正在执行的 skill 的 systemPrompt
+              const activeSkillPrompts = toolCalls
+                .map(tc => {
+                  const sp = registeredSkills[tc.function.name]?.systemPrompt;
+                  const ctx = { messages: useAppStore.getState().messages as any, characterName: char.name, userName, attributes: char.attributes || {} };
+                  return typeof sp === 'function' ? sp(ctx) : sp;
+                })
+                .filter(Boolean)
+                .join('\n\n');
+              
+              const followUpController = new AbortController();
+              const followUpMessages = [...apiMessages];
+              
+              // 在上下文头部或尾部注入临时指令
+              if (activeSkillPrompts) {
+                followUpMessages.push({ 
+                  role: 'system', 
+                  content: `[MODULE GUIDANCE]\n${activeSkillPrompts.replace(/\[角色名\]/g, char.name)}`,
+                  hidden: true // 不显示在 UI 上
+                } as any);
+              }
+              
+              followUpMessages.push({ role: 'assistant', content: transformed, tool_calls: toolCalls } as any);
+              followUpMessages.push(...toolResults as any[]);
+
+              const followUpResult = await providerImpl.request({
+                messages: followUpMessages as Message[],
+                provider,
+                isStreaming: false,
+                signal: followUpController.signal
+              });
             if (followUpResult.content) {
               extractAndSyncTags(followUpResult.content, char, updateAttributes);
-              const followUpGlobal = applyRegexRules(followUpResult.content, config.regexRules || [], 'ai');
+              const followUpStripped = followUpResult.content.replace(/<echo-set\s+key="[^"]*">[\s\S]*?<\/echo-set>/gi, '').trim();
+              const followUpGlobal = applyRegexRules(followUpStripped, config.regexRules || [], 'ai');
               await addMessage({ role: 'assistant', content: applyCharacterRegexScripts(followUpGlobal, char, 1), speakerId: charId }, requestSlotId);
             }
           } catch (e) { console.error('Tool follow-up error:', e); }
+          }
         }
       } else {
-        await addMessage({ role: 'assistant', content: transformed, speakerId: charId }, requestSlotId);
+        await addMessage({ role: 'assistant', content: transformed, speakerId: charId, ...(!transformed.trim() && { hidden: true }) }, requestSlotId);
       }
 
       const embeddingProvider = config.providers.find(p => p.id === config.modelConfig?.embeddingProviderId);
@@ -308,22 +364,25 @@ export const useChat = () => {
   }, [addDebugLog])
 
   // ─── 主入口 ──────────────────────────────────────────────────────────────────
-  const sendMessage = useCallback(async (content: string, images?: string[]) => {
+  const sendMessage = useCallback(async (content: string, images?: string[], hidden?: boolean) => {
     if ((!content.trim() && (!images || images.length === 0)) || isTyping) return
+
+    setChatError(null) // 发新消息时清除上一次错误
 
     const { config, selectedCharacter, secondaryCharacter, multiCharMode } = stateRef.current
 
     // 应用全局正则 (用户输入范围)
     const processedContent = applyRegexRules(content, config.regexRules || [], 'user');
 
-    const userMsg: Message = { role: 'user', content: processedContent, speakerId: 'user', ...(images && images.length > 0 ? { images } : {}) }
+    const userMsg: Message = { role: 'user', content: processedContent, speakerId: 'user', hidden, ...(images && images.length > 0 ? { images } : {}) }
     addMessage(userMsg)
     setIsTyping(true)
     setDisplayText('')
 
     const activeProvider = config.providers.find(p => p.id === (config.modelConfig?.chatProviderId || config.activeProviderId)) || config.providers[0]
     if (!activeProvider?.apiKey) {
-      addMessage({ role: 'assistant', content: `Demo Mode: 请在配置面板设置 API Key。` })
+      setChatError('⚠️ 未配置 API Key，请前往 设置 → API 管理 添加服务商。')
+      iframeBus.emitError('⚠️ 未配置 API Key，请前往 设置 → API 管理 添加服务商。')
       setIsTyping(false)
       return
     }
@@ -338,7 +397,8 @@ export const useChat = () => {
         try {
           actions = await requestRouter(content, currentMessages, images)
         } catch (routerErr) {
-          addMessage({ role: 'assistant', content: `错误（Router）: ${routerErr.message}。请重试。` })
+          setChatError(`⚠️ Router 错误：${routerErr.message}`)
+          iframeBus.emitError(`⚠️ Router 错误：${routerErr.message}`)
           setIsTyping(false)
           return
         }
@@ -366,14 +426,43 @@ export const useChat = () => {
     } catch (err) {
       console.error('Chat Error:', err)
       if (config.isDebugEnabled) addDebugLog({ direction: 'ERR', label: 'Fetch Error', data: { message: err.message } })
-      addMessage({ role: 'assistant', content: `错误: ${err.message || '未知错误'}` })
+      
+      const msg = err.message || '未知错误'
+      // 分类错误，给出明确指引
+      let userMsg: string
+      if (msg.includes('未配置 API Key') || msg.includes('apiKey')) {
+        userMsg = '⚠️ 未配置 API Key，请前往 设置 → API 管理 添加服务商。'
+      } else if (msg.includes('401') || msg.includes('Unauthorized')) {
+        userMsg = '⚠️ API Key 无效或已过期，请检查 设置 → API 管理。'
+      } else if (msg.includes('403')) {
+        userMsg = '⚠️ API 访问被拒绝（403），请检查 Key 权限或账户余额。'
+      } else if (msg.includes('429')) {
+        userMsg = '⚠️ 请求过于频繁（429），请稍后再试。'
+      } else if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('ECONNREFUSED')) {
+        userMsg = '⚠️ 网络连接失败，请检查 API 地址是否正确，或网络是否可用。'
+      } else if (msg.includes('找不到角色')) {
+        userMsg = '⚠️ 未选择角色，请先选择一个角色开始对话。'
+      } else {
+        userMsg = `⚠️ ${msg}`
+      }
+      
+      setChatError(userMsg)
+      iframeBus.emitError(userMsg)
       setIsTyping(false)
     }
   }, [isTyping, addMessage, setIsTyping, addDebugLog, requestChar, requestRouter])
 
   // 注册 iframe triggerSlash 的消息处理
   useEffect(() => {
-    iframeBus.setHandler((text) => sendMessage(text))
+    iframeBus.setHandler((text, hidden, injectOnly) => {
+      if (injectOnly) {
+        // 只插入上下文，不觸發 AI 請求
+        const { addMessage, currentSlotId } = useAppStore.getState()
+        addMessage({ role: 'user', content: text, hidden: true, speakerId: 'system' }, currentSlotId)
+        return
+      }
+      sendMessage(text, undefined, hidden)
+    })
     return () => iframeBus.setHandler(null)
   }, [sendMessage])
 

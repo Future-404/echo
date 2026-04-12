@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, BookOpen, Layers, Database, Cpu, Info, ChevronRight, BarChart2, MessageCircle, Paintbrush, Users, Rocket, BrainCircuit, Sparkles } from 'lucide-react';
+import { X, BookOpen, Layers, Database, Cpu, Info, ChevronRight, BarChart2, MessageCircle, Paintbrush, Users, Rocket, BrainCircuit, Sparkles, LayoutGrid } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 
 // Import sub-components
@@ -17,6 +17,7 @@ import MemoryGuide from './Help/MemoryGuide';
 import SecurityGuide from './Help/SecurityGuide';
 import ApiSpecs from './Help/ApiSpecs';
 import Feedback from './Help/Feedback';
+import AppDevGuide from './Help/AppDevGuide';
 
 const HelpScreen: React.FC = () => {
   const { setCurrentView } = useAppStore();
@@ -29,6 +30,7 @@ const HelpScreen: React.FC = () => {
     { id: 'writing', title: '角色创作', icon: <BookOpen size={18} />, component: <WritingGuide /> },
     { id: 'world', title: '知识注入系统', icon: <Layers size={18} />, component: <KnowledgeInjection /> },
     { id: 'skills', title: '技能 Skills', icon: <Cpu size={18} />, component: <SkillsGuide /> },
+    { id: 'appdev', title: '应用开发', icon: <LayoutGrid size={18} />, component: <AppDevGuide /> },
     { id: 'multichar', title: '双角色模式', icon: <Users size={18} />, component: <MultiCharGuide /> },
     { id: 'status', title: '状态渲染协议', icon: <BarChart2 size={18} />, component: <StatusProtocol /> },
     { id: 'customcss', title: '自定义样式', icon: <Paintbrush size={18} />, component: <CustomCssGuide /> },

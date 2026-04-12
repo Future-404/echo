@@ -4,7 +4,8 @@ export interface ModelConfig {
   ttsProviderId: string
   routerProviderId: string
   summaryProviderId: string
-  toolProviderId: string         // AI 工具協助，從 chat providers 中選取
+  toolProviderId: string
+  extensionProviderId: string    // 扩展应用专用模型（查手机、生成内容等独立请求）
 }
 
 export const DEFAULT_MODEL_CONFIG: ModelConfig = {
@@ -14,4 +15,5 @@ export const DEFAULT_MODEL_CONFIG: ModelConfig = {
   routerProviderId: '',
   summaryProviderId: '',
   toolProviderId: '',
+  extensionProviderId: '',
 }

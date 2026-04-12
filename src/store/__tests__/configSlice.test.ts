@@ -11,6 +11,10 @@ vi.mock('../../storage/db', () => ({
   }
 }));
 
+vi.mock('../../store/useAppStore', () => ({
+  useAppStore: { getState: vi.fn(() => ({ config: { providers: [], modelConfig: {} }, addFragment: vi.fn() })) }
+}));
+
 import { createConfigSlice } from '../configSlice';
 import type { ConfigSlice } from '../configSlice';
 import type { PromptPreset } from '../../types/store';
@@ -34,6 +38,8 @@ const makeSlice = () => {
     customCss: '',
     customBg: false,
     regexRules: [],
+    installedSkills: [],
+    installedApps: [],
     appLock: { enabled: false, pinHash: '', timeoutMinutes: 5 },
   };
   let state: any = { config: initialConfig };

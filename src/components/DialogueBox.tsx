@@ -133,7 +133,8 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
     messages, selectedCharacter, config, isLoading,
     setCurrentView, rollbackMessages, secondaryCharacter,
     ttsSettings, branchGame, hasMoreOlder, fetchOlderMessages,
-    loadInitialMessages, currentAutoSlotId, activeAudioId, missions
+    loadInitialMessages, currentAutoSlotId, activeAudioId, missions,
+    chatError, setChatError,
   } = useAppStore()
   const { confirm, prompt } = useDialog()
   const { isMobile, isTouchDevice } = useDevice()
@@ -188,7 +189,8 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
       const isSystem = m.role === 'system'
       const isTool = m.role === 'tool'
       const isPureToolCall = m.role === 'assistant' && m.tool_calls && !m.content?.trim()
-      return !isSystem && !isTool && !isPureToolCall
+      const isHidden = m.hidden === true
+      return !isSystem && !isTool && !isPureToolCall && !isHidden
     }), [messages])
 
   const lastMessage = visibleMessages[visibleMessages.length - 1] ?? null
@@ -323,6 +325,22 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
       className="relative h-full w-full flex flex-col overflow-hidden select-text z-30"
       onClick={() => setActiveMenuIndex(null)}
     >
+      {/* 错误提示条 */}
+      <AnimatePresence>
+        {chatError && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="mx-2 mt-2 mb-1 px-4 py-3 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 flex items-start gap-3"
+          >
+            <span className="text-red-400 shrink-0 mt-0.5">⚠️</span>
+            <p className="text-xs text-red-600 dark:text-red-400 flex-1 leading-relaxed">{chatError.replace(/^⚠️\s*/, '')}</p>
+            <button onClick={() => setChatError(null)} className="text-red-300 hover:text-red-500 transition-colors shrink-0 text-lg leading-none">×</button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* 消息列表 - 优化留白平衡 */}
       <div
         ref={scrollRef}

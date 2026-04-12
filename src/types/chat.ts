@@ -67,7 +67,8 @@ export interface Message {
   tool_calls?: any[];
   isGreeting?: boolean;
   speakerId?: string; 
-  images?: string[]; 
+  images?: string[];
+  hidden?: boolean; // 不在对话框显示，但保留在上下文中
 }
 
 export interface UserPersona {

@@ -2,6 +2,8 @@ import type { StateCreator } from 'zustand'
 import type { AppState } from './storeTypes'
 import type { Provider, Directive, WorldBook, WorldBookEntry, UserPersona, ThemeMode, RegexRule, PromptPreset } from './useAppStore'
 import type { ModelConfig } from '../types/modelConfig'
+import type { InstalledSkill, InstalledApp } from '../skills/core/types'
+import { registeredSkills } from '../skills/core/registry'
 import { db } from '../storage/db'
 
 export interface CssPackage {
@@ -36,6 +38,10 @@ export interface ConfigSlice {
     actionMarkers?: string;
     thoughtMarkers?: string;
     regexRules: RegexRule[];
+    installedSkills: InstalledSkill[];
+    installedApps: InstalledApp[];
+    appOrder?: string[];
+    appStorage: Record<string, Record<string, any>>;
     appLock: {
       enabled: boolean;
       pinHash: string;
@@ -44,6 +50,7 @@ export interface ConfigSlice {
   };
   
   updateConfig: (newConfig: Partial<ConfigSlice['config']>) => void;
+  updateAppStorage: (appId: string, updates: Record<string, any>) => void;
   updateFontFamily: (font: string) => void;
   updateFontSize: (size: number) => void;
   updateCustomCss: (css: string) => void;
@@ -84,12 +91,33 @@ export interface ConfigSlice {
   updateRegexRule: (id: string, updates: Partial<RegexRule>) => void;
   removeRegexRule: (id: string) => void;
   reorderRegexRules: (rules: RegexRule[]) => void;
+  installSkill: (skill: InstalledSkill) => void;
+  uninstallSkill: (id: string) => void;
+  installApp: (app: InstalledApp) => void;
+  reorderApps: (appIds: string[]) => void;
+  uninstallApp: (id: string, keepData?: boolean) => void;
+  // 响应式 skill 名称列表，用于触发 UI 重渲染（不持久化）
+  registeredSkillNames: string[];
+  syncRegisteredSkillNames: () => void;
 }
 
 export const createConfigSlice = (INITIAL_CONFIG: ConfigSlice['config']): StateCreator<AppState, [], [], ConfigSlice> => (set, get) => ({
   config: INITIAL_CONFIG,
+  registeredSkillNames: Object.keys(registeredSkills),
+  syncRegisteredSkillNames: () => set({ registeredSkillNames: Object.keys(registeredSkills) }),
 
   updateConfig: (newConfig) => set((s) => ({ config: { ...s.config, ...newConfig } })),
+
+  updateAppStorage: (appId, updates) => set((s) => {
+    const appStorage = s.config.appStorage || {};
+    const current = appStorage[appId] || {};
+    const merged = { ...current, ...updates }
+    if (JSON.stringify(merged).length > 5 * 1024 * 1024) {
+      console.warn(`[AppStorage] "${appId}" 超过 5MB 上限，写入已拒绝`)
+      return {}
+    }
+    return { config: { ...s.config, appStorage: { ...appStorage, [appId]: merged } } }
+  }),
 
   updateFontFamily: (font) => {
     set((s) => ({ config: { ...s.config, fontFamily: font } }));
@@ -331,4 +359,48 @@ export const createConfigSlice = (INITIAL_CONFIG: ConfigSlice['config']): StateC
   })),
 
   reorderRegexRules: (rules) => set((s) => ({ config: { ...s.config, regexRules: rules } })),
+
+  installSkill: (skill) => {
+    // 先从内存注册表删除旧版本，确保重新加载
+    delete registeredSkills[skill.id.replace(/-/g, '_')]
+    set((s) => {
+      const existing = (s.config.installedSkills || []).filter((sk: InstalledSkill) => sk.id !== skill.id)
+      return { config: { ...s.config, installedSkills: [...existing, skill] } }
+    })
+    // 加载后同步名称列表触发重渲染（loader 会在外部调用 loadInstalledSkill）
+    setTimeout(() => get().syncRegisteredSkillNames(), 0)
+  },
+
+  uninstallSkill: (id) => {
+    const skillName = id.replace(/-/g, '_')
+    delete registeredSkills[skillName]
+    set((s) => ({
+      config: {
+        ...s.config,
+        installedSkills: (s.config.installedSkills || []).filter((sk: InstalledSkill) => sk.id !== id),
+        enabledSkillIds: (s.config.enabledSkillIds || []).filter((sid: string) => sid !== skillName && sid !== id),
+      }
+    }))
+    get().syncRegisteredSkillNames()
+  },
+
+  installApp: (app) => set((s) => {
+    const existing = (s.config.installedApps || []).filter((a: InstalledApp) => a.id !== app.id)
+    return { config: { ...s.config, installedApps: [...existing, app] } }
+  }),
+
+  reorderApps: (appIds) => set((s) => ({ config: { ...s.config, appOrder: appIds } })),
+
+  uninstallApp: (id, keepData = true) => set((s) => {
+    const newConfig = {
+      ...s.config,
+      installedApps: (s.config.installedApps || []).filter((a: InstalledApp) => a.id !== id),
+      appOrder: (s.config.appOrder || []).filter(appId => appId !== id),
+    };
+    if (!keepData && newConfig.appStorage) {
+      const { [id]: _, ...restStorage } = newConfig.appStorage;
+      newConfig.appStorage = restStorage;
+    }
+    return { config: newConfig };
+  }),
 });

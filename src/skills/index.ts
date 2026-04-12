@@ -1,11 +1,6 @@
 import type { SkillModule, SkillContext } from './core/types';
-import { questSkill } from './quests';
-import { tweetSkill } from './tweet';
-
-export const registeredSkills: Record<string, SkillModule> = {
-  [questSkill.name]: questSkill,
-  [tweetSkill.name]: tweetSkill,
-};
+export { registeredSkills } from './core/registry';
+import { registeredSkills } from './core/registry';
 
 export const getEnabledSkills = (enabledIds?: string[]) => {
   if (!enabledIds) return [];

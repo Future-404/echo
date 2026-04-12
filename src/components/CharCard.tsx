@@ -4,6 +4,7 @@ import { Settings, Zap, Save, FolderOpen, Terminal } from 'lucide-react'
 import { Toggle } from './ui'
 import { useAppStore } from '../store/useAppStore'
 import { ALL_SKILLS } from '../skills'
+import { registeredSkills } from '../skills/core/registry'
 import { imageDb } from '../utils/imageDb'
 
 interface CharCardProps {
@@ -14,6 +15,7 @@ interface CharCardProps {
 
 const CharCard: React.FC<CharCardProps> = ({ open, onClose, anchorRef }) => {
   const { selectedCharacter, config, toggleSkill, toggleDeviceContext, setIsConfigOpen, setCurrentView, updateCharacter } = useAppStore()
+  const registeredSkillNames = useAppStore(s => s.registeredSkillNames)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const cardRef = useRef<HTMLDivElement>(null)
 
@@ -110,23 +112,30 @@ const CharCard: React.FC<CharCardProps> = ({ open, onClose, anchorRef }) => {
               <span className="text-[10px] font-bold uppercase tracking-widest text-echo-text-subtle">Skills</span>
             </div>
             <div className="space-y-1.5">
-              <div
-                onClick={toggleDeviceContext}
-                className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-echo-surface transition-colors cursor-pointer"
-              >
+              <div onClick={toggleDeviceContext} className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-echo-surface transition-colors cursor-pointer">
                 <span className="text-[11px] text-left text-gray-700 dark:text-gray-300">设备感知</span>
                 <Toggle checked={config.deviceContextEnabled ?? false} onChange={toggleDeviceContext} />
               </div>
+              {/* 内置 skills */}
               {ALL_SKILLS.map(skill => {
                 const enabled = (config.enabledSkillIds || []).includes(skill.name)
                 return (
-                  <div
-                    key={skill.name}
-                    onClick={() => toggleSkill(skill.name)}
-                    className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-echo-surface transition-colors cursor-pointer"
-                  >
+                  <div key={skill.name} onClick={() => toggleSkill(skill.name)} className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-echo-surface transition-colors cursor-pointer">
                     <span className="text-[11px] text-left text-gray-700 dark:text-gray-300">{skill.displayName}</span>
                     <Toggle checked={enabled} onChange={() => toggleSkill(skill.name)} />
+                  </div>
+                )
+              })}
+              {/* 已安装第三方 skills（registeredSkillNames 变化时重渲染） */}
+              {(config.installedSkills || []).map((installed: any) => {
+                const skillId = installed.id.replace(/-/g, '_')
+                if (!registeredSkillNames.includes(skillId)) return null
+                const mod = registeredSkills[skillId]
+                const enabled = (config.enabledSkillIds || []).includes(skillId)
+                return (
+                  <div key={installed.id} onClick={() => toggleSkill(skillId)} className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-echo-surface transition-colors cursor-pointer">
+                    <span className="text-[11px] text-left text-gray-700 dark:text-gray-300">{mod?.displayName || installed.name}</span>
+                    <Toggle checked={enabled} onChange={() => toggleSkill(skillId)} />
                   </div>
                 )
               })}

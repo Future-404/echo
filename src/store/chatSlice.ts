@@ -2,6 +2,7 @@ import type { StateCreator } from 'zustand'
 import type { AppState } from './storeTypes'
 import type { CharacterCard, Message, Mission } from '../types/chat';
 import { db } from '../storage/db';
+import { iframeBus } from '../utils/iframeBus';
 
 export interface ChatSlice {
   messages: Message[];
@@ -9,6 +10,7 @@ export interface ChatSlice {
   isGreetingSession: boolean;
   missions: Mission[];
   fragments: string[];
+  chatError: string | null;
   currentAutoSlotId: string | null;
   hasMoreOlder: boolean; 
   activeAudioId: string | null; 
@@ -27,6 +29,7 @@ export interface ChatSlice {
   setIsGreetingSession: (isGreeting: boolean) => void;
   updateMission: (id: string, updates: Partial<Mission>) => void;
   addFragment: (text: string) => void;
+  setChatError: (msg: string | null) => void;
 }
 
 export const createChatSlice: StateCreator<AppState, [], [], ChatSlice> = (set, get) => ({
@@ -35,6 +38,7 @@ export const createChatSlice: StateCreator<AppState, [], [], ChatSlice> = (set, 
   isGreetingSession: false,
   missions: [],
   fragments: [],
+  chatError: null,
   currentAutoSlotId: null,
   hasMoreOlder: false,
   activeAudioId: null,
@@ -87,6 +91,9 @@ export const createChatSlice: StateCreator<AppState, [], [], ChatSlice> = (set, 
         : [autoSlot, ...slots];
       return { saveSlots: updatedSlots.slice(0, 50) };
     });
+
+    // 4. 事件广播：通知所有活跃的 iframe 应用新消息到达
+    iframeBus.emitEvent('ON_MESSAGE', msg);
   },
 
   loadInitialMessages: async (slotId) => {
@@ -184,4 +191,5 @@ export const createChatSlice: StateCreator<AppState, [], [], ChatSlice> = (set, 
   },
 
   addFragment: (text) => set((s) => ({ fragments: [...(s.fragments || []), text] })),
+  setChatError: (msg) => set({ chatError: msg }),
 });

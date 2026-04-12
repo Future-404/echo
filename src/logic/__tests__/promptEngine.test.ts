@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('../../storage/db', () => ({
   db: {
-    worldEntries: { where: vi.fn(() => ({ anyOf: vi.fn(() => ({ filter: vi.fn(() => ({ toArray: vi.fn().mockResolvedValue([]) })) })) })) },
+    worldEntries: { where: vi.fn(() => ({ anyOf: vi.fn(() => ({ toArray: vi.fn().mockResolvedValue([]), filter: vi.fn(() => ({ toArray: vi.fn().mockResolvedValue([]) })) })) })) },
     messages: { where: vi.fn(() => ({ equals: vi.fn(() => ({ count: vi.fn().mockResolvedValue(0), anyOf: vi.fn(() => ({ modify: vi.fn() })) })) })) },
     getMessagesBySlot: vi.fn().mockResolvedValue([]),
     promptPresetEntries: { where: vi.fn(() => ({ anyOf: vi.fn(() => ({ toArray: vi.fn().mockResolvedValue([]) })) })) },

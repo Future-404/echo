@@ -1,5 +1,6 @@
 import type { CharacterCard } from '../types/chat';
 import { parseUniversalStatus } from './statusParser';
+import { iframeBus } from './iframeBus';
 
 // 优化：正则缓存
 const regexCache = new Map<string, RegExp>()
@@ -153,6 +154,28 @@ export const extractAndSyncTags = (
   // processedText 仅用于容器标签的结构化解析（某些卡片会用正则把原始标签转换为可解析格式）
   const processedText = applyCharacterRegexScripts(text, char, 1);
 
+  // --- 0. 解析 <echo-set key="xxx">value</echo-set> 直接写入指定 attribute ---
+  // 优化：支持可选的 key 属性，如果缺失则尝试解析 JSON 内部的 key；同时兼容 AI 漏写闭合标签
+  const echoSetRegex = /<echo-set(?:\s+key="([^"]+)")?\s*>([\s\S]*?)(?:<\/echo-set>|$)/gi
+  let echoSetMatch
+  while ((echoSetMatch = echoSetRegex.exec(text)) !== null) {
+    const attrKey = echoSetMatch[1]?.trim()
+    const content = echoSetMatch[2].trim()
+    
+    if (attrKey) {
+      // 标准模式：通过 key 属性指定
+      try { newAttrs[attrKey] = JSON.parse(content) } catch { newAttrs[attrKey] = content }
+    } else {
+      // 容错模式：AI 漏写了属性，尝试解析 JSON 内容
+      try {
+        const parsed = JSON.parse(content)
+        if (typeof parsed === 'object' && parsed !== null) {
+          Object.assign(newAttrs, parsed)
+        }
+      } catch (e) { /* 解析失败则忽略 */ }
+    }
+  }
+
   // --- 1. 自动解析 <status>, <details>, <html> 等容器标签内部的 Markdown 表格 ---
   const containerTags = ['status', 'details', 'html', 'card'];
   containerTags.forEach(tag => {
@@ -234,8 +257,9 @@ export const extractAndSyncTags = (
     }
   });
 
-  // 如果有新值，触发 Store 更新
+  // 如果有新值，触发 Store 更新并广播同步事件
   if (Object.keys(newAttrs).length > 0) {
     updateAttributes(char.id, newAttrs);
+    iframeBus.emitEvent('ON_ATTRS_UPDATED', newAttrs);
   }
 };

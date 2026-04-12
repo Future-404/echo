@@ -5,6 +5,7 @@ import { X, Square, LayoutGrid } from 'lucide-react'
 import { readFileAsDataURL } from '../utils/fileUtils'
 import AppsSheet, { type AppDefinition } from './AppsSheet'
 import { useDialog } from './GlobalDialog'
+import { IframeBlock } from './Dialogue/IframeBlock'
 
 interface ChatInputProps {
   onSend: (content: string, images?: string[]) => void
@@ -17,6 +18,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
   const [attachedImages, setAttachedImages] = useState<string[]>([])
   const [appsOpen, setAppsOpen] = useState(false)
   const [isProcessingImage, setIsProcessingImage] = useState(false)
+  const [iframeApp, setIframeApp] = useState<AppDefinition | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { alert } = useDialog()
@@ -93,6 +95,12 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
       })
       return
     }
+    // 第三方 HTML 应用：全屏 iframe 打开
+    if (app.htmlContent) {
+      setAppsOpen(false)
+      setIframeApp(app)
+      return
+    }
     setAppsOpen(false)
     if (!app.available) {
       alert(`「${app.name}」正在开发中，敬请期待 ✨`)
@@ -100,6 +108,29 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
   }
 
   return (
+    <>
+    {/* 第三方应用全屏 iframe */}
+    <AnimatePresence>
+      {iframeApp && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[300] bg-echo-base flex flex-col"
+        >
+          <div className="flex items-center justify-between px-4 py-3 border-b border-echo-border shrink-0">
+            <span className="text-sm font-serif text-echo-text-base">{iframeApp.name}</span>
+            <button onClick={() => setIframeApp(null)} className="p-2 rounded-full hover:bg-echo-surface transition-colors">
+              <X size={16} className="text-echo-text-muted" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-hidden" style={{ height: 'calc(100vh - 56px)' }}>
+            <IframeBlock html={iframeApp.htmlContent!} appId={iframeApp.id} isFullScreen />
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
@@ -205,6 +236,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
         </span>
       </div>
     </motion.div>
+    </>
   )
 }
 

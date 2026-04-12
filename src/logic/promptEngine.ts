@@ -243,19 +243,42 @@ export const buildPromptMessages = async (ctx: PromptContext, contextWindow: num
     : []
   const allDirectives = [...(directives || []), ...boundPresetDirectives]
   const currentAttributes = character.attributes || {};
-  const attributeContext = Object.keys(currentAttributes).length > 0 ? `\n### STATE\n${Object.entries(currentAttributes).map(([k, v]) => `- ${k}: ${v}`).join('\n')}` : '';
+  
+  // 属性分组逻辑
+  const coreAttrs: string[] = [];
+  const extAttrs: Record<string, string[]> = {};
+
+  Object.entries(currentAttributes).forEach(([k, v]) => {
+    // 跳过对象类型和空值（UI 数据或未初始化的 key，不注入 AI 上下文）
+    if (v !== null && typeof v === 'object') return;
+    if (v === '' || v === null || v === undefined) return;
+    if (k.startsWith('ext:')) {
+      const parts = k.split(':');
+      const appId = parts[1] || 'unknown';
+      const realKey = parts.slice(2).join(':') || parts[1];
+      if (!extAttrs[appId]) extAttrs[appId] = [];
+      extAttrs[appId].push(`${realKey}: ${v}`);
+    } else {
+      coreAttrs.push(`${k}: ${v}`);
+    }
+  });
+
+  let attributeContext = '';
+  if (coreAttrs.length > 0 || Object.keys(extAttrs).length > 0) {
+    attributeContext = '\n### STATE';
+    if (coreAttrs.length > 0) {
+      attributeContext += `\n[CORE]\n${coreAttrs.map(a => `- ${a}`).join('\n')}`;
+    }
+    Object.entries(extAttrs).forEach(([appId, attrs]) => {
+      attributeContext += `\n[APP: ${appId}]\n${attrs.map(a => `- ${a}`).join('\n')}`;
+    });
+  }
+
   const deviceCtx = deviceContextEnabled ? await collectDeviceContext() : null;
   const deviceSection = deviceCtx ? `\n\n### CONTEXT\n${formatDeviceContext(deviceCtx)}` : '';
-  const skillPrompts = getEnabledSkillPrompts(enabledSkillIds, {
-    messages: (recentMessages || []) as Array<{ role: string; content: string }>,
-    characterName: charName,
-    userName: actualUserName,
-    attributes: character.attributes || {},
-  });
-  const skillSection = skillPrompts ? `\n\n### MODULES\n${fastReplace(skillPrompts).replace(/\[角色名\]/g, charName)}` : '';
   const missionStatus = (missions || []).filter(m => m.status === 'ACTIVE').map(m => `- ${m.title}: (${m.progress}%)`).join('\n');
 
-  const systemBase = `### CORE IDENTITY\n${fastReplace(character.systemPrompt)}\n${character.scenario ? '\n### SCENARIO\n' + fastReplace(character.scenario) : ''}${attributeContext}${recallContext}${deviceSection}${skillSection}\n\n### PARTNER: ${actualUserName}\n${fastReplace(persona?.background || '')}\n\n### OBJECTIVE\n${missionStatus || 'Narrative exploration.'}`.trim();
+  const systemBase = `### CORE IDENTITY\n${fastReplace(character.systemPrompt)}\n${character.scenario ? '\n### SCENARIO\n' + fastReplace(character.scenario) : ''}${attributeContext}${recallContext}${deviceSection}\n\n### PARTNER: ${actualUserName}\n${fastReplace(persona?.background || '')}\n\n### OBJECTIVE\n${missionStatus || 'Narrative exploration.'}`.trim();
   
   const RESPONSE_RESERVE = 1024;
   const allDirectivesText = allDirectives.filter(d => d.enabled && !d.depth).map(d => d.content).join('\n\n');
