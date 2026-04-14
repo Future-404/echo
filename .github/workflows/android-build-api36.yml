@@ -3,7 +3,7 @@ name: Build Android APK (API 36)
 on:
   push:
     branches: [ main, master ]
-  workflow_dispatch: # 允许手动点击运行
+  workflow_dispatch:
 
 jobs:
   build:
@@ -18,7 +18,7 @@ jobs:
         with:
           node-version: 22
           cache: 'npm'
-          cache-dependency-path: echo/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -29,26 +29,20 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
-          api-level: 36 # 强制指定需要的 API 级别
+          api-level: 36
 
       - name: Install Dependencies
-        run: |
-          cd echo
-          npm install
+        run: npm install
 
       - name: Build Web App
-        run: |
-          cd echo
-          npm run build
+        run: npm run build
 
       - name: Capacitor Sync
-        run: |
-          cd echo
-          npx cap sync android
+        run: npx cap sync android
 
       - name: Build Android APK
         run: |
-          cd echo/android
+          cd android
           chmod +x ./gradlew
           ./gradlew assembleDebug
 
@@ -56,4 +50,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-debug-all-abis
-          path: echo/android/app/build/outputs/apk/debug/*.apk
+          path: android/app/build/outputs/apk/debug/*.apk
