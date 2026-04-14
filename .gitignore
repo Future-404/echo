@@ -69,3 +69,6 @@ Temporary Items
 
 *.sw?
 SillyTavern_Ref/
+
+# IDE config
+.kiro/
