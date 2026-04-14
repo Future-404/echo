@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
     : []
 
   return {
-    base: '/',
+    base: './',
     define: {
       __APP_VERSION__: JSON.stringify(version),
     },

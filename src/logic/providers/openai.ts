@@ -12,7 +12,7 @@ export class OpenAIProvider implements IChatProvider {
     
     if (provider.customHeaders) {
       try {
-        const extraHeaders = JSON.parse(provider.customHeaders);
+        const extraHeaders = (() => { try { return JSON.parse(provider.customHeaders) } catch { return {} } })();
         fetchHeaders = { ...fetchHeaders, ...extraHeaders };
       } catch (e) { console.error('Failed to parse custom headers:', e) }
     }

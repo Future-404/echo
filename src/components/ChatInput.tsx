@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, startTransition } from 'react'
+import React, { useState, useRef, useEffect, useCallback, startTransition } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAppStore } from '../store/useAppStore'
 import { X, Square, LayoutGrid } from 'lucide-react'
@@ -22,6 +22,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { alert } = useDialog()
+  const closeApps = useCallback(() => setAppsOpen(false), [])
 
   useEffect(() => {
     const textarea = textareaRef.current
@@ -83,7 +84,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
     setAppsOpen(false)
   }
 
-  const handleOpenApp = (app: AppDefinition) => {
+  const handleOpenApp = useCallback((app: AppDefinition) => {
     if (app.id === 'send-image') {
       fileInputRef.current?.click()
       return
@@ -92,6 +93,13 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
       setAppsOpen(false)
       React.startTransition(() => {
         useAppStore.getState().setCurrentView('tweet-square')
+      })
+      return
+    }
+    if (app.id === 'app-creator') {
+      setAppsOpen(false)
+      React.startTransition(() => {
+        useAppStore.getState().setCurrentView('app-creator')
       })
       return
     }
@@ -105,7 +113,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
     if (!app.available) {
       alert(`「${app.name}」正在开发中，敬请期待 ✨`)
     }
-  }
+  }, [alert])
 
   return (
     <>
@@ -139,7 +147,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
       className="echo-input-container w-full flex flex-col gap-2 relative group/input"
     >
       <input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={handleFileChange} />
-      <AppsSheet open={appsOpen} onClose={() => setAppsOpen(false)} onOpenApp={handleOpenApp} />
+      <AppsSheet open={appsOpen} onClose={closeApps} onOpenApp={handleOpenApp} />
 
       {/* 附件预览区 */}
       <AnimatePresence>

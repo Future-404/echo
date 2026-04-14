@@ -2,21 +2,51 @@ import http from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { createHash, randomBytes } from 'node:crypto'
 import Database from 'better-sqlite3'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const STATIC_DIR = process.env.STATIC_DIR || path.join(__dirname, '../../dist')
 
 const PORT = process.env.PORT || 3456
-const TOKEN = process.env.AUTH_TOKEN
-const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || '*'
+const PASSWORD = process.env.AUTH_TOKEN  // 用于登录验证的密码（原 TOKEN）
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN  // 生产环境必须显式配置
 const MAX_BODY_BYTES = 20 * 1024 * 1024 // 20MB
 const MAX_VALUE_BYTES = 5 * 1024 * 1024 // 单条记录 5MB
 
-if (!TOKEN) {
+if (!PASSWORD) {
   console.error('[echo-storage] AUTH_TOKEN environment variable is required.\n  Example: AUTH_TOKEN=your_secret node server.js')
   process.exit(1)
 }
+if (!ALLOWED_ORIGIN) {
+  console.error('[echo-storage] ALLOWED_ORIGIN environment variable is required.\n  Example: ALLOWED_ORIGIN=https://your-domain.com node server.js')
+  process.exit(1)
+}
+
+// 内存 session store：token → expiry（24h）
+const SESSION_TTL = 24 * 60 * 60 * 1000
+const sessions = new Map()
+
+function createSession() {
+  const token = randomBytes(32).toString('hex')
+  sessions.set(token, Date.now() + SESSION_TTL)
+  return token
+}
+
+function validateSession(token) {
+  const expiry = sessions.get(token)
+  if (!expiry) return false
+  if (Date.now() > expiry) { sessions.delete(token); return false }
+  return true
+}
+
+// 定期清理过期 session
+setInterval(() => {
+  const now = Date.now()
+  for (const [token, expiry] of sessions.entries()) {
+    if (now > expiry) sessions.delete(token)
+  }
+}, 60 * 60 * 1000)
 
 const MIME = {
   '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css',
@@ -93,15 +123,20 @@ http.createServer(async (req, res) => {
   const parts = req.url.split('/').filter(Boolean)
   const resource = parts[1]
 
-  // ── /api/auth（無需鑒權，驗證密碼後返回 token）────────────────────────
+  // ── /api/auth（無需鑒權，驗證密碼後返回 session token）────────────────────────
   if (resource === 'auth') {
     if (req.method !== 'POST') return send(res, 405, { error: 'Method Not Allowed' })
     const { password } = await readBody(req)
-    if (password !== TOKEN) return send(res, 401, { error: 'Invalid password' })
-    return send(res, 200, { token: TOKEN })
+    // 使用恒定时间比较防止时序攻击
+    const expected = createHash('sha256').update(PASSWORD).digest('hex')
+    const actual = createHash('sha256').update(String(password || '')).digest('hex')
+    if (expected !== actual) return send(res, 401, { error: 'Invalid password' })
+    return send(res, 200, { token: createSession() })
   }
 
-  if (req.headers['authorization'] !== `Bearer ${TOKEN}`) return send(res, 401, { error: 'Unauthorized' })
+  const authHeader = req.headers['authorization'] || ''
+  const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
+  if (!validateSession(bearerToken)) return send(res, 401, { error: 'Unauthorized' })
 
   // ── /api/ping ─────────────────────────────────────────────────────────────
   if (resource === 'ping') return send(res, 200, { ok: true })

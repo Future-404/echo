@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Edit2, Trash2, MessageSquare, Brain, Volume2, ChevronRight, Cpu, Activity, FileText, Shuffle } from 'lucide-react'
+import { Plus, Edit2, Trash2, MessageSquare, Brain, Volume2, ChevronRight, Cpu, Activity, FileText, Shuffle, Puzzle } from 'lucide-react'
 import { useAppStore } from '../../store/useAppStore'
 import { useDialog } from '../GlobalDialog'
 
@@ -121,7 +121,7 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ onEdit }) => {
           />
           <AssignCard 
             label="扩展" sub="Extension" description="扩展应用独立请求（查手机等），不占主对话 Token" colorClass="text-orange-500"
-            icon={<Cpu size={48} />}
+            icon={<Puzzle size={48} />}
             value={mc?.extensionProviderId || ''} options={chatProviders}
             onChange={id => setModelConfig({ extensionProviderId: id })}
           />

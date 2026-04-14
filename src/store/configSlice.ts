@@ -3,6 +3,7 @@ import type { AppState } from './storeTypes'
 import type { Provider, Directive, WorldBook, WorldBookEntry, UserPersona, ThemeMode, RegexRule, PromptPreset } from './useAppStore'
 import type { ModelConfig } from '../types/modelConfig'
 import type { InstalledSkill, InstalledApp } from '../skills/core/types'
+import type { CreatorState } from '../components/AppCreator/types'
 import { registeredSkills } from '../skills/core/registry'
 import { db } from '../storage/db'
 
@@ -47,9 +48,12 @@ export interface ConfigSlice {
       pinHash: string;
       timeoutMinutes: number;
     };
+    appCreatorState?: CreatorState;
   };
   
   updateConfig: (newConfig: Partial<ConfigSlice['config']>) => void;
+  updateAppCreatorState: (updates: Partial<CreatorState>) => void;
+  resetAppCreatorState: () => void;
   updateAppStorage: (appId: string, updates: Record<string, any>) => void;
   updateFontFamily: (font: string) => void;
   updateFontSize: (size: number) => void;
@@ -107,6 +111,27 @@ export const createConfigSlice = (INITIAL_CONFIG: ConfigSlice['config']): StateC
   syncRegisteredSkillNames: () => set({ registeredSkillNames: Object.keys(registeredSkills) }),
 
   updateConfig: (newConfig) => set((s) => ({ config: { ...s.config, ...newConfig } })),
+
+  updateAppCreatorState: (updates) => set((s) => ({
+    config: {
+      ...s.config,
+      appCreatorState: { ...s.config.appCreatorState!, ...updates }
+    }
+  })),
+
+  resetAppCreatorState: () => set((s) => ({
+    config: {
+      ...s.config,
+      appCreatorState: {
+        phase: 'form',
+        manifest: EMPTY_MANIFEST,
+        files: EMPTY_FILES,
+        history: [],
+        snapshots: [],
+        status: 'idle',
+      }
+    }
+  })),
 
   updateAppStorage: (appId, updates) => set((s) => {
     const appStorage = s.config.appStorage || {};
@@ -166,6 +191,8 @@ export const createConfigSlice = (INITIAL_CONFIG: ConfigSlice['config']): StateC
       ttsProviderId: mc.ttsProviderId === id ? '' : mc.ttsProviderId,
       routerProviderId: mc.routerProviderId === id ? '' : mc.routerProviderId,
       summaryProviderId: mc.summaryProviderId === id ? '' : mc.summaryProviderId,
+      toolProviderId: mc.toolProviderId === id ? '' : mc.toolProviderId,
+      extensionProviderId: mc.extensionProviderId === id ? '' : mc.extensionProviderId,
     }
     set((s) => ({ config: { ...s.config, providers, activeProviderId, modelConfig } }))
   },

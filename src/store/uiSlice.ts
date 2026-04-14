@@ -12,7 +12,7 @@ import type {
 export interface UISlice {
   isLoading: boolean;
   isConfigOpen: boolean;
-  currentView: 'home' | 'main' | 'selection' | 'multi-selection' | 'save' | 'load' | 'help' | 'config' | 'archive' | 'tweet-square';
+  currentView: 'home' | 'main' | 'selection' | 'multi-selection' | 'save' | 'load' | 'help' | 'config' | 'archive' | 'tweet-square' | 'app-creator';
   configSubView: 'main' | 'advanced' | 'gateway' | 'world' | 'prompt' | 'provider-edit' | 'directive-edit' | 'skills' | 'persona' | 'debug' | 'parsers' | 'appearance' | 'tts' | 'memory-palace' | 'global-management' | 'regex' | 'regex-edit' | 'css-packages' | 'css-package-edit';
   lastInteraction: { x: number; y: number } | null;
   isInteracting: boolean;
@@ -75,7 +75,7 @@ export const createUISlice: StateCreator<AppState, [], [], UISlice> = (set, get)
     configSubView: subView || (open ? state.configSubView : 'main') 
   })),
   setConfigSubView: (view) => set({ configSubView: view }),
-  setCurrentView: (view) => set({ currentView: view }),
+  setCurrentView: (view) => set({ currentView: view, ...(view !== 'config' && { configSubView: 'main' }) }),
   setInteraction: (x, y, interacting) => set({ lastInteraction: interacting ? { x, y } : null, isInteracting: interacting }),
   
   addDebugLog: (entry) => set((state) => ({ 

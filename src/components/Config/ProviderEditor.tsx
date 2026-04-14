@@ -20,7 +20,7 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
   const [isTesting, setIsTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null)
   const [modelList, setModelList] = useState<string[]>([])
-  const [showDropdown, setShowDropdown] = useState(false)
+  const [modelSearch, setModelSearch] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [jsonError, setJsonError] = useState<string | null>(null)
   const [isAdvancedExpanded, setIsAdvancedExpanded] = useState(false)
@@ -50,14 +50,14 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
       const data = await response.json()
       const models = data.data?.map((m: { id: string }) => m.id) || []
       setModelList(models.sort())
-      setShowDropdown(true)
+      setModelSearch('')
     } catch (err) { setError(err instanceof Error ? err.message : String(err)) }
     finally { setIsFetching(false) }
   }
 
   const handleTestConnection = async () => {
-    if (!provider.apiKey || !provider.endpoint) {
-      setTestResult({ ok: false, msg: '请先填写 API Key 和 Endpoint' })
+    if (!provider.apiKey || !provider.endpoint || !provider.model) {
+      setTestResult({ ok: false, msg: '请先填写 API Key、Endpoint 和 Model ID' })
       return
     }
     setIsTesting(true)
@@ -70,11 +70,10 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
         res = await fetch(`${base}/messages`, {
           method: 'POST',
           headers: { 'x-api-key': provider.apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-          body: JSON.stringify({ model: provider.model || 'claude-3-haiku-20240307', max_tokens: 1, messages: [{ role: 'user', content: 'hi' }] })
+          body: JSON.stringify({ model: provider.model, max_tokens: 1, messages: [{ role: 'user', content: 'hi' }] })
         })
       } else if (fmt === 'gemini') {
-        const model = provider.model || 'gemini-1.5-flash'
-        res = await fetch(`${base}/models/${model}:generateContent?key=${provider.apiKey}`, {
+        res = await fetch(`${base}/models/${provider.model}:generateContent?key=${provider.apiKey}`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ contents: [{ parts: [{ text: 'hi' }] }], generationConfig: { maxOutputTokens: 1 } })
@@ -83,11 +82,10 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
         res = await fetch(`${base}/chat/completions`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${provider.apiKey}`, 'content-type': 'application/json' },
-          body: JSON.stringify({ model: provider.model || 'gpt-4o-mini', max_tokens: 1, messages: [{ role: 'user', content: 'hi' }] })
+          body: JSON.stringify({ model: provider.model, max_tokens: 1, messages: [{ role: 'user', content: 'hi' }] })
         })
       }
-      if (res.ok || res.status === 400) {
-        // 400 通常是参数问题但鉴权通过，视为连通
+      if (res.ok) {
         setTestResult({ ok: true, msg: `Connected · HTTP ${res.status}` })
       } else {
         const body = await res.json().catch(() => ({}))
@@ -102,16 +100,10 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
   }
 
   const handleJsonChange = (val: string) => {
-    if (!val.trim()) {
-      setJsonError(null);
-      return;
-    }
-    try {
-      JSON.parse(val);
-      setJsonError(null);
-    } catch (e) {
-      setJsonError(e instanceof Error ? e.message : String(e));
-    }
+    updateProvider(id, { customHeaders: val })
+    if (!val.trim()) { setJsonError(null); return }
+    try { JSON.parse(val); setJsonError(null) }
+    catch (e) { setJsonError(e instanceof Error ? e.message : String(e)) }
   }
 
   const roleTabs = [
@@ -200,20 +192,34 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
             )}
             <div className="relative">
               <input ref={inputRef} type="text" value={provider.model} 
-                onChange={(e) => { updateProvider(id, { model: e.target.value }); setShowDropdown(true); }}
-                onFocus={() => modelList.length > 0 && setShowDropdown(true)}
-                onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
+                onChange={(e) => updateProvider(id, { model: e.target.value })}
                 placeholder="gpt-4o, tts-1, etc..."
                 className={`w-full bg-white dark:bg-white/5 border-0.5 ${error ? 'border-red-400' : 'border-echo-border'} rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-blue-400 transition-all shadow-sm`} />
               
               {error && <p className="text-[7px] text-red-400 mt-1 ml-1 uppercase font-bold tracking-tighter italic animate-pulse">Error: {error}</p>}
 
-              {showDropdown && modelList.length > 0 && (
-                <div className="absolute top-full left-0 right-0 z-50 mt-2 max-h-48 overflow-y-auto no-scrollbar glass-morphism rounded-2xl shadow-xl border-0.5 border-echo-border bg-white/95 dark:bg-black/90">
-                  {modelList.map(m => (
-                    <div key={m} onMouseDown={() => { updateProvider(id, { model: m }); setShowDropdown(false); }}
-                      className={`px-5 py-3 text-[10px] cursor-pointer transition-colors border-b-0.5 border-gray-50 dark:border-gray-900 last:border-none uppercase tracking-widest ${m === provider.model ? 'text-blue-500 bg-blue-50/10' : 'text-gray-400 hover:bg-echo-surface'}`}>{m}</div>
-                  ))}
+              {/* 拉取后的独立搜索面板 */}
+              {modelList.length > 0 && (
+                <div className="mt-2 rounded-2xl border-0.5 border-echo-border bg-white/95 dark:bg-black/90 shadow-xl overflow-hidden">
+                  <div className="px-3 py-2 border-b-0.5 border-echo-border">
+                    <input
+                      type="text"
+                      value={modelSearch}
+                      onChange={e => setModelSearch(e.target.value)}
+                      placeholder="搜索模型..."
+                      className="w-full bg-transparent text-xs focus:outline-none text-echo-text-base placeholder:text-gray-400"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="max-h-48 overflow-y-auto no-scrollbar">
+                    {modelList.filter(m => m.toLowerCase().includes(modelSearch.toLowerCase())).map(m => (
+                      <div key={m} onClick={() => { updateProvider(id, { model: m }); setModelList([]); setModelSearch('') }}
+                        className={`px-5 py-3 text-[10px] cursor-pointer transition-colors border-b-0.5 border-gray-50 dark:border-gray-900 last:border-none uppercase tracking-widest ${m === provider.model ? 'text-blue-500 bg-blue-50/10' : 'text-gray-400 hover:bg-echo-surface'}`}>{m}</div>
+                    ))}
+                  </div>
+                  <div className="px-3 py-2 border-t-0.5 border-echo-border">
+                    <button onClick={() => { setModelList([]); setModelSearch('') }} className="text-[9px] text-gray-400 hover:text-gray-600 transition-colors uppercase tracking-widest">关闭</button>
+                  </div>
                 </div>
               )}
             </div>

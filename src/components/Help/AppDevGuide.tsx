@@ -1,11 +1,24 @@
 import React from 'react'
-import { Download } from 'lucide-react'
+import { Download, BookOpen } from 'lucide-react'
 import { downloadTemplateZip } from '../../utils/appTemplate'
+import { APP_CREATOR_DOCS } from '../AppCreator/docs'
 
 const AppDevGuide: React.FC = () => {
   return (
     <div className="space-y-6 text-xs md:text-sm">
       <p>Echo 支持导入第三方应用包，开发者可以扩展 AI 技能（Skill）或创建自定义 UI 界面（App），两者可以打包在同一个 <code className="bg-white/10 px-1 rounded text-[10px]">.zip</code> 文件中一次导入。</p>
+
+      {/* AI 创作助手同步的权威 API 规范 */}
+      <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <BookOpen size={14} className="text-blue-400" />
+          <p className="text-[10px] uppercase tracking-widest font-bold text-blue-400">权威 API 规范 (AI 创作助手同步)</p>
+        </div>
+        <pre className="text-[10px] font-mono leading-relaxed opacity-80 whitespace-pre-wrap bg-black/20 p-3 rounded-xl">
+          {APP_CREATOR_DOCS}
+        </pre>
+        <p className="text-[9px] text-blue-400/60 italic">注：以上规范与 AI 应用创作助手的系统提示词实时同步，修改 docs.ts 后自动生效。</p>
+      </div>
 
       {/* 下载模板 */}
       <div className="rounded-2xl border border-echo-border bg-echo-surface/50 p-4 flex items-center justify-between gap-4">

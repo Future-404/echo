@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { authenticateWithPassword, getSavedToken, isCloudConnected, resetStorageAdapter } from '../../storage';
 import { backupService } from '../../utils/backupService';
-import { pinHash } from '../../utils/pinHash';
+import { pinHash, isPinHashSupported } from '../../utils/pinHash';
 import { 
   Cloud, CloudOff, Loader2, CheckCircle2, AlertCircle, 
   ShieldCheck, ShieldAlert, Download, Upload, RefreshCw, 
@@ -283,7 +283,7 @@ const AppLockSettings: React.FC = () => {
   const [pinError, setPinError] = useState('')
   const [saved, setSaved] = useState(false)
 
-  const sha256hex = pinHash
+  const httpsSupported = isPinHashSupported()
 
   const handleToggle = async () => {
     if (appLock.enabled) {
@@ -296,9 +296,10 @@ const AppLockSettings: React.FC = () => {
 
   const handleSavePin = async () => {
     setPinError('')
+    if (!httpsSupported) { setPinError('需要 HTTPS 环境才能启用锁屏'); return }
     if (newPin.length < 4) { setPinError('PIN 至少 4 位'); return }
     if (newPin !== confirmPin) { setPinError('两次输入不一致'); return }
-    const hash = await sha256hex(newPin)
+    const hash = await pinHash(newPin)
     updateConfig({ appLock: { ...appLock, enabled: true, pinHash: hash } })
     sessionStorage.setItem('echo-unlocked-at', String(Date.now()))
     setNewPin(''); setConfirmPin('')
@@ -312,6 +313,11 @@ const AppLockSettings: React.FC = () => {
       </div>
 
       <div className="bg-gray-50/50 dark:bg-white/5 p-6 rounded-[2.5rem] border-0.5 border-echo-border space-y-6">
+        {!httpsSupported && (
+          <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-2xl">
+            <span className="text-[9px] text-red-400 font-mono uppercase tracking-widest">⚠ 需要 HTTPS 环境才能启用应用锁</span>
+          </div>
+        )}
         {/* 开关状态 */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">

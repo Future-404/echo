@@ -123,8 +123,18 @@ export const backupService = {
         try {
           const data = JSON.parse(e.target?.result as string);
           
-          // 1. 验证格式
-          if (!data.version) throw new Error('不合法的 Echo 数据包格式');
+          // 1. 结构验证
+          if (!data.version || typeof data.version !== 'string') throw new Error('不合法的 Echo 数据包格式');
+          if (data.type === 'SINGLE_SLOT') {
+            if (!data.slot?.id || typeof data.slot.id !== 'string') throw new Error('单存档包缺少有效的 slot.id');
+            if (!Array.isArray(data.messages)) throw new Error('单存档包 messages 字段无效');
+          } else {
+            if (!data.db || typeof data.db !== 'object') throw new Error('全量包缺少 db 字段');
+            const dbFields = ['messages', 'characters', 'worldEntries', 'memoryEpisodes', 'promptPresetEntries', 'kvStore'];
+            for (const f of dbFields) {
+              if (!Array.isArray(data.db[f])) throw new Error(`全量包 db.${f} 字段无效`);
+            }
+          }
 
           console.log('[Backup] 正在解析数据包...');
 

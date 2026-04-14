@@ -13,6 +13,7 @@ import { createSaveSlice, type SaveSlice, loadSlotsFromStorage, SAVE_KEY, MULTI_
 import { createUISlice, type UISlice } from './uiSlice'
 import { createArchiveSlice, type ArchiveSlice } from './archiveSlice'
 import { createTweetSlice, type TweetSlice } from './tweetSlice'
+import { EMPTY_MANIFEST, EMPTY_FILES } from '../components/AppCreator/types'
 import type { AppState } from './storeTypes'
 
 // 导入统一的类型定义
@@ -89,6 +90,15 @@ const INITIAL_CONFIG = {
   appOrder: [],
   appStorage: {},
   appLock: { enabled: false, pinHash: '', timeoutMinutes: 5 },
+  appCreatorState: {
+    phase: 'form',
+    manifest: EMPTY_MANIFEST,
+    files: EMPTY_FILES,
+    history: [],
+    chatLog: [{ role: 'assistant', text: '你好！请先填写应用基本信息，然后告诉我你想创建什么功能的应用。' }],
+    snapshots: [],
+    status: 'idle',
+  },
 };
 
 export const useAppStore = create<AppState>()(
@@ -143,6 +153,20 @@ export const useAppStore = create<AppState>()(
               ttsProviderId: legacy.activeTtsProviderId || '',
               routerProviderId: legacy.routerProviderId || '',
               summaryProviderId: '',
+              toolProviderId: '',
+              extensionProviderId: '',
+            }
+          }
+          // 旧数据迁移：补全应用实验室状态
+          if (!state.config.appCreatorState) {
+            state.config.appCreatorState = {
+              phase: 'form',
+              manifest: EMPTY_MANIFEST,
+              files: EMPTY_FILES,
+              history: [],
+              chatLog: [{ role: 'assistant', text: '你好！请先填写应用基本信息，然后告诉我你想创建什么功能的应用。' }],
+              snapshots: [],
+              status: 'idle',
             }
           }
           state.setHasHydrated(true)
@@ -235,10 +259,17 @@ export const useAppStore = create<AppState>()(
   )
 )
 
-// 开发环境暴露 store 到 window 用于测试
+// 开发环境暴露 store 到 window 用于测试（脱敏 API Key）
 if (import.meta.env.DEV) {
-  ;(window as any).__ECHO_STORE__ = useAppStore.getState()
-  useAppStore.subscribe(() => {
-    ;(window as any).__ECHO_STORE__ = useAppStore.getState()
+  const sanitize = (state: ReturnType<typeof useAppStore.getState>) => ({
+    ...state,
+    config: {
+      ...state.config,
+      providers: state.config.providers.map(p => ({ ...p, apiKey: p.apiKey ? '***' : '' })),
+    },
+  })
+  ;(window as any).__ECHO_STORE__ = sanitize(useAppStore.getState())
+  useAppStore.subscribe((state) => {
+    ;(window as any).__ECHO_STORE__ = sanitize(state)
   })
 }

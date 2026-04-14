@@ -1,6 +1,6 @@
 import React, { useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Image, Send, Heart, BookOpen, Plus } from 'lucide-react'
+import { X, Image, Send, Heart, BookOpen, Plus, Sparkles } from 'lucide-react'
 import { useAppStore } from '../store/useAppStore'
 import { replaceMacros } from '../logic/promptEngine'
 import { parsePackageZip, loadInstalledSkill } from '../skills/core/loader'
@@ -27,6 +27,7 @@ export interface AppDefinition {
 export const APP_REGISTRY: AppDefinition[] = [
   { id: 'send-image', name: '发送图片', sub: 'Send Image', icon: <Image size={24} strokeWidth={1.5} />, available: true },
   { id: 'tweet-square', name: '{{char}}的推文广场', sub: 'Tweet Square', icon: <BookOpen size={24} strokeWidth={1.5} />, available: true },
+  { id: 'app-creator', name: 'AI 应用实验室', sub: 'App Creator', icon: <Sparkles size={24} strokeWidth={1.5} />, available: true },
   { id: 'transfer', name: '转账', sub: 'Transfer', icon: <Send size={24} strokeWidth={1.5} />, available: false },
   { id: 'couple-space', name: '情侣空间', sub: 'Couple Space', icon: <Heart size={24} strokeWidth={1.5} />, available: false },
 ]
@@ -206,6 +207,21 @@ const AppsSheet: React.FC<Props> = ({ open, onClose, onOpenApp }) => {
     setImporting(true)
     try {
       const pkg = await parsePackageZip(file)
+
+      // --- 安全扫描确认 ---
+      if (pkg.securityRisks.length > 0) {
+        const warningMsg = `⚠️ 安全警报：该应用包存在潜在风险：\n\n${pkg.securityRisks.join('\n')}\n\n是否仍要继续安装？`
+        const proceed = await confirm(warningMsg, { 
+          title: '安全风险确认', 
+          confirmText: '仍要安装', 
+          cancelText: '取消并卸载',
+          danger: true 
+        })
+        if (!proceed) {
+          setImporting(false)
+          return
+        }
+      }
       
       const appId = pkg.app?.id || pkg.skill?.id;
       const existingApp = installedApps.find(a => a.id === appId);
@@ -344,4 +360,4 @@ const AppsSheet: React.FC<Props> = ({ open, onClose, onOpenApp }) => {
   )
 }
 
-export default AppsSheet
+export default React.memo(AppsSheet)

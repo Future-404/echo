@@ -11,7 +11,7 @@ import { useKeyboard } from './hooks/useKeyboardHeight'
 import { restoreInstalledSkills } from './skills/core/loader'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { LockScreen } from './components/LockScreen'
-import { pinHash } from './utils/pinHash'
+import { pinHash, isPinHashSupported } from './utils/pinHash'
 
 // 核心/轻量组件：保持静态导入
 import Loading from './components/Loading'
@@ -36,6 +36,7 @@ import LoadScreen from './components/LoadScreen'
 import HelpScreen from './components/HelpScreen'
 import ArchiveScreen from './components/ArchiveScreen'
 import TweetSquare from './components/AppCenter/TweetSquare'
+import AppCreatorApp from './components/AppCreator/AppCreatorApp'
 
 const App: React.FC = () => {
   const { 
@@ -48,8 +49,7 @@ const App: React.FC = () => {
   // ── App Lock ──────────────────────────────────────────────────────────────
   const appLock = config?.appLock
   const [locked, setLocked] = React.useState(() => {
-    if (!appLock?.enabled || !appLock?.pinHash) return false
-    // timeoutMinutes=0 → lock on every page load
+    if (!appLock?.enabled || !appLock?.pinHash || !isPinHashSupported()) return false
     if (appLock.timeoutMinutes === 0) return true
     const lastUnlock = Number(sessionStorage.getItem('echo-unlocked-at') || 0)
     return Date.now() - lastUnlock > appLock.timeoutMinutes * 60_000
@@ -57,7 +57,7 @@ const App: React.FC = () => {
 
   // Re-lock when returning from background after timeout
   React.useEffect(() => {
-    if (!appLock?.enabled || !appLock?.pinHash) return
+    if (!appLock?.enabled || !appLock?.pinHash || !isPinHashSupported()) return
     const handleVisibility = () => {
       if (document.visibilityState !== 'visible') return
       if (appLock.timeoutMinutes === 0) { setLocked(true); return }
@@ -71,7 +71,7 @@ const App: React.FC = () => {
   // hydrate 完成后重新评估锁状态（初始 useState 时 config 尚未恢复）
   React.useEffect(() => {
     if (!_hasHydrated) return
-    if (!appLock?.enabled || !appLock?.pinHash) { setLocked(false); return }
+    if (!appLock?.enabled || !appLock?.pinHash || !isPinHashSupported()) { setLocked(false); return }
     if (appLock.timeoutMinutes === 0) { setLocked(true); return }
     const lastUnlock = Number(sessionStorage.getItem('echo-unlocked-at') || 0)
     setLocked(Date.now() - lastUnlock > appLock.timeoutMinutes * 60_000)
@@ -228,6 +228,7 @@ const App: React.FC = () => {
           {currentView === 'config' && <ConfigPanel key="config" />}
           {currentView === 'archive' && <ArchiveScreen key="archive" />}
           {currentView === 'tweet-square' && <TweetSquare key="tweet-square" />}
+          {currentView === 'app-creator' && <AppCreatorApp key="app-creator" />}
         </AnimatePresence>
       </Suspense>
 

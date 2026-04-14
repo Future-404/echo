@@ -244,7 +244,7 @@ const MessageContent: React.FC<MessageContentProps> = React.memo(({ content, isA
     });
 
     return { thinkingContent, envBadges, statusCards, finalLayoutSegments };
-  }, [content, isAi, selectedCharacter.id, bodyEngine, widgetEngine, config.dialogueQuotes, config.actionMarkers, config.thoughtMarkers]);
+  }, [throttledContent, isAi, selectedCharacter.id, bodyEngine, widgetEngine, config.dialogueQuotes, config.actionMarkers, config.thoughtMarkers, config.regexRules]);
 
   const shouldRenderIframe = renderDepth === 0 || isLatest
 

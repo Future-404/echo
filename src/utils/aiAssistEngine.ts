@@ -126,7 +126,7 @@ export async function callAIAssist(
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${provider.apiKey}`,
-      ...(provider.customHeaders ? JSON.parse(provider.customHeaders) : {}),
+      ...(provider.customHeaders ? (() => { try { return (() => { try { return JSON.parse(provider.customHeaders) } catch { return {} } })() } catch { return {} } })() : {}),
     },
     body: JSON.stringify({
       model: provider.model,

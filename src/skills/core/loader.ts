@@ -172,6 +172,44 @@ export function restoreInstalledSkills(skills: InstalledSkill[]): void {
 export interface ParsedPackage {
   skill?: InstalledSkill
   app?: InstalledApp
+  securityRisks: string[] // 发现的风险点列表
+}
+
+function performSecurityScan(files: Record<string, string>): string[] {
+  const risks: string[] = []
+  const allContent = Object.values(files).join('\n')
+
+  // 1. 网络请求检测 (URL, fetch, XMLHttpRequest, WebSocket)
+  const urlPattern = /(https?|ws|wss):\/\/[^\s"'<>]+|fetch\(|XMLHttpRequest|WebSocket|axios|ajax/gi
+  const urls = allContent.match(urlPattern)
+  if (urls) {
+    const unique = Array.from(new Set(urls.map(u => u.length > 30 ? u.slice(0, 30) + '...' : u)))
+    risks.push(`发现外部连接或网络请求 API: ${unique.join(', ')}`)
+  }
+
+  // 2. 外部资源加载 (script src, link href, img src)
+  if (/<script\s+[^>]*src=["']http|<link\s+[^>]*href=["']http|<img\s+[^>]*src=["']http/i.test(allContent)) {
+    risks.push('发现从外部加载脚本、样式或图片资源')
+  }
+
+  // 3. 动态代码执行风险
+  if (/eval\(|new\s+Function\(|setTimeout\(["']|setInterval\(["']/i.test(allContent)) {
+    risks.push('发现动态代码执行逻辑 (eval/Function)，可能存在安全风险')
+  }
+
+  // 4. 混淆与解码检测 (Base64, Hex, Unicode 逃逸)
+  // 专门针对 atob("...") 这种试图隐藏链接的行为
+  const obfuscationPattern = /atob\(|btoa\(|String\.fromCharCode\(|unescape\(|decodeURIComponent\(|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}/gi
+  if (obfuscationPattern.test(allContent)) {
+    risks.push('发现代码混淆或解码行为 (atob/Hex/Unicode)，可能在试图隐藏恶意链接或逻辑')
+  }
+
+  // 5. 敏感对象访问与动态属性嗅探
+  if (/window\.parent|window\.top|window\.opener|document\.cookie|\[["']\s*(fetch|XMLHttpRequest|WebSocket|eval|Function)\s*["']\]/i.test(allContent)) {
+    risks.push('发现试图访问父窗口、Cookie 或通过动态属性名调用敏感 API')
+  }
+
+  return risks
 }
 
 export async function parsePackageZip(file: File): Promise<ParsedPackage> {
@@ -182,12 +220,15 @@ export async function parsePackageZip(file: File): Promise<ParsedPackage> {
   if (!manifestRaw) throw new Error('缺少 manifest.json')
   const manifest = validateManifest(JSON.parse(strFromU8(manifestRaw)))
 
-  const result: ParsedPackage = {}
+  const result: ParsedPackage = { securityRisks: [] }
+  const scanTargets: Record<string, string> = {}
 
   // skill 部分
   if (manifest.hasSkill !== false && files['skill.js']) {
     const skillRaw = files['skill.js']
     if (skillRaw.byteLength > SKILL_CODE_SIZE_LIMIT) throw new Error('skill.js 超过 200KB 限制')
+    const code = strFromU8(skillRaw)
+    scanTargets['skill.js'] = code
     result.skill = {
       id: manifest.id,
       name: manifest.name,
@@ -195,13 +236,15 @@ export async function parsePackageZip(file: File): Promise<ParsedPackage> {
       version: manifest.version,
       author: manifest.author,
       permissions: manifest.permissions ?? [],
-      code: strFromU8(skillRaw),
+      code,
       installedAt: Date.now(),
     }
   }
 
   // UI 部分
   if (files['index.html']) {
+    const html = strFromU8(files['index.html'])
+    scanTargets['index.html'] = html
     // 处理图标：优先 icon.png/jpg/webp，其次 manifest.icon（emoji）
     let iconValue = manifest.icon
     const iconFile = files['icon.png'] || files['icon.jpg'] || files['icon.jpeg'] || files['icon.webp']
@@ -220,12 +263,15 @@ export async function parsePackageZip(file: File): Promise<ParsedPackage> {
       version: manifest.version,
       author: manifest.author,
       icon: iconValue,
-      htmlContent: strFromU8(files['index.html']),
+      htmlContent: html,
       installedAt: Date.now(),
     }
   }
 
   if (!result.skill && !result.app) throw new Error('zip 中没有 skill.js 也没有 index.html')
+
+  // 执行安全扫描
+  result.securityRisks = performSecurityScan(scanTargets)
 
   return result
 }

@@ -209,7 +209,15 @@ export const useChat = () => {
             const toolMsg: Message = { role: 'tool', tool_call_id: tc.id, name: tc.function.name, content: contentStr };
             await addMessage(toolMsg, requestSlotId);
             toolResults.push(toolMsg);
-          } catch (e) { console.error('Skill error:', e); }
+          } catch (e) {
+            console.error('Skill error:', e);
+            const displayName = registeredSkills[tc.function.name]?.displayName || tc.function.name;
+            useAppStore.getState().addFragment(`❌ [${displayName}] 执行异常: ${(e as Error).message}`);
+            // 写入 tool 错误结果，保证 API 消息链完整
+            const toolMsg: Message = { role: 'tool', tool_call_id: tc.id, name: tc.function.name, content: JSON.stringify({ error: (e as Error).message }) };
+            await addMessage(toolMsg, requestSlotId);
+            toolResults.push(toolMsg);
+          }
         }
         if (toolResults.length > 0) {
           // suppressDisplay：隐藏触发 skill 的 assistant 消息
