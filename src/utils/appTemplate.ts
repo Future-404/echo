@@ -179,12 +179,5 @@ export function downloadTemplateZip() {
   }
   const zipped = zipSync(files, { level: 6 })
   const blob = new Blob([zipped], { type: 'application/zip' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = 'echo-app-template.zip'
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  setTimeout(() => URL.revokeObjectURL(url), 10000)
+  void downloadFile(blob, 'echo-app-template.zip')
 }

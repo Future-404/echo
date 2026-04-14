@@ -85,6 +85,16 @@ const App: React.FC = () => {
     return true
   }, [appLock?.pinHash])
   
+  // 0. 原生环境初始化 (状态栏沉浸式)
+  React.useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      // 让网页延伸到状态栏下方
+      StatusBar.setOverlaysWebView({ overlay: true }).catch(() => {})
+      // 根据初始主题设置状态栏文字颜色
+      StatusBar.setStyle({ style: Style.Dark }).catch(() => {})
+    }
+  }, [])
+
   // 1. 初始化应用生命周期
   React.useEffect(() => {
     if (_hasHydrated) {

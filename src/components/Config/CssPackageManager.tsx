@@ -1,8 +1,22 @@
-import React, { useRef, useState } from 'react'
+import React from 'react'
 import { motion } from 'framer-motion'
 import { Plus, ToggleLeft, ToggleRight, Trash2, GripVertical, Edit2 } from 'lucide-react'
 import { useAppStore, type CssPackage } from '../../store/useAppStore'
 import { CSS_SNIPPETS } from '../../styles/themePresets'
+
+// DnD Kit Imports
+import {
+  DndContext,
+  closestCenter,
+} from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { useDndSensors } from '../../hooks/useDndSensors';
+import { SortableItem } from '../SortableItem';
 
 interface Props {
   onEdit: (id: string) => void
@@ -11,48 +25,20 @@ interface Props {
 const CssPackageManager: React.FC<Props> = ({ onEdit }) => {
   const { config, addCssPackage, updateCssPackage, removeCssPackage, reorderCssPackages } = useAppStore()
   const packages: CssPackage[] = config.cssPackages || []
-  const [dragOver, setDragOver] = useState<number | null>(null)
-  const dragging = useRef<number | null>(null)
+  const sensors = useDndSensors();
 
-  const onGripPointerDown = (e: React.PointerEvent, index: number) => {
-    e.preventDefault()
-    dragging.current = index
-    const el = (e.currentTarget as HTMLElement).closest('[data-pkg-index]') as HTMLElement
-    if (!el) return
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
 
-    const container = el.parentElement!
-    const items = Array.from(container.querySelectorAll('[data-pkg-index]')) as HTMLElement[]
-
-    const onMove = (me: PointerEvent) => {
-      let target = index
-      items.forEach((item, i) => {
-        const rect = item.getBoundingClientRect()
-        if (me.clientY > rect.top + rect.height / 2) target = i
-      })
-      setDragOver(target)
+    const oldIndex = packages.findIndex((p) => p.id === active.id);
+    const newIndex = packages.findIndex((p) => p.id === over.id);
+    
+    if (oldIndex !== -1 && newIndex !== -1) {
+      const newPackages = arrayMove(packages, oldIndex, newIndex);
+      reorderCssPackages(newPackages);
     }
-
-    const onUp = (ue: PointerEvent) => {
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onUp)
-      let target = index
-      items.forEach((item, i) => {
-        const rect = item.getBoundingClientRect()
-        if (ue.clientY > rect.top + rect.height / 2) target = i
-      })
-      if (target !== index) {
-        const next = [...packages]
-        const [moved] = next.splice(index, 1)
-        next.splice(target, 0, moved)
-        reorderCssPackages(next)
-      }
-      dragging.current = null
-      setDragOver(null)
-    }
-
-    window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', onUp)
-  }
+  };
 
   const handleAdd = () => {
     const id = `css-${Date.now()}`
@@ -88,34 +74,44 @@ const CssPackageManager: React.FC<Props> = ({ onEdit }) => {
         <div className="space-y-1.5">
           <p className="text-[8px] text-gray-300 dark:text-gray-700 uppercase tracking-widest px-3">↑ 高优先级</p>
 
-          {packages.map((pkg, i) => (
-            <div
-              key={pkg.id}
-              data-pkg-index={i}
-              className={`flex items-center gap-2 p-3 rounded-2xl border-0.5 transition-all ${
-                dragOver === i ? 'border-blue-400 bg-blue-500/10' :
-                pkg.enabled ? 'border-blue-400/20 bg-blue-500/5' : 'border-echo-border bg-white/50 dark:bg-white/5'
-              }`}
-            >
-              <GripVertical
-                size={14}
-                className="text-gray-300 dark:text-gray-600 cursor-grab active:cursor-grabbing shrink-0 touch-none"
-                onPointerDown={e => onGripPointerDown(e, i)}
-              />
-              <button onClick={() => updateCssPackage(pkg.id, { enabled: !pkg.enabled })} className="text-gray-400 shrink-0">
-                {pkg.enabled ? <ToggleRight size={18} className="text-blue-400" /> : <ToggleLeft size={18} />}
-              </button>
-              <div className="flex-1 min-w-0">
-                <p className={`text-xs font-serif truncate ${pkg.enabled ? 'text-echo-text-primary' : 'text-gray-400'}`}>{pkg.name}</p>
-              </div>
-              <button onClick={() => onEdit(pkg.id)} className="p-1 text-gray-400 hover:text-blue-400 transition-colors shrink-0">
-                <Edit2 size={12} />
-              </button>
-              <button onClick={() => removeCssPackage(pkg.id)} className="p-1 text-gray-400 hover:text-red-400 transition-colors shrink-0">
-                <Trash2 size={12} />
-              </button>
-            </div>
-          ))}
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={packages.map(p => p.id)} strategy={verticalListSortingStrategy}>
+              {packages.map((pkg) => (
+                <SortableItem key={pkg.id} id={pkg.id}>
+                  {({ setNodeRef, attributes, listeners, style, isDragging }) => (
+                    <div
+                      ref={setNodeRef}
+                      style={{ ...style, touchAction: 'none' }}
+                      className={`flex items-center gap-2 p-3 rounded-2xl border-0.5 transition-all ${
+                        isDragging ? 'border-blue-500 bg-blue-500/20 shadow-xl opacity-50' :
+                        pkg.enabled ? 'border-blue-400/20 bg-blue-500/5' : 'border-echo-border bg-white/50 dark:bg-white/5'
+                      }`}
+                    >
+                      <div {...attributes} {...listeners} className="p-1 cursor-grab active:cursor-grabbing shrink-0">
+                        <GripVertical size={14} className="text-gray-300 dark:text-gray-600" />
+                      </div>
+                      
+                      <button onClick={() => updateCssPackage(pkg.id, { enabled: !pkg.enabled })} className="text-gray-400 shrink-0">
+                        {pkg.enabled ? <ToggleRight size={18} className="text-blue-400" /> : <ToggleLeft size={18} />}
+                      </button>
+                      
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-xs font-serif truncate ${pkg.enabled ? 'text-echo-text-primary' : 'text-gray-400'}`}>{pkg.name}</p>
+                      </div>
+                      
+                      <button onClick={() => onEdit(pkg.id)} className="p-1 text-gray-400 hover:text-blue-400 transition-colors shrink-0">
+                        <Edit2 size={12} />
+                      </button>
+                      
+                      <button onClick={() => removeCssPackage(pkg.id)} className="p-1 text-gray-400 hover:text-red-400 transition-colors shrink-0">
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  )}
+                </SortableItem>
+              ))}
+            </SortableContext>
+          </DndContext>
 
           <p className="text-[8px] text-gray-300 dark:text-gray-700 uppercase tracking-widest px-3">↓ 低优先级</p>
 

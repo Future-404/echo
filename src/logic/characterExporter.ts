@@ -1,6 +1,7 @@
 import type { CharacterCard } from '../types/chat';
 import { writeSillyTavernData } from '../utils/pngMetadata';
 import { getStorageAdapter } from '../storage';
+import { downloadFile } from '../utils/fileUtils';
 
 /**
  * 将 Echo 角色卡转换为 SillyTavern V2 规范的 JSON 对象
@@ -68,12 +69,7 @@ export const convertToSillyTavernV2 = (char: CharacterCard) => {
 export const exportCharacterAsJSON = (char: CharacterCard) => {
   const stData = convertToSillyTavernV2(char);
   const blob = new Blob([JSON.stringify(stData, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${char.name.replace(/\s+/g, '_')}_card.json`;
-  a.click();
-  URL.revokeObjectURL(url);
+  void downloadFile(blob, `${char.name.replace(/\s+/g, '_')}_card.json`);
 };
 
 /**
@@ -120,11 +116,10 @@ export const exportCharacterAsPNG = async (char: CharacterCard) => {
     // 3. 将数据嵌入 PNG
     const pngWithMetadata = await writeSillyTavernData(pngImage, stData);
 
-    // 4. 下载
-    const a = document.createElement('a');
-    a.href = pngWithMetadata;
-    a.download = `${char.name.replace(/\s+/g, '_')}_card.png`;
-    a.click();
+    // 4. 下载 (Capacitor 不支持 data:uri 下载)
+    const res = await fetch(pngWithMetadata);
+    const blob = await res.blob();
+    void downloadFile(blob, `${char.name.replace(/\s+/g, '_')}_card.png`);
   } catch (err) {
     console.error('PNG Export failed:', err);
     throw err;

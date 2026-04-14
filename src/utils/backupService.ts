@@ -1,6 +1,7 @@
 import { db } from '../storage/db';
 import { imageDb } from './imageDb';
 import { STORE_KEY } from '../store/persist';
+import { downloadFile } from './fileUtils';
 
 /**
  * Echo 意识备份服务 (.echo)
@@ -48,14 +49,7 @@ export const backupService = {
 
       // 5. 触发下载
       const blob = new Blob([JSON.stringify(backupData)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `echo-backup-${new Date().toISOString().split('T')[0]}.echo`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      await downloadFile(blob, `echo-backup-${new Date().toISOString().split('T')[0]}.echo`);
       
       console.log('[Backup] 导出成功');
     } catch (e) {
@@ -98,14 +92,7 @@ export const backupService = {
       };
 
       const blob = new Blob([JSON.stringify(packageData)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `echo-slot-${slot.name || slotId}-${new Date().toISOString().split('T')[0]}.echo-slot`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      await downloadFile(blob, `echo-slot-${slot.name || slotId}-${new Date().toISOString().split('T')[0]}.echo-slot`);
 
     } catch (e) {
       console.error('[Backup] 单存档导出失败:', e);

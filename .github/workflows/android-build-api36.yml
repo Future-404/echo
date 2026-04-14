@@ -1,8 +1,10 @@
-name: Build Android APK (API 36)
+name: Build and Release Android APK (API 36)
 
 on:
   push:
     branches: [ main, master ]
+    tags:
+      - 'v*' 
   workflow_dispatch:
 
 jobs:
@@ -12,6 +14,12 @@ jobs:
     steps:
       - name: Checkout Source
         uses: actions/checkout@v4
+
+      - name: Extract version from package.json
+        id: pkg_version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -46,10 +54,35 @@ jobs:
         run: |
           cd android
           chmod +x ./gradlew
-          ./gradlew assembleDebug
+          # 传入版本号和动态增长的 versionCode
+          ./gradlew assembleDebug -PprojVersionName=${{ steps.pkg_version.outputs.VERSION }} -PprojVersionCode=${{ github.run_number }}
 
-      - name: Upload APKs
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug-all-abis
+          name: app-debug-v${{ steps.pkg_version.outputs.VERSION }}
           path: android/app/build/outputs/apk/debug/*.apk
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: android/app/build/outputs/apk/debug/*.apk
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body: |
+            ### Echo v${{ steps.pkg_version.outputs.VERSION }} 更新说明
+            
+            这是由 GitHub Actions 自动生成的发布版本。
+            
+            - **应用版本**: ${{ steps.pkg_version.outputs.VERSION }}
+            - **Build Number**: ${{ github.run_number }}
+            - **Android API**: 36
+            
+            - **arm64-v8a**: 现代 64 位手机
+            - **armeabi-v7a**: 旧款 32 位手机
+            - **universal**: 全架构通用包
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,10 +1,24 @@
 import React, { useRef } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import type { RegexRule } from '../../types/chat';
-import { Plus, Trash2, Edit2, ToggleLeft, ToggleRight, ArrowUp, ArrowDown, Download, Upload } from 'lucide-react';
+import { Plus, Trash2, Edit2, ToggleLeft, ToggleRight, ArrowUp, ArrowDown, Download, Upload, GripVertical } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useDialog } from '../GlobalDialog';
 import { readFileAsText, downloadJson } from '../../utils/fileUtils';
+
+// DnD Kit Imports
+import {
+  DndContext,
+  closestCenter,
+} from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { useDndSensors } from '../../hooks/useDndSensors';
+import { SortableItem } from '../SortableItem';
 
 interface RegexManagerProps {
   onEdit: (id: string) => void;
@@ -16,6 +30,20 @@ const RegexManager: React.FC<RegexManagerProps> = ({ onEdit, onAdd }) => {
   const { alert } = useDialog();
   const rules = config.regexRules || [];
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const sensors = useDndSensors();
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = rules.findIndex((r) => r.id === active.id);
+    const newIndex = rules.findIndex((r) => r.id === over.id);
+    
+    if (oldIndex !== -1 && newIndex !== -1) {
+      const newRules = arrayMove(rules, oldIndex, newIndex);
+      reorderRegexRules(newRules);
+    }
+  };
 
   const moveRule = (index: number, direction: 'up' | 'down') => {
     const newRules = [...rules];
@@ -40,7 +68,6 @@ const RegexManager: React.FC<RegexManagerProps> = ({ onEdit, onAdd }) => {
       const importedRules = Array.isArray(json) ? json : [json];
 
       importedRules.forEach(r => {
-        // 尝试映射 ST 格式
         const newRule: RegexRule = {
           id: r.id || `regex-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
           name: r.name || r.ruleName || '导入规则',
@@ -51,7 +78,6 @@ const RegexManager: React.FC<RegexManagerProps> = ({ onEdit, onAdd }) => {
           runOn: r.runOn || []
         };
 
-        // ST 兼容逻辑：处理 placement [1=AI输入, 2=渲染, 3=用户输入]
         if (r.placement && Array.isArray(r.placement)) {
           const scopes: ('ui' | 'ai' | 'user')[] = [];
           if (r.placement.includes(1)) scopes.push('ai');
@@ -118,48 +144,67 @@ const RegexManager: React.FC<RegexManagerProps> = ({ onEdit, onAdd }) => {
             <p className="text-[9px] text-gray-400 uppercase tracking-widest">Add your first regex rule to start</p>
           </div>
         ) : (
-          rules.map((rule, index) => (
-            <div key={rule.id} className="group p-4 bg-white/50 dark:bg-white/5 border-0.5 border-gray-100 dark:border-gray-800 rounded-3xl hover:border-gray-300 dark:hover:border-gray-600 transition-all shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex-1 min-w-0 pr-4">
-                  <h4 className="text-xs font-serif text-echo-text-primary truncate">{rule.name || '未命名规则'}</h4>
-                  <div className="flex gap-2 mt-1">
-                    {rule.runOn.map(scope => (
-                      <span key={scope} className="text-[7px] px-1.5 py-0.5 bg-echo-surface text-gray-400 rounded uppercase tracking-widest border-0.5 border-black/5">
-                        {scope}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                   <button onClick={() => moveRule(index, 'up')} disabled={index === 0} className="p-1.5 text-gray-400 hover:text-blue-500 disabled:opacity-20"><ArrowUp size={14} /></button>
-                   <button onClick={() => moveRule(index, 'down')} disabled={index === rules.length - 1} className="p-1.5 text-gray-400 hover:text-blue-500 disabled:opacity-20"><ArrowDown size={14} /></button>
-                </div>
-              </div>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={rules.map(r => r.id)} strategy={verticalListSortingStrategy}>
+              {rules.map((rule, index) => (
+                <SortableItem key={rule.id} id={rule.id}>
+                  {({ setNodeRef, attributes, listeners, style, isDragging }) => (
+                    <div 
+                      ref={setNodeRef} 
+                      style={{ ...style, touchAction: 'none' }}
+                      className={`group p-4 bg-white/50 dark:bg-white/5 border-0.5 border-gray-100 dark:border-gray-800 rounded-3xl hover:border-gray-300 dark:hover:border-gray-600 transition-all shadow-sm ${isDragging ? 'shadow-2xl opacity-50' : ''}`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2 flex-1 min-w-0 pr-4">
+                          {/* 拖拽手柄 */}
+                          <div {...attributes} {...listeners} className="p-1 cursor-grab active:cursor-grabbing text-gray-300 hover:text-blue-500 transition-colors">
+                            <GripVertical size={16} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-xs font-serif text-echo-text-primary truncate">{rule.name || '未命名规则'}</h4>
+                            <div className="flex gap-2 mt-1">
+                              {rule.runOn.map(scope => (
+                                <span key={scope} className="text-[7px] px-1.5 py-0.5 bg-echo-surface text-gray-400 rounded uppercase tracking-widest border-0.5 border-black/5">
+                                  {scope}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                           <button onClick={() => moveRule(index, 'up')} disabled={index === 0} className="p-1.5 text-gray-400 hover:text-blue-500 disabled:opacity-20"><ArrowUp size={14} /></button>
+                           <button onClick={() => moveRule(index, 'down')} disabled={index === rules.length - 1} className="p-1.5 text-gray-400 hover:text-blue-500 disabled:opacity-20"><ArrowDown size={14} /></button>
+                        </div>
+                      </div>
 
-              <div className="flex items-center justify-between pt-2 border-t-0.5 border-gray-100/50 dark:border-gray-800/50">
-                <div className="flex items-center gap-2">
-                  <button 
-                    onClick={() => updateRegexRule(rule.id, { enabled: !rule.enabled })}
-                    className="transition-colors"
-                  >
-                    {rule.enabled ? <ToggleRight className="text-blue-500" size={20} /> : <ToggleLeft className="text-gray-300" size={20} />}
-                  </button>
-                  <span className="text-[8px] text-gray-400 uppercase tracking-widest font-mono">
-                    {rule.enabled ? 'Enabled' : 'Disabled'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button onClick={() => onEdit(rule.id)} className="p-2 text-gray-400 hover:text-blue-500 transition-colors">
-                    <Edit2 size={14} />
-                  </button>
-                  <button onClick={() => removeRegexRule(rule.id)} className="p-2 text-gray-400 hover:text-red-500 transition-colors">
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))
+                      <div className="flex items-center justify-between pt-2 border-t-0.5 border-gray-100/50 dark:border-gray-800/50">
+                        <div className="flex items-center gap-2 pl-7">
+                          <button 
+                            onClick={() => updateRegexRule(rule.id, { enabled: !rule.enabled })}
+                            className="transition-colors"
+                          >
+                            {rule.enabled ? <ToggleRight className="text-blue-500" size={20} /> : <ToggleLeft className="text-gray-300" size={20} />}
+                          </button>
+                          <span className="text-[8px] text-gray-400 uppercase tracking-widest font-mono">
+                            {rule.enabled ? 'Enabled' : 'Disabled'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => onEdit(rule.id)} className="p-2 text-gray-400 hover:text-blue-500 transition-colors">
+                            <Edit2 size={14} />
+                          </button>
+                          <button onClick={() => removeRegexRule(rule.id)} className="p-2 text-gray-400 hover:text-red-500 transition-colors">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </SortableItem>
+              ))
+              }
+            </SortableContext>
+          </DndContext>
         )}
       </div>
     </motion.div>
