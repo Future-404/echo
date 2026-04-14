@@ -7,8 +7,23 @@ const DebugConsole: React.FC = () => {
   const { debugLogs, clearDebugLogs } = useAppStore();
 
   const handleCopy = (data: any) => {
-    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-  };
+    const text = JSON.stringify(data, null, 2)
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).catch(() => fallbackCopy(text))
+    } else {
+      fallbackCopy(text)
+    }
+  }
+
+  const fallbackCopy = (text: string) => {
+    const el = document.createElement('textarea')
+    el.value = text
+    el.style.cssText = 'position:fixed;opacity:0'
+    document.body.appendChild(el)
+    el.select()
+    document.execCommand('copy')
+    document.body.removeChild(el)
+  }
 
   return (
     <motion.div 

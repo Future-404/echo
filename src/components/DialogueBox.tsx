@@ -8,6 +8,7 @@ import { useDevice } from '../hooks/useMediaQuery'
 import { useDialog } from './GlobalDialog'
 import { ttsService } from '../utils/ttsService'
 import { imageDb } from '../utils/imageDb'
+import { db } from '../storage/db'
 import type { Message, CharacterCard, UserPersona } from '../types/chat'
 import type { TtsSettings } from '../types/store'
 
@@ -252,32 +253,37 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
     document.body.removeChild(textArea);
   }
 
-  const handleRetry = async (msg: DBMessage) => {
+  const handleRetry = async (msg: DBMessage, memIdx: number) => {
     const confirmed = await confirm('确认后，该消息之后的所有记录将被永久删除。', {
       title: '确认重试对话？',
       confirmText: '确认重试',
       danger: true,
     })
     if (!confirmed) return
-    
+
+    const allMsgs = await db.messages.where('slotId').equals(currentAutoSlotId || '').sortBy('timestamp');
+
+    const findTargetIdx = () => {
+      if ((msg as any).timestamp) return allMsgs.findIndex(m => m.timestamp === (msg as any).timestamp)
+      // fallback：只在 user/assistant 消息中计算偏移，排除 tool/system
+      const visibleInDb = allMsgs.filter(m => m.role === 'user' || m.role === 'assistant')
+      const offset = visibleMessages.length - 1 - memIdx
+      const dbIdx = visibleInDb.length - 1 - offset
+      if (dbIdx < 0) return -1
+      return allMsgs.findIndex(m => m.timestamp === visibleInDb[dbIdx].timestamp)
+    }
+
     if (msg.role === 'user') {
-      // 用户消息重试：删除该消息本身及之后的所有内容
-      const allMsgs = await db.messages.where('slotId').equals(currentAutoSlotId || '').sortBy('timestamp');
-      const targetIdx = allMsgs.findIndex(m => m.id === msg.id);
-      const prevMsg = targetIdx > 0 ? allMsgs[targetIdx - 1] : undefined;
-      
+      const targetIdx = findTargetIdx()
+      const prevMsg = targetIdx > 0 ? allMsgs[targetIdx - 1] : undefined
       await rollbackMessages(prevMsg?.id, false)
       if (onRetry) setTimeout(() => onRetry(msg.content), 150)
     } else {
-      // AI 回复重试：找到该回复之前的最后一条用户消息
-      const allMsgs = await db.messages.where('slotId').equals(currentAutoSlotId || '').sortBy('timestamp');
-      let userMsgIdx = allMsgs.findIndex(m => m.id === msg.id) - 1;
-      while (userMsgIdx >= 0 && allMsgs[userMsgIdx].role !== 'user') userMsgIdx--;
-      
+      let userMsgIdx = findTargetIdx() - 1
+      while (userMsgIdx >= 0 && allMsgs[userMsgIdx].role !== 'user') userMsgIdx--
       if (userMsgIdx >= 0) {
-        const userMsg = allMsgs[userMsgIdx];
-        const userContent = userMsg.content;
-        const prevToUser = userMsgIdx > 0 ? allMsgs[userMsgIdx - 1] : undefined;
+        const userContent = allMsgs[userMsgIdx].content
+        const prevToUser = userMsgIdx > 0 ? allMsgs[userMsgIdx - 1] : undefined
         await rollbackMessages(prevToUser?.id, false)
         if (onRetry) setTimeout(() => onRetry(userContent), 150)
       }
@@ -400,7 +406,7 @@ const DialogueBox: React.FC<DialogueBoxProps> = ({ displayText, isTyping, onCanA
                     activeAudioId={activeAudioId}
                     onMenuToggle={(i) => setActiveMenuIndex(activeMenuIndex === i ? null : i)}
                     onCopy={handleCopy}
-                    onRetry={() => handleRetry(msg)}
+                    onRetry={() => handleRetry(msg, idx)}
                     onSpeak={handleSpeak}
                     onStopAudio={handleStopAudio}
                     onBranch={() => handleBranch(msg)}

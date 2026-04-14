@@ -76,7 +76,7 @@ export const useChat = () => {
     
     const char = charId === selectedCharacter.id ? selectedCharacter : secondaryCharacter
     if (!char) throw new Error(`[requestChar] 找不到角色 ${charId}`)
-    const provider = config.providers.find(p => p.id === char.providerId) || config.providers.find(p => p.id === config.modelConfig?.chatProviderId || config.activeProviderId) || config.providers[0]
+    const provider = config.providers.find(p => p.id === (config.modelConfig?.chatProviderId || config.activeProviderId)) || config.providers[0]
     if (!provider?.apiKey) {
       throw new Error(`[${char.name}] 未配置 API Key`)
     }

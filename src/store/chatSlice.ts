@@ -58,12 +58,13 @@ export const createChatSlice: StateCreator<AppState, [], [], ChatSlice> = (set, 
     }
 
     // 1. 异步写入数据库 (精准定向写入)
-    await db.messages.add({ ...msg, slotId, timestamp: Date.now() });
+    const timestamp = Date.now();
+    await db.messages.add({ ...msg, slotId, timestamp });
 
     // 2. 只有当写入的目标是当前正在查看的存档时，才更新内存窗口
     if (slotId === state.currentAutoSlotId) {
       set((s) => {
-        const newMsgs = [...s.messages, msg];
+        const newMsgs = [...s.messages, { ...msg, timestamp }];
         const windowedMsgs = newMsgs.length > 50 ? newMsgs.slice(-50) : newMsgs;
         return { 
           messages: windowedMsgs,

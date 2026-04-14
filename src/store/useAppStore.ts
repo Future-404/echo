@@ -157,6 +157,12 @@ export const useAppStore = create<AppState>()(
               extensionProviderId: '',
             }
           }
+          // 旧数据迁移：补全新内置指令
+          for (const preset of INITIAL_DIRECTIVES) {
+            if (!state.config.directives?.find((d: Directive) => d.id === preset.id)) {
+              state.config.directives = [...(state.config.directives || []), preset]
+            }
+          }
           // 旧数据迁移：补全应用实验室状态
           if (!state.config.appCreatorState) {
             state.config.appCreatorState = {

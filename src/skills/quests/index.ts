@@ -8,4 +8,5 @@ export const questSkill: SkillModule = {
   description: questSchema.function.description,
   schema: questSchema,
   execute: executeQuestSkill,
+  systemPrompt: '当你调用叙事目标追踪工具后，不要在回复中复述或展示 JSON 数据。直接用自然语言继续叙事即可。',
 };

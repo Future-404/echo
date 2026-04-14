@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Settings, Zap, Save, FolderOpen, Terminal, Bot } from 'lucide-react'
+import { Settings, Zap, Save, FolderOpen, Terminal, Bot, Globe } from 'lucide-react'
 import { Toggle } from './ui'
 import { useAppStore } from '../store/useAppStore'
 import { ALL_SKILLS } from '../skills'
@@ -14,9 +14,10 @@ interface CharCardProps {
 }
 
 const CharCard: React.FC<CharCardProps> = ({ open, onClose, anchorRef }) => {
-  const { selectedCharacter, config, toggleSkill, toggleDeviceContext, setIsConfigOpen, setCurrentView, updateCharacter } = useAppStore()
+  const { selectedCharacter, config, toggleSkill, toggleDeviceContext, setIsConfigOpen, setCurrentView, updateCharacter, updateRegexRule, updateDirective, updateConfig } = useAppStore()
   const registeredSkillNames = useAppStore(s => s.registeredSkillNames)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [tab, setTab] = useState<'engine' | 'global'>('engine')
   const cardRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -69,64 +70,85 @@ const CharCard: React.FC<CharCardProps> = ({ open, onClose, anchorRef }) => {
             </div>
           </div>
 
-          {/* 渲染设置 (B/W 迁移至此) */}
-          <div className="px-4 py-3 border-b border-gray-100 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02]">
-            <div className="flex items-center gap-1.5 mb-2.5">
-              <Terminal size={11} className="text-blue-400" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-echo-text-subtle">渲染引擎配置 // ENGINE</span>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-2">
-               <div className="space-y-1">
+          {/* Tab 切换 */}
+          <div className="flex border-b border-gray-100 dark:border-white/5">
+            <button onClick={() => setTab('engine')} className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-[9px] font-bold uppercase tracking-widest transition-colors ${tab === 'engine' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-echo-text-dim'}`}>
+              <Terminal size={10} /> 引擎
+            </button>
+            <button onClick={() => setTab('global')} className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-[9px] font-bold uppercase tracking-widest transition-colors ${tab === 'global' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-echo-text-dim'}`}>
+              <Globe size={10} /> 全局
+            </button>
+          </div>
+
+          {/* 引擎 Tab */}
+          {tab === 'engine' && (
+            <div className="px-4 py-3 border-b border-gray-100 dark:border-white/5 space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
                   <p className="text-[8px] uppercase tracking-tighter text-echo-text-dim ml-1">正文解析 (B)</p>
-                  <select 
-                    value={bodyEngine}
-                    onChange={(e) => updateCharacter(selectedCharacter.id, { bodyEngine: e.target.value as any })}
-                    className="w-full bg-white dark:bg-black/40 border border-echo-border rounded-lg px-2 py-1 text-[10px] text-echo-text-base outline-none focus:border-blue-500/50 transition-colors"
-                  >
+                  <select value={bodyEngine} onChange={(e) => updateCharacter(selectedCharacter.id, { bodyEngine: e.target.value as any })}
+                    className="w-full bg-white dark:bg-black/40 border border-echo-border rounded-lg px-2 py-1 text-[10px] text-echo-text-base outline-none focus:border-blue-500/50 transition-colors">
                     <option value="vn">视觉小说 (VN)</option>
                     <option value="markdown">标记文本 (MD)</option>
                     <option value="plain">纯文本 (RAW)</option>
                   </select>
-               </div>
-               <div className="space-y-1">
+                </div>
+                <div className="space-y-1">
                   <p className="text-[8px] uppercase tracking-tighter text-echo-text-dim ml-1">组件渲染 (W)</p>
-                  <select 
-                    value={widgetEngine}
-                    onChange={(e) => updateCharacter(selectedCharacter.id, { widgetEngine: e.target.value as any })}
-                    className="w-full bg-white dark:bg-black/40 border border-echo-border rounded-lg px-2 py-1 text-[10px] text-echo-text-base outline-none focus:border-orange-500/50 transition-colors"
-                  >
+                  <select value={widgetEngine} onChange={(e) => updateCharacter(selectedCharacter.id, { widgetEngine: e.target.value as any })}
+                    className="w-full bg-white dark:bg-black/40 border border-echo-border rounded-lg px-2 py-1 text-[10px] text-echo-text-base outline-none focus:border-orange-500/50 transition-colors">
                     <option value="xml">标准组件 (XML)</option>
                     <option value="html">高级交互 (HTML)</option>
                     <option value="st-card">仅卡片 (ST)</option>
                     <option value="none">禁用组件</option>
                   </select>
-               </div>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Skills 开关 */}
-          <div className="px-4 py-3 border-b border-gray-100 dark:border-white/8">
-            <div className="flex items-center gap-1.5 mb-2">
-              <Zap size={11} className="text-orange-400" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-echo-text-subtle">Skills</span>
-            </div>
-            <div className="space-y-1.5">
+          {/* 全局 Tab */}
+          {tab === 'global' && (
+            <div className="px-4 py-3 border-b border-gray-100 dark:border-white/5 space-y-1 max-h-64 overflow-y-auto no-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
+              {/* 设备感知 */}
               <div onClick={toggleDeviceContext} className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-echo-surface transition-colors cursor-pointer">
-                <span className="text-[11px] text-left text-gray-700 dark:text-gray-300">设备感知</span>
+                <span className="text-[11px] text-gray-700 dark:text-gray-300">设备感知</span>
                 <Toggle checked={config.deviceContextEnabled ?? false} onChange={toggleDeviceContext} />
               </div>
-              {/* 内置 skills */}
+
+              {/* 全局正则 */}
+              {(config.regexRules || []).length > 0 && <>
+                <p className="text-[8px] uppercase tracking-widest text-echo-text-dim px-2 pt-1">正则规则</p>
+                {(config.regexRules || []).map((r: any) => (
+                  <div key={r.id} onClick={() => updateRegexRule(r.id, { enabled: !r.enabled })} className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-echo-surface transition-colors cursor-pointer">
+                    <span className="text-[11px] text-gray-700 dark:text-gray-300 truncate max-w-[140px]">{r.name}</span>
+                    <Toggle checked={r.enabled ?? true} onChange={() => updateRegexRule(r.id, { enabled: !r.enabled })} />
+                  </div>
+                ))}
+              </>}
+
+              {/* Prompt 注入 */}
+              {(config.directives || []).length > 0 && <>
+                <p className="text-[8px] uppercase tracking-widest text-echo-text-dim px-2 pt-1">Prompt 注入</p>
+                {(config.directives || []).map((d: any) => (
+                  <div key={d.id} onClick={() => updateDirective(d.id, { enabled: !d.enabled })} className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-echo-surface transition-colors cursor-pointer">
+                    <span className="text-[11px] text-gray-700 dark:text-gray-300 truncate max-w-[140px]">{d.title}</span>
+                    <Toggle checked={d.enabled ?? false} onChange={() => updateDirective(d.id, { enabled: !d.enabled })} />
+                  </div>
+                ))}
+              </>}
+
+              {/* Skills */}
+              <p className="text-[8px] uppercase tracking-widest text-echo-text-dim px-2 pt-1">Skills</p>
               {ALL_SKILLS.map(skill => {
                 const enabled = (config.enabledSkillIds || []).includes(skill.name)
                 return (
                   <div key={skill.name} onClick={() => toggleSkill(skill.name)} className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-echo-surface transition-colors cursor-pointer">
-                    <span className="text-[11px] text-left text-gray-700 dark:text-gray-300">{skill.displayName}</span>
+                    <span className="text-[11px] text-gray-700 dark:text-gray-300">{skill.displayName}</span>
                     <Toggle checked={enabled} onChange={() => toggleSkill(skill.name)} />
                   </div>
                 )
               })}
-              {/* 已安装第三方 skills（registeredSkillNames 变化时重渲染） */}
               {(config.installedSkills || []).map((installed: any) => {
                 const skillId = installed.id.replace(/-/g, '_')
                 if (!registeredSkillNames.includes(skillId)) return null
@@ -134,13 +156,13 @@ const CharCard: React.FC<CharCardProps> = ({ open, onClose, anchorRef }) => {
                 const enabled = (config.enabledSkillIds || []).includes(skillId)
                 return (
                   <div key={installed.id} onClick={() => toggleSkill(skillId)} className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-echo-surface transition-colors cursor-pointer">
-                    <span className="text-[11px] text-left text-gray-700 dark:text-gray-300">{mod?.displayName || installed.name}</span>
+                    <span className="text-[11px] text-gray-700 dark:text-gray-300">{mod?.displayName || installed.name}</span>
                     <Toggle checked={enabled} onChange={() => toggleSkill(skillId)} />
                   </div>
                 )
               })}
             </div>
-          </div>
+          )}
 
           {/* 存档 / 读档 */}
           <button

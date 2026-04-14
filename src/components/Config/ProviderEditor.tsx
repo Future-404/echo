@@ -21,6 +21,23 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null)
   const [modelList, setModelList] = useState<string[]>([])
   const [modelSearch, setModelSearch] = useState('')
+  const modelListRef = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    const el = modelListRef.current
+    if (!el) return
+    const handler = (e: TouchEvent) => {
+      const atTop = el.scrollTop === 0
+      const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight
+      const touch = e.touches[0]
+      const lastY = (el as any)._lastY ?? touch.clientY
+      const goingUp = touch.clientY > lastY
+      ;(el as any)._lastY = touch.clientY
+      if ((atTop && goingUp) || (atBottom && !goingUp)) e.preventDefault()
+    }
+    el.addEventListener('touchmove', handler, { passive: false })
+    return () => el.removeEventListener('touchmove', handler)
+  }, [modelList.length])
   const [error, setError] = useState<string | null>(null)
   const [jsonError, setJsonError] = useState<string | null>(null)
   const [isAdvancedExpanded, setIsAdvancedExpanded] = useState(false)
@@ -211,7 +228,11 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
                       autoFocus
                     />
                   </div>
-                  <div className="max-h-48 overflow-y-auto no-scrollbar">
+                  <div 
+                    ref={modelListRef}
+                    className="max-h-48 overflow-y-auto no-scrollbar" 
+                    style={{ overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}
+                  >
                     {modelList.filter(m => m.toLowerCase().includes(modelSearch.toLowerCase())).map(m => (
                       <div key={m} onClick={() => { updateProvider(id, { model: m }); setModelList([]); setModelSearch('') }}
                         className={`px-5 py-3 text-[10px] cursor-pointer transition-colors border-b-0.5 border-gray-50 dark:border-gray-900 last:border-none uppercase tracking-widest ${m === provider.model ? 'text-blue-500 bg-blue-50/10' : 'text-gray-400 hover:bg-echo-surface'}`}>{m}</div>
