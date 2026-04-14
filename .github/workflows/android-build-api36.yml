@@ -10,7 +10,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: write # 必须显式开启写入权限以允许创建 Release
+    
     steps:
       - name: Checkout Source
         uses: actions/checkout@v4
