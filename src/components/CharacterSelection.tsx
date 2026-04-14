@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Edit2, FileUp, Download, FileJson, Image as ImageIcon } from 'lucide-react'
+import { Plus, Edit2, FileUp, Download, FileJson, Image as ImageIcon, Bot } from 'lucide-react'
 import { useAppStore } from '../store/useAppStore'
 import type { CharacterCard } from '../types/chat'
 import CharacterEditor from './Config/CharacterEditor'
@@ -282,7 +282,10 @@ const CharacterSelection: React.FC = () => {
                   <div className="flex-1 flex flex-col items-center justify-center p-8 pointer-events-none">
                     <div className="w-28 h-28 md:w-32 md:h-32 mb-10 relative">
                         <div className="absolute inset-0 rounded-full border-0.5 border-echo-border scale-125 animate-pulse" />
-                        <img src={char.image} alt={char.name} className="w-full h-full object-cover rounded-full grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-1000 ease-out" />
+                        {char.image
+                          ? <img src={char.image} alt={char.name} className="w-full h-full object-cover rounded-full grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-1000 ease-out" />
+                          : <div className="w-full h-full rounded-2xl bg-echo-surface flex items-center justify-center border border-echo-border opacity-60 group-hover:opacity-100 transition-all duration-1000"><Bot size={48} strokeWidth={1} className="text-echo-text-subtle" /></div>
+                        }
                     </div>
                     <h3 className="text-lg md:text-xl font-serif text-gray-600 dark:text-gray-200 tracking-widest group-hover:text-black dark:group-hover:text-white transition-colors">{char.name}</h3>
                     <div className="mt-3 w-4 h-[0.5px] bg-gray-300 dark:bg-gray-600 group-hover:w-12 group-hover:bg-gray-500 transition-all duration-500" />

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Settings, Zap, Save, FolderOpen, Terminal } from 'lucide-react'
+import { Settings, Zap, Save, FolderOpen, Terminal, Bot } from 'lucide-react'
 import { Toggle } from './ui'
 import { useAppStore } from '../store/useAppStore'
 import { ALL_SKILLS } from '../skills'
@@ -58,7 +58,7 @@ const CharCard: React.FC<CharCardProps> = ({ open, onClose, anchorRef }) => {
             <div className="w-10 h-10 rounded-full overflow-hidden bg-echo-surface-md flex-shrink-0">
               {avatarUrl
                 ? <img src={avatarUrl} alt={selectedCharacter.name} className="w-full h-full object-cover" />
-                : <div className="w-full h-full flex items-center justify-center text-sm font-bold text-echo-text-subtle">{selectedCharacter.name[0]}</div>
+                : <div className="w-full h-full flex items-center justify-center rounded-lg"><Bot size={20} strokeWidth={1} className="text-gray-400" /></div>
               }
             </div>
             <div className="min-w-0">
