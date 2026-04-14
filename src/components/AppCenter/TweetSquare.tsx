@@ -114,7 +114,7 @@ const TweetSquare: React.FC = () => {
         
         {/* 顶部导航 */}
         <div className="sticky top-0 z-10 backdrop-blur-xl bg-echo-base/80 border-b border-echo-border">
-          <div className="flex items-center gap-4 px-4 py-3">
+          <div className="flex items-center gap-4 px-4 py-3" style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}>
             <button
               onClick={() => startTransition(() => setCurrentView('main'))}
               className="p-2 rounded-full hover:bg-echo-surface transition-colors"

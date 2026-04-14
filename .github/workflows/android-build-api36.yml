@@ -2,9 +2,8 @@ name: Build and Release Android APK (API 36)
 
 on:
   push:
-    branches: [ main, master ]
     tags:
-      - 'v*' 
+      - 'v*'
   workflow_dispatch:
 
 # 避免同一个提交触发多次重复构建

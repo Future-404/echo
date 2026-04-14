@@ -1,6 +1,7 @@
 # Build artifacts
 dist
 dist-ssr
+www
 build
 out
 .vercel

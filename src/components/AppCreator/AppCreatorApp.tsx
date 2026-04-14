@@ -365,7 +365,7 @@ const AppCreatorApp: React.FC = () => {
       style={{ background: 'var(--echo-base, #fff)' }}
     >
       {/* Header */}
-      <div className="flex items-center gap-3 px-6 py-4 border-b border-echo-border shrink-0">
+      <div className="flex items-center gap-3 px-6 py-4 border-b border-echo-border shrink-0" style={{ paddingTop: 'calc(1rem + env(safe-area-inset-top))' }}>
         <button onClick={() => { abortRef.current?.abort(); setCurrentView('home') }} className="text-echo-text-muted hover:text-echo-text-base transition-colors">
           <ArrowLeft size={16} />
         </button>
