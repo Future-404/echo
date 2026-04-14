@@ -72,6 +72,24 @@ const EchoIntro: React.FC<{ onNavigate?: (id: string) => void }> = ({ onNavigate
           </button>
         </div>
       )}
+
+      {/* 开源声明 */}
+      <div className="mt-12 p-5 rounded-[2rem] bg-orange-500/5 border-0.5 border-orange-500/20 space-y-3">
+        <div className="flex items-center gap-2 text-orange-500">
+          <Sparkles size={16} />
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em]">软件来源与版权声明</span>
+        </div>
+        <div className="space-y-2 text-echo-text-muted leading-relaxed">
+          <p>
+            <strong className="text-orange-500/80">Echo 是一款完全开源且免费的软件</strong>，目前正处于高频迭代的活跃开发阶段。官方发布渠道：
+            <a href="https://github.com/Future-404/echo" target="_blank" rel="noopener noreferrer" className="mx-1 text-blue-500 hover:underline font-bold">GitHub 仓库</a> |
+            <a href="https://github.com/Future-404/echo/releases" target="_blank" rel="noopener noreferrer" className="mx-1 text-blue-500 hover:underline font-bold">官方下载 (Releases)</a>
+          </p>
+          <p className="text-[11px] opacity-80">
+            请务必警惕非官方渠道提供的安装包，以免遭遇第三方恶意篡改。<strong>特别声明：Echo 永不售卖。</strong> 若您是付费购买的本应用，请知悉您已上当受骗，建议立即通过原渠道发起退款。
+          </p>
+        </div>
+      </div>
     </div>
   );
 };
