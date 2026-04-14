@@ -137,7 +137,13 @@ export const createChatSlice: StateCreator<AppState, [], [], ChatSlice> = (set, 
 
   rollbackMessages: async (messageId, shouldBranch = false) => {
     const state = get();
-    if (messageId === undefined) return;
+
+    // messageId 为 undefined 表示回滚到最开始（清空所有消息）
+    if (messageId === undefined) {
+      await db.messages.where('slotId').equals(state.currentAutoSlotId || '').delete()
+      set({ messages: [], currentAutoSlotId: shouldBranch ? null : state.currentAutoSlotId })
+      return;
+    }
 
     // 1. 获取目标消息的确切元数据 (通过 ID)
     const targetMsg = await db.messages.get(messageId);

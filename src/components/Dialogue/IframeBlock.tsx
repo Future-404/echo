@@ -134,7 +134,7 @@ function buildHtml(html: string, id: string, charData?: Record<string, any>, use
     userNickname: persona?.nickname,
   });
 
-  const dataScript = `<script>window.__echoId__=${JSON.stringify(id)};window.__echoAppStorage__=${JSON.stringify(appStorage)};window.__echo__=${JSON.stringify({ attrs: charData ?? {} })};<\/script>`
+  const dataScript = `<script>window.__echoId__=${JSON.stringify(id)};window.__echoAppStorage__=${JSON.stringify(appStorage)};window.__echo__=${JSON.stringify({ attrs: charData ?? {}, userName, charName: charData?.name || 'AI' })};var userName=${JSON.stringify(userName)};var charName=${JSON.stringify(charData?.name || 'AI')};<\/script>`
   const syncScript = '<script>' +
     'var _lastH=0;' +
     'function syncH(){' +

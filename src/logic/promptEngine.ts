@@ -404,7 +404,21 @@ export const buildPromptMessages = async (ctx: PromptContext, contextWindow: num
     finalHistory = buildContextForChar(msgsForContext, character.id, charNames);
   } else {
     // 单角色：直接使用，去掉 speakerId（provider 不需要）
-    finalHistory = eligibleMessages.map(({ speakerId: _s, ...m }) => m);
+    // 过滤残缺的 tool 消息链：
+    // 1. 孤立 tool 消息（前面没有带 tool_calls 的 assistant）
+    // 2. 孤立 tool_calls（assistant 有 tool_calls 但后面没有 tool 消息）
+    const raw = eligibleMessages.map(({ speakerId: _s, ...m }) => m)
+    finalHistory = raw.filter((m, i, arr) => {
+      if (m.role === 'tool') {
+        const prev = arr[i - 1]
+        return prev?.role === 'assistant' && (prev as any).tool_calls?.length > 0
+      }
+      if (m.role === 'assistant' && (m as any).tool_calls?.length > 0) {
+        const next = arr[i + 1]
+        return next?.role === 'tool'
+      }
+      return true
+    })
   }
 
   // depth injection：先计算所有插入位置（基于原始长度），再从后往前 splice 避免偏移

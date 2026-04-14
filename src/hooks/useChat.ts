@@ -182,7 +182,7 @@ export const useChat = () => {
         const skillCtx = {
           messages: useAppStore.getState().messages as Array<{ role: string; content: string }>,
           characterName: char.name,
-          userName,
+          userName: actualUserName,
           attributes: char.attributes || {},
         };
         for (const tc of toolCalls) {
@@ -246,7 +246,7 @@ export const useChat = () => {
               const activeSkillPrompts = toolCalls
                 .map(tc => {
                   const sp = registeredSkills[tc.function.name]?.systemPrompt;
-                  const ctx = { messages: useAppStore.getState().messages as any, characterName: char.name, userName, attributes: char.attributes || {} };
+                  const ctx = { messages: useAppStore.getState().messages as any, characterName: char.name, userName: actualUserName, attributes: char.attributes || {} };
                   return typeof sp === 'function' ? sp(ctx) : sp;
                 })
                 .filter(Boolean)

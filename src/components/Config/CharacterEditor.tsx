@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Trash2, Check, Globe, Plus, Book, Settings2, Edit2, ChevronDown, ChevronUp, Key, Camera, Palette, Sparkles } from 'lucide-react'
+import { X, Trash2, Check, Globe, Plus, Book, Settings2, Edit2, ChevronDown, ChevronUp, Key, Camera, Palette, Sparkles, Bot } from 'lucide-react'
 import { useAppStore } from '../../store/useAppStore'
 import type { WorldBook } from '../../types/store'
 import { Toggle } from '../ui'
@@ -250,7 +250,10 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
               onClick={() => fileInputRef.current?.click()}
               className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-echo-surface border-0.5 border-gray-100 dark:border-gray-800 flex items-center justify-center overflow-hidden p-0 group relative cursor-pointer"
             >
-              <img src={char.image} alt={char.name} className="w-full h-full object-cover transition-all group-hover:brightness-50" />
+              {char.image
+                ? <img src={char.image} alt={char.name} className="w-full h-full object-cover transition-all group-hover:brightness-50" />
+                : <Bot size={36} strokeWidth={1} className="text-gray-400 group-hover:opacity-0 transition-opacity" />
+              }
               <div className="absolute inset-0 flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                 <Camera size={20} className="text-white" />
               </div>

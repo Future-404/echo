@@ -284,7 +284,7 @@ const CharacterSelection: React.FC = () => {
                         <div className="absolute inset-0 rounded-full border-0.5 border-echo-border scale-125 animate-pulse" />
                         {char.image
                           ? <img src={char.image} alt={char.name} className="w-full h-full object-cover rounded-full grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-1000 ease-out" />
-                          : <div className="w-full h-full rounded-2xl bg-echo-surface flex items-center justify-center border border-echo-border opacity-60 group-hover:opacity-100 transition-all duration-1000"><Bot size={48} strokeWidth={1} className="text-echo-text-subtle" /></div>
+                          : <div className="w-full h-full rounded-full bg-echo-surface flex items-center justify-center border border-echo-border opacity-60 group-hover:opacity-100 transition-all duration-1000"><Bot size={48} strokeWidth={1} className="text-echo-text-subtle" /></div>
                         }
                     </div>
                     <h3 className="text-lg md:text-xl font-serif text-gray-600 dark:text-gray-200 tracking-widest group-hover:text-black dark:group-hover:text-white transition-colors">{char.name}</h3>
