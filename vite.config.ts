@@ -56,6 +56,8 @@ export default defineConfig(({ mode }) => {
       include: ['pixi.js', '@pixi/react', 'framer-motion', 'lucide-react', 'zustand'],
     },
     build: {
+      outDir: 'www',
+      emptyOutDir: true,
       minify: 'terser',
       terserOptions: {
         compress: {

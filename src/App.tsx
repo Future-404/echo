@@ -1,5 +1,7 @@
 import React, { Suspense, lazy } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Capacitor } from '@capacitor/core'
+import { StatusBar, Style } from '@capacitor/status-bar'
 import { useAppStore } from './store/useAppStore'
 import { useChat } from './hooks/useChat'
 import { useInteraction } from './hooks/useInteraction'
