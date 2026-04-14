@@ -7,11 +7,16 @@ on:
       - 'v*' 
   workflow_dispatch:
 
+# 避免同一个提交触发多次重复构建
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # 必须显式开启写入权限以允许创建 Release
+      contents: write
     
     steps:
       - name: Checkout Source
@@ -54,7 +59,6 @@ jobs:
         run: |
           cd android
           chmod +x ./gradlew
-          # 传入版本号和动态增长的 versionCode
           ./gradlew assembleDebug -PprojVersionName=${{ steps.pkg_version.outputs.VERSION }} -PprojVersionCode=${{ github.run_number }}
 
       - name: Upload Artifacts
@@ -64,6 +68,7 @@ jobs:
           path: android/app/build/outputs/apk/debug/*.apk
 
       - name: Create GitHub Release
+        # 只有在推送 tag 时才执行 Release 步骤
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
@@ -77,7 +82,6 @@ jobs:
             
             - **应用版本**: ${{ steps.pkg_version.outputs.VERSION }}
             - **Build Number**: ${{ github.run_number }}
-            - **Android API**: 36
             
             - **arm64-v8a**: 现代 64 位手机
             - **armeabi-v7a**: 旧款 32 位手机

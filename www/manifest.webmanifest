@@ -1,0 +1,14 @@
+{
+  "name": "Echo VN Engine",
+  "short_name": "Echo",
+  "description": "Next-gen Visual Novel Engine with LLM Integration",
+  "theme_color": "#000000",
+  "background_color": "#000000",
+  "display": "standalone",
+  "start_url": "/",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "logo.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
