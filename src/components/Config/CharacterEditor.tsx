@@ -43,7 +43,9 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
   if (!char) return null
 
   // 语音列表
-  const voices = ttsSettings.provider === 'browser' ? window.speechSynthesis.getVoices() : [];
+  const voices = ttsSettings.provider === 'browser' && typeof window !== 'undefined' && window.speechSynthesis
+    ? window.speechSynthesis.getVoices()
+    : [];
 
   // 头像上传处理
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
