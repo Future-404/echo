@@ -138,7 +138,7 @@ const WorldBookEditor: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto space-y-3 pr-2 no-scrollbar">
+        <div className="flex-1 overflow-y-auto space-y-3 pr-2 no-scrollbar" style={{ WebkitOverflowScrolling: 'touch', minHeight: 0 }}>
           {library.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-gray-400 dark:text-gray-700 opacity-50 space-y-2">
               <Book size={32} strokeWidth={0.5} />
@@ -212,7 +212,7 @@ const WorldBookEditor: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto space-y-3 pr-2 no-scrollbar pb-10">
+      <div className="flex-1 overflow-y-auto space-y-3 pr-2 no-scrollbar pb-10" style={{ WebkitOverflowScrolling: 'touch', minHeight: 0 }}>
         {selectedBook?.entries.map((entry) => (
           <div key={entry.id} className="bg-white/50 dark:bg-white/5 border-0.5 border-echo-border rounded-2xl overflow-hidden transition-all">
             <div 

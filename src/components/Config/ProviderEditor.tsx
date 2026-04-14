@@ -114,7 +114,7 @@ const ProviderEditor: React.FC<ProviderEditorProps> = ({ id, onClose }) => {
 
   return (
     <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="flex flex-col h-full bg-transparent">
-      <div className="flex-1 overflow-y-auto p-8 space-y-8 no-scrollbar pb-32">
+      <div className="flex-1 overflow-y-auto p-8 space-y-8 no-scrollbar pb-32" style={{ WebkitOverflowScrolling: 'touch', minHeight: 0 }}>
 
         <div className="flex items-center justify-between">
           <div className="flex gap-1 p-1 bg-echo-surface rounded-2xl border-0.5 border-echo-border w-fit">

@@ -226,6 +226,13 @@ const App: React.FC = () => {
             : 'var(--custom-bg, none)'
         }}
       />
+      {/* 默认背景：移动端竖图 / PC 端横图 */}
+      {!selectedCharacter?.extensions?.activeBackground && (
+        <>
+          <div className="fixed inset-0 z-0 pointer-events-none bg-cover bg-center bg-no-repeat md:hidden" style={{ backgroundImage: 'url(/bg.webp)' }} />
+          <div className="fixed inset-0 z-0 pointer-events-none bg-cover bg-center bg-no-repeat hidden md:block" style={{ backgroundImage: 'url(/bg-pc.webp)' }} />
+        </>
+      )}
 
       {/* UI 控制层 */}
       <Suspense fallback={null}>

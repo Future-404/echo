@@ -100,7 +100,7 @@ const MemoryManager: React.FC = () => {
       </div>
 
       {/* 片段列表 */}
-      <div className="flex-1 overflow-y-auto px-6 pb-10 space-y-4 no-scrollbar">
+      <div className="flex-1 overflow-y-auto px-6 pb-10 space-y-4 no-scrollbar" style={{ WebkitOverflowScrolling: 'touch', minHeight: 0 }}>
         {isLoading ? (
           <div className="flex justify-center py-20 animate-pulse text-gray-400 font-mono text-[10px] uppercase tracking-widest">Loading...</div>
         ) : filteredEpisodes.length === 0 ? (

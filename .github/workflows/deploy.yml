@@ -39,5 +39,5 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy www --project-name=echo --commit-dirty=true
+          command: pages deploy dist --project-name=echo --commit-dirty=true
           wranglerVersion: '4.4.0'

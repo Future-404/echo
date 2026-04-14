@@ -22,7 +22,7 @@ export default defineConfig(({ mode }) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['favicon.svg', 'logo.png', 'hero.png', 'bg.webp'],
+        includeAssets: ['favicon.svg', 'logo.png', 'hero.png', 'bg.webp', 'bg-pc.webp'],
         workbox: {
           skipWaiting: true,
           clientsClaim: true,

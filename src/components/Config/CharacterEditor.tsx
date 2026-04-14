@@ -195,7 +195,7 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ charId, onClose }) =>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-8 md:space-y-10 no-scrollbar text-left pb-32">
+        <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-8 md:space-y-10 no-scrollbar text-left pb-32" style={{ WebkitOverflowScrolling: 'touch', minHeight: 0 }}>
           {/* AI 協助面板 */}
           <AnimatePresence>
             {aiAssistOpen && (

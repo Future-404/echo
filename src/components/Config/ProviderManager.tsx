@@ -6,6 +6,7 @@ import { useDialog } from '../GlobalDialog'
 
 interface ProviderManagerProps {
   onEdit: (id: string) => void
+  view: 'mapping' | 'providers'
 }
 
 // 核心分配卡片
@@ -56,7 +57,7 @@ const AssignCard: React.FC<{
   )
 }
 
-const ProviderManager: React.FC<ProviderManagerProps> = ({ onEdit }) => {
+const ProviderManager: React.FC<ProviderManagerProps> = ({ onEdit, view }) => {
   const { confirm } = useDialog()
   const { 
     config, setActiveProvider, removeProvider,
@@ -88,7 +89,8 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ onEdit }) => {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col h-full bg-transparent px-6 pb-10">
       
       {/* ── 模型分配 ── */}
-      <section className="mt-4 mb-8">
+      {view === 'mapping' && (
+        <section className="mt-4 mb-8 overflow-y-auto no-scrollbar" style={{ WebkitOverflowScrolling: 'touch', minHeight: 0 }}>
         <div className="flex items-center gap-2 mb-4 px-2">
           <Activity size={12} className="text-echo-text-dim" />
           <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-echo-text-muted">模型映射 // ALLOCATION</h3>
@@ -138,10 +140,11 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ onEdit }) => {
             onChange={id => setModelConfig({ ttsProviderId: id })}
           />
         </div>
-      </section>
+        </section>
+      )}
 
       {/* ── 节点列表 ── */}
-      <section className="flex-1 flex flex-col min-h-0">
+      {view === 'providers' && <section className="flex-1 flex flex-col min-h-0">
         <div className="flex items-center justify-between mb-4 px-2 border-t border-echo-border pt-6">
           <div className="flex gap-4">
             {(['chat', 'embedding', 'tts'] as const).map(tab => (
@@ -174,7 +177,7 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ onEdit }) => {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto no-scrollbar space-y-3 pb-8">
+        <div className="flex-1 overflow-y-auto no-scrollbar space-y-3 pb-8" style={{ WebkitOverflowScrolling: 'touch', minHeight: 0 }}>
           <AnimatePresence mode="popLayout">
             {providers.length === 0 ? (
               <div className="py-12 border-2 border-dashed border-echo-border rounded-[2rem] flex flex-col items-center justify-center gap-3 opacity-20">
@@ -215,7 +218,7 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ onEdit }) => {
             )}
           </AnimatePresence>
         </div>
-      </section>
+      </section>}
     </motion.div>
   )
 }

@@ -32,7 +32,7 @@ const DebugConsole: React.FC = () => {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto space-y-3 pr-2 no-scrollbar">
+      <div className="flex-1 overflow-y-auto space-y-3 pr-2 no-scrollbar" style={{ WebkitOverflowScrolling: 'touch', minHeight: 0 }}>
         {debugLogs.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-gray-400 dark:text-gray-700 opacity-50 space-y-2">
             <Terminal size={32} strokeWidth={0.5} />

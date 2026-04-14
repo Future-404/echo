@@ -40,7 +40,7 @@ const RegexEditor: React.FC<RegexEditorProps> = ({ id, onClose }) => {
         </button>
       </header>
 
-      <div className="flex-1 space-y-8 overflow-y-auto no-scrollbar pb-10">
+      <div className="flex-1 space-y-8 overflow-y-auto no-scrollbar pb-10" style={{ WebkitOverflowScrolling: 'touch', minHeight: 0 }}>
         {/* 名称 */}
         <div className="space-y-2">
           <label className="text-[10px] text-echo-text-dim uppercase tracking-widest px-1">名称 // Name</label>

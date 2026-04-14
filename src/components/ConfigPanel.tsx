@@ -24,7 +24,7 @@ import MemoryManager from './Config/MemoryManager'
 import CssPackageManager from './Config/CssPackageManager'
 import CssPackageEditor from './Config/CssPackageEditor'
 
-type SubView = 'main' | 'advanced' | 'gateway' | 'world' | 'prompt' | 'provider-edit' | 'directive-edit' | 'skills' | 'persona' | 'debug' | 'appearance' | 'storage' | 'tts' | 'regex' | 'regex-edit' | 'memory-palace' | 'global-management' | 'css-packages' | 'css-package-edit'
+type SubView = 'main' | 'advanced' | 'gateway' | 'gateway-mapping' | 'gateway-providers' | 'world' | 'prompt' | 'provider-edit' | 'directive-edit' | 'skills' | 'persona' | 'debug' | 'appearance' | 'storage' | 'tts' | 'regex' | 'regex-edit' | 'memory-palace' | 'global-management' | 'css-packages' | 'css-package-edit'
 
 const MAIN_ITEMS = [
   { id: 'gateway', label: 'API 参数', icon: 'G', sub: 'API Gateway' },
@@ -48,7 +48,9 @@ const ADVANCED_ITEMS = [
 ]
 
 const getBackTarget = (view: SubView): SubView => {
-  if (view === 'provider-edit') return 'gateway'
+  if (view === 'provider-edit') return 'gateway-providers'
+  if (view === 'gateway-mapping') return 'gateway'
+  if (view === 'gateway-providers') return 'gateway'
   if (view === 'directive-edit') return 'prompt'
   if (view === 'regex-edit') return 'regex'
   if (view === 'css-packages') return 'appearance'
@@ -119,7 +121,7 @@ const ConfigPanel: React.FC = () => {
         </div>
       </header>
 
-      <div className="flex-1 relative overflow-y-auto no-scrollbar max-w-2xl mx-auto w-full">
+      <div className="flex-1 relative overflow-y-auto no-scrollbar max-w-2xl mx-auto w-full" style={{ WebkitOverflowScrolling: 'touch', minHeight: 0 }}>
         <AnimatePresence mode="wait">
           {activeView === 'main' && (
             <motion.div key="main" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="p-6 space-y-8">
@@ -207,8 +209,15 @@ const ConfigPanel: React.FC = () => {
             </motion.div>
           )}
 
-          {activeView === 'gateway' && <ProviderManager onEdit={(id) => { setEditingId(id); setActiveView('provider-edit') }} />}
-          {activeView === 'provider-edit' && editingId && <ProviderEditor id={editingId} onClose={() => setActiveView('gateway')} />}
+          {activeView === 'gateway' && (
+            <motion.div key="gateway" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="p-6 space-y-1">
+              <NavItem id="gateway-mapping" label="模型映射" icon="M" sub="Model Allocation" onClick={() => setActiveView('gateway-mapping')} />
+              <NavItem id="gateway-providers" label="API 节点" icon="A" sub="API Providers" onClick={() => setActiveView('gateway-providers')} />
+            </motion.div>
+          )}
+          {activeView === 'gateway-mapping' && <ProviderManager view="mapping" onEdit={(id) => { setEditingId(id); setActiveView('provider-edit') }} />}
+          {activeView === 'gateway-providers' && <ProviderManager view="providers" onEdit={(id) => { setEditingId(id); setActiveView('provider-edit') }} />}
+          {activeView === 'provider-edit' && editingId && <ProviderEditor id={editingId} onClose={() => setActiveView('gateway-providers')} />}
           {activeView === 'prompt' && <DirectiveManager onEdit={(id) => { setEditingPresetId(null); setEditingId(id); setActiveView('directive-edit') }} onAdd={() => { const newId = `dir-${Date.now()}`; addDirective({ id: newId, title: '新指令', content: '', enabled: true }); setEditingPresetId(null); setEditingId(newId); setActiveView('directive-edit') }} onEditPresetEntry={(entryId, presetId) => { setEditingId(entryId); setEditingPresetId(presetId); setActiveView('directive-edit') }} />}
           {activeView === 'directive-edit' && editingId && <DirectiveEditor id={editingId} presetId={editingPresetId ?? undefined} onClose={() => setActiveView('prompt')} />}
           {activeView === 'world' && <WorldBookEditor />}

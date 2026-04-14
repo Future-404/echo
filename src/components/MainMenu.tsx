@@ -95,14 +95,14 @@ const MainMenu: React.FC = () => {
       </div>
 
       {/* 左侧菜单区域 */}
-      <div className="relative z-20 w-full md:w-[45%] h-full flex flex-col justify-center px-12 md:px-24 pt-[var(--sat)]">
+      <div className="relative z-20 w-full md:w-[45%] h-full flex flex-col justify-center px-8 md:px-24 pt-[var(--sat)]">
         {/* 标题 */}
         <motion.div 
           initial={{ x: -50, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           className="mb-16"
         >
-          <h1 className="text-7xl font-light tracking-[0.2em] text-white flex items-center gap-4">
+          <h1 className="text-5xl md:text-7xl font-light tracking-[0.2em] text-white flex items-center gap-4">
             ECHO
             <span className="text-xs tracking-[0.5em] text-white/60 border-l border-white/30 pl-4 mt-2 uppercase font-sans">
               Visual Novel<br/>Engine
