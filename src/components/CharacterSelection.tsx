@@ -53,7 +53,7 @@ const CharacterSelection: React.FC = () => {
     addCharacter({
       id: newId,
       name: 'New Entity',
-      image: '/src/assets/react.svg',
+      image: '',
       description: 'A blank neural template waiting for instructions.',
       systemPrompt: '你是谁？',
       greeting: '...',
