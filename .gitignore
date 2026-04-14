@@ -68,7 +68,5 @@ Temporary Items
 .apdisk
 
 *.sw?
-SillyTavern_Ref/
-
 # IDE config
 .kiro/
