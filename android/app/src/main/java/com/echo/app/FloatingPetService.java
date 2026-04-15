@@ -34,6 +34,11 @@ public class FloatingPetService extends Service {
     private Live2DRenderer renderer;
     private int touchMotionIdx = 0; // 轮流播放 special 动作 (Idle group index 4~6)
 
+    // 视线跟随
+    private float gazeX = 0f, gazeY = 0f;
+    private android.os.Handler gazeHandler;
+    private Runnable gazeResetRunnable;
+
     private int initX, initY;
     private float initTouchX, initTouchY;
     private long lastClickTime = 0;
@@ -53,6 +58,11 @@ public class FloatingPetService extends Service {
         } else {
             startForeground(NOTIFICATION_ID, buildNotification());
         }
+        gazeHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+        gazeResetRunnable = () -> {
+            gazeX = 0f; gazeY = 0f;
+            applyGaze();
+        };
         createOverlayWindow();
     }
 
@@ -159,11 +169,20 @@ public class FloatingPetService extends Service {
                 case MotionEvent.ACTION_DOWN:
                     initX = params.x; initY = params.y;
                     initTouchX = event.getRawX(); initTouchY = event.getRawY();
+                    gazeHandler.removeCallbacks(gazeResetRunnable);
                     return true;
                 case MotionEvent.ACTION_MOVE:
                     params.x = initX + (int)(event.getRawX() - initTouchX);
                     params.y = initY + (int)(event.getRawY() - initTouchY);
                     try { windowManager.updateViewLayout(view, params); } catch (Exception ignored) {}
+                    // 视线跟随：触摸点相对于悬浮窗中心的归一化坐标
+                    if (renderer != null && glSurfaceView != null) {
+                        float nx = ((event.getX() / view.getWidth()) * 2f - 1f);
+                        float ny = -((event.getY() / view.getHeight()) * 2f - 1f);
+                        gazeX = Math.max(-1f, Math.min(1f, nx));
+                        gazeY = Math.max(-1f, Math.min(1f, ny));
+                        applyGaze();
+                    }
                     return true;
                 case MotionEvent.ACTION_UP:
                     float dx = Math.abs(event.getRawX() - initTouchX);
@@ -177,18 +196,34 @@ public class FloatingPetService extends Service {
                             playTouchMotion();
                         }
                     }
+                    // 手指抬起后 1.5s 视线归零
+                    gazeHandler.removeCallbacks(gazeResetRunnable);
+                    gazeHandler.postDelayed(gazeResetRunnable, 1500);
                     return true;
             }
             return false;
         });
     }
 
+    private void applyGaze() {
+        if (renderer == null || glSurfaceView == null) return;
+        float x = gazeX, y = gazeY;
+        glSurfaceView.queueEvent(() -> {
+            renderer.nativeSetParameterValue("ParamEyeBallX", x);
+            renderer.nativeSetParameterValue("ParamEyeBallY", y);
+            renderer.nativeSetParameterValue("ParamAngleX", x * 30f);
+            renderer.nativeSetParameterValue("ParamAngleY", y * 30f);
+            renderer.nativeSetParameterValue("ParamAngleZ", x * y * -30f);
+            renderer.nativeSetParameterValue("ParamBodyAngleX", x * 10f);
+        });
+    }
+
     private void playTouchMotion() {
         if (renderer == null || glSurfaceView == null) return;
-        // Idle group: index 0~3 = mtn, index 4~6 = special
-        int idx = 4 + (touchMotionIdx % 3);
+        // "" group: index 0~2=mtn_02~04, index 3~5=special_01~03
+        int idx = 3 + (touchMotionIdx % 3);
         touchMotionIdx++;
-        glSurfaceView.queueEvent(() -> renderer.nativeStartMotion("Idle", idx, 2));
+        glSurfaceView.queueEvent(() -> renderer.nativeStartMotion("", idx, 2));
     }
 
     private void openApp() {
