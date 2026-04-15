@@ -10,7 +10,7 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
-    protected void onResume() {
+    public void onResume() {
         super.onResume();
         // 用户回到 App 时自动停止桌宠，避免两个渲染器同时活跃
         if (FloatingPetService.isRunning()) {
