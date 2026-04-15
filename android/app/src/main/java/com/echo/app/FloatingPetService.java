@@ -50,7 +50,12 @@ public class FloatingPetService extends Service {
         super.onCreate();
         sRunning = true;
         createNotificationChannel();
-        startForeground(NOTIFICATION_ID, buildNotification());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(NOTIFICATION_ID, buildNotification(),
+                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+        } else {
+            startForeground(NOTIFICATION_ID, buildNotification());
+        }
         createOverlayWindow();
     }
 
@@ -129,36 +134,43 @@ public class FloatingPetService extends Service {
         FrameLayout container = new FrameLayout(this);
 
         if (Live2DRenderer.nativeAvailable) {
-            // Live2D 渲染
-            GLSurfaceView glView = new GLSurfaceView(this);
-            glView.setEGLContextClientVersion(2);
-            glView.setEGLConfigChooser(8, 8, 8, 8, 16, 0);
-            glView.getHolder().setFormat(PixelFormat.TRANSLUCENT);
-            glView.setZOrderOnTop(true);
+            try {
+                GLSurfaceView glView = new GLSurfaceView(this);
+                glView.setEGLContextClientVersion(2);
+                glView.setEGLConfigChooser(8, 8, 8, 8, 16, 0);
+                glView.getHolder().setFormat(PixelFormat.TRANSLUCENT);
+                glView.setZOrderOnTop(true);
 
-            Live2DRenderer r = new Live2DRenderer(getAssets());
-            r.pendingModelPath = MODEL_PATH;
-            glView.setRenderer(r);
-            glView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
+                Live2DRenderer r = new Live2DRenderer(getAssets());
+                r.pendingModelPath = MODEL_PATH;
+                glView.setRenderer(r);
+                glView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
 
-            renderer = r;
-            glSurfaceView = glView;
-            container.addView(glView, new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT));
+                renderer = r;
+                glSurfaceView = glView;
+                container.addView(glView, new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT));
+            } catch (Exception e) {
+                android.util.Log.e("FloatingPetService", "GLSurfaceView init failed, fallback", e);
+                addFallbackIcon(container);
+            }
         } else {
-            // 降级：显示 App 图标
-            ImageView img = new ImageView(this);
-            img.setImageResource(R.mipmap.ic_launcher_round);
-            img.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            container.addView(img, new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT));
+            addFallbackIcon(container);
         }
 
         setupTouch(container, params);
         windowManager.addView(container, params);
         overlayView = container;
+    }
+
+    private void addFallbackIcon(FrameLayout container) {
+        ImageView img = new ImageView(this);
+        img.setImageResource(R.mipmap.ic_launcher_round);
+        img.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        container.addView(img, new FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.MATCH_PARENT));
     }
 
     private void setupTouch(View view, WindowManager.LayoutParams params) {
