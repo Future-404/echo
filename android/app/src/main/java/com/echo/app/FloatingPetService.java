@@ -31,6 +31,8 @@ public class FloatingPetService extends Service {
     private WindowManager windowManager;
     private View overlayView;
     private GLSurfaceView glSurfaceView;
+    private Live2DRenderer renderer;
+    private int touchMotionIdx = 0; // 轮流播放 special 动作 (Idle group index 4~6)
 
     private int initX, initY;
     private float initTouchX, initTouchY;
@@ -132,6 +134,7 @@ public class FloatingPetService extends Service {
             r.pendingModelPath = MODEL_PATH;
             glView.setRenderer(r);
             glView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
+            renderer = r;
             glSurfaceView = glView;
             container.addView(glView, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
@@ -169,12 +172,23 @@ public class FloatingPetService extends Service {
                         long now = System.currentTimeMillis();
                         if (now - lastClickTime < DOUBLE_CLICK_MS) {
                             openApp(); lastClickTime = 0;
-                        } else { lastClickTime = now; }
+                        } else {
+                            lastClickTime = now;
+                            playTouchMotion();
+                        }
                     }
                     return true;
             }
             return false;
         });
+    }
+
+    private void playTouchMotion() {
+        if (renderer == null || glSurfaceView == null) return;
+        // Idle group: index 0~3 = mtn, index 4~6 = special
+        int idx = 4 + (touchMotionIdx % 3);
+        touchMotionIdx++;
+        glSurfaceView.queueEvent(() -> renderer.nativeStartMotion("Idle", idx, 2));
     }
 
     private void openApp() {
