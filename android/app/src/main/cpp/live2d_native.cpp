@@ -1668,7 +1668,7 @@ static void renderModel() {
 extern "C" {
 
 JNIEXPORT void JNICALL
-Java_com_gameswu_nyadeskpet_live2d_Live2DRenderer_nativeInit(JNIEnv *env, jobject thiz, jobject asset_manager) {
+Java_com_echo_app_Live2DRenderer_nativeInit(JNIEnv *env, jobject thiz, jobject asset_manager) {
     g_assetManager = AAssetManager_fromJava(env, asset_manager);
     csmVersion v = csmGetVersion();
     LOGI("Cubism Core %d.%d.%d", (v>>24)&0xFF, (v>>16)&0xFF, v&0xFFFF);
@@ -1697,7 +1697,7 @@ Java_com_gameswu_nyadeskpet_live2d_Live2DRenderer_nativeInit(JNIEnv *env, jobjec
 }
 
 JNIEXPORT void JNICALL
-Java_com_gameswu_nyadeskpet_live2d_Live2DRenderer_nativeLoadModel(JNIEnv *env, jobject thiz, jobject asset_manager, jstring model_path) {
+Java_com_echo_app_Live2DRenderer_nativeLoadModel(JNIEnv *env, jobject thiz, jobject asset_manager, jstring model_path) {
     AAssetManager* mgr = AAssetManager_fromJava(env, asset_manager);
     const char* p = env->GetStringUTFChars(model_path, nullptr);
     LOGI("Loading model: %s", p);
@@ -1707,7 +1707,7 @@ Java_com_gameswu_nyadeskpet_live2d_Live2DRenderer_nativeLoadModel(JNIEnv *env, j
 }
 
 JNIEXPORT void JNICALL
-Java_com_gameswu_nyadeskpet_live2d_Live2DRenderer_nativeStartMotion(JNIEnv *env, jobject thiz, jstring group, jint index, jint priority) {
+Java_com_echo_app_Live2DRenderer_nativeStartMotion(JNIEnv *env, jobject thiz, jstring group, jint index, jint priority) {
     const char* g = env->GetStringUTFChars(group, nullptr);
     std::string groupStr(g);
     env->ReleaseStringUTFChars(group, g);
@@ -1755,7 +1755,7 @@ Java_com_gameswu_nyadeskpet_live2d_Live2DRenderer_nativeStartMotion(JNIEnv *env,
 }
 
 JNIEXPORT void JNICALL
-Java_com_gameswu_nyadeskpet_live2d_Live2DRenderer_nativeSetExpression(JNIEnv *env, jobject thiz, jstring expression_id) {
+Java_com_echo_app_Live2DRenderer_nativeSetExpression(JNIEnv *env, jobject thiz, jstring expression_id) {
     const char* id = env->GetStringUTFChars(expression_id, nullptr);
     std::string exprId(id);
     env->ReleaseStringUTFChars(expression_id, id);
@@ -1787,7 +1787,7 @@ Java_com_gameswu_nyadeskpet_live2d_Live2DRenderer_nativeSetExpression(JNIEnv *en
 }
 
 JNIEXPORT void JNICALL
-Java_com_gameswu_nyadeskpet_live2d_Live2DRenderer_nativeSetParameterValue(JNIEnv *env, jobject thiz, jstring param_id, jfloat value, jfloat weight) {
+Java_com_echo_app_Live2DRenderer_nativeSetParameterValue(JNIEnv *env, jobject thiz, jstring param_id, jfloat value, jfloat weight) {
     if (!g_model.loaded) return;
     const char* id = env->GetStringUTFChars(param_id, nullptr);
     auto it = g_model.parameterMap.find(id);
@@ -1801,7 +1801,7 @@ Java_com_gameswu_nyadeskpet_live2d_Live2DRenderer_nativeSetParameterValue(JNIEnv
 }
 
 JNIEXPORT jfloat JNICALL
-Java_com_gameswu_nyadeskpet_live2d_Live2DRenderer_nativeGetParameterValue(JNIEnv *env, jobject thiz, jstring param_id) {
+Java_com_echo_app_Live2DRenderer_nativeGetParameterValue(JNIEnv *env, jobject thiz, jstring param_id) {
     if (!g_model.loaded) return 0.f;
     const char* id = env->GetStringUTFChars(param_id, nullptr);
     float r = 0.f;
@@ -1812,7 +1812,7 @@ Java_com_gameswu_nyadeskpet_live2d_Live2DRenderer_nativeGetParameterValue(JNIEnv
 }
 
 JNIEXPORT jfloat JNICALL
-Java_com_gameswu_nyadeskpet_live2d_Live2DRenderer_nativeGetParameterRange(JNIEnv *env, jobject thiz, jstring param_id) {
+Java_com_echo_app_Live2DRenderer_nativeGetParameterRange(JNIEnv *env, jobject thiz, jstring param_id) {
     if (!g_model.loaded) return 1.f;
     const char* id = env->GetStringUTFChars(param_id, nullptr);
     float r = 1.f;
@@ -1826,7 +1826,7 @@ Java_com_gameswu_nyadeskpet_live2d_Live2DRenderer_nativeGetParameterRange(JNIEnv
 }
 
 JNIEXPORT void JNICALL
-Java_com_gameswu_nyadeskpet_live2d_Live2DRenderer_nativeSetModelTransform(JNIEnv *env, jobject thiz, jfloat scale, jfloat offsetX, jfloat offsetY) {
+Java_com_echo_app_Live2DRenderer_nativeSetModelTransform(JNIEnv *env, jobject thiz, jfloat scale, jfloat offsetX, jfloat offsetY) {
     g_userScale   = scale;
     g_userOffsetX = offsetX;
     g_userOffsetY = offsetY;
@@ -1834,7 +1834,7 @@ Java_com_gameswu_nyadeskpet_live2d_Live2DRenderer_nativeSetModelTransform(JNIEnv
 }
 
 JNIEXPORT void JNICALL
-Java_com_gameswu_nyadeskpet_live2d_Live2DRenderer_nativeOnSurfaceChanged(JNIEnv *env, jobject thiz, jint width, jint height) {
+Java_com_echo_app_Live2DRenderer_nativeOnSurfaceChanged(JNIEnv *env, jobject thiz, jint width, jint height) {
     g_viewWidth = width; g_viewHeight = height;
     glViewport(0, 0, width, height);
     updateProjection();
@@ -1842,7 +1842,7 @@ Java_com_gameswu_nyadeskpet_live2d_Live2DRenderer_nativeOnSurfaceChanged(JNIEnv 
 }
 
 JNIEXPORT void JNICALL
-Java_com_gameswu_nyadeskpet_live2d_Live2DRenderer_nativeOnDrawFrame(JNIEnv *env, jobject thiz) {
+Java_com_echo_app_Live2DRenderer_nativeOnDrawFrame(JNIEnv *env, jobject thiz) {
     glClearColor(0.f, 0.f, 0.f, 0.f);  // 透明背景
     glClear(GL_COLOR_BUFFER_BIT);
     glDisable(GL_DEPTH_TEST);

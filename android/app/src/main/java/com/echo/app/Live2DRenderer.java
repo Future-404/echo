@@ -46,8 +46,7 @@ public class Live2DRenderer implements GLSurfaceView.Renderer {
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
         if (!nativeAvailable) return;
-        nativeInit(assetManager);
-        glInitialized = true;
+        nativeInit(assetManager);        glInitialized = true;
         if (pendingModelPath != null) {
             String path = pendingModelPath;
             pendingModelPath = null;

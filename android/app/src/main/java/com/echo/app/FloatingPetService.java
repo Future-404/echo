@@ -4,6 +4,7 @@ import android.app.*;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.PixelFormat;
+import android.opengl.GLSurfaceView;
 import android.os.Build;
 import android.os.IBinder;
 import android.view.*;
@@ -12,9 +13,8 @@ import android.widget.ImageView;
 import androidx.core.app.NotificationCompat;
 
 /**
- * 悬浮桌宠前台服务（静态图标版）
- * Live2D 渲染将在后续版本通过 SurfaceView + 独立线程实现
- * 移植参考 NyaDeskPetAPP (https://github.com/gameswu/NyaDeskPetAPP)
+ * 悬浮桌宠前台服务
+ * 移植自 NyaDeskPetAPP (https://github.com/gameswu/NyaDeskPetAPP)
  * 感谢原作者 gameswu 的开源贡献
  */
 public class FloatingPetService extends Service {
@@ -22,12 +22,15 @@ public class FloatingPetService extends Service {
     private static final String CHANNEL_ID = "echo_floating_pet";
     private static final int NOTIFICATION_ID = 2001;
     public static final String ACTION_STOP = "com.echo.app.STOP_FLOATING_PET";
+    private static final String MODEL_PATH =
+        "models/live2d/mao_pro_zh/runtime/mao_pro.model3.json";
 
     private static boolean sRunning = false;
     public static boolean isRunning() { return sRunning; }
 
     private WindowManager windowManager;
     private View overlayView;
+    private GLSurfaceView glSurfaceView;
 
     private int initX, initY;
     private float initTouchX, initTouchY;
@@ -63,6 +66,9 @@ public class FloatingPetService extends Service {
     @Override
     public void onDestroy() {
         sRunning = false;
+        if (glSurfaceView != null) {
+            try { glSurfaceView.onPause(); } catch (Exception ignored) {}
+        }
         if (overlayView != null && windowManager != null) {
             try { windowManager.removeView(overlayView); } catch (Exception ignored) {}
         }
@@ -99,7 +105,7 @@ public class FloatingPetService extends Service {
     private void createOverlayWindow() {
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         float dp = getResources().getDisplayMetrics().density;
-        int sizePx = (int) (100 * dp);
+        int sizePx = (int) (200 * dp);
 
         int type = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
             ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -115,12 +121,29 @@ public class FloatingPetService extends Service {
         params.y = 300;
 
         FrameLayout container = new FrameLayout(this);
-        ImageView img = new ImageView(this);
-        img.setImageResource(R.mipmap.ic_launcher_round);
-        img.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        container.addView(img, new FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.MATCH_PARENT,
-            FrameLayout.LayoutParams.MATCH_PARENT));
+
+        if (Live2DRenderer.nativeAvailable) {
+            GLSurfaceView glView = new GLSurfaceView(this);
+            glView.setEGLContextClientVersion(2);
+            glView.setEGLConfigChooser(8, 8, 8, 8, 16, 0);
+            glView.getHolder().setFormat(PixelFormat.TRANSLUCENT);
+            glView.setZOrderOnTop(true);
+            Live2DRenderer r = new Live2DRenderer(getAssets());
+            r.pendingModelPath = MODEL_PATH;
+            glView.setRenderer(r);
+            glView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
+            glSurfaceView = glView;
+            container.addView(glView, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT));
+        } else {
+            ImageView img = new ImageView(this);
+            img.setImageResource(R.mipmap.ic_launcher_round);
+            img.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            container.addView(img, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT));
+        }
 
         setupTouch(container, params);
         windowManager.addView(container, params);
