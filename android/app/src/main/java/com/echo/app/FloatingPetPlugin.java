@@ -38,6 +38,8 @@ public class FloatingPetPlugin extends Plugin {
             return;
         }
         FloatingPetService.start(getContext());
+        // 启动桌宠后将 App 退到后台，避免两个渲染器同时活跃
+        getActivity().moveTaskToBack(true);
         call.resolve();
     }
 
