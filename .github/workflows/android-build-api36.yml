@@ -45,6 +45,10 @@ jobs:
         with:
           api-level: 36
 
+      - name: Install NDK
+        run: |
+          echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "ndk;27.2.12479018" "cmake;3.22.1"
+
       - name: Install Dependencies
         run: npm install
 
