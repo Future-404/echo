@@ -20,7 +20,13 @@ public class Live2DRenderer implements GLSurfaceView.Renderer {
     static {
         try {
             System.loadLibrary("live2d_native");
-            nativeAvailable = true;
+            // 二次验证：stub 库导出 nativeIsStub()，真实库没有此符号
+            try {
+                nativeIsStub();
+                Log.w(TAG, "Live2D stub library loaded, native features disabled");
+            } catch (UnsatisfiedLinkError e) {
+                nativeAvailable = true; // 真实库
+            }
         } catch (UnsatisfiedLinkError e) {
             Log.w(TAG, "Native library not available: " + e.getMessage());
         }
@@ -66,6 +72,8 @@ public class Live2DRenderer implements GLSurfaceView.Renderer {
         if (nativeAvailable) nativeOnDrawFrame();
     }
 
+    /** stub 库返回 true，真实库不存在此方法（抛 UnsatisfiedLinkError） */
+    public static native boolean nativeIsStub();
     // JNI
     public native void nativeInit(AssetManager assetManager);
     public native void nativeLoadModel(AssetManager assetManager, String modelPath);

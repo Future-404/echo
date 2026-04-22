@@ -34,6 +34,17 @@ const SkillArsenal: React.FC = () => {
       await floatingPet.hide()
       setPetRunning(false)
     } else {
+      // 启动前传入 LLM 配置
+      const provider = config.providers.find(p => p.id === (config.modelConfig?.chatProviderId || config.activeProviderId))
+        || config.providers[0]
+      if (provider) {
+        await floatingPet.configure({
+          apiKey: provider.apiKey || '',
+          endpoint: provider.endpoint || 'https://api.openai.com/v1',
+          model: provider.model || 'gpt-4o-mini',
+          systemPrompt: '你是一个可爱的桌面宠物助手。回复简短自然，1-2句话，不要用Markdown格式。',
+        })
+      }
       await floatingPet.show()
       setPetRunning(true)
     }

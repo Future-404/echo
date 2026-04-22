@@ -1,6 +1,7 @@
 import { Capacitor, registerPlugin } from '@capacitor/core'
 
 interface FloatingPetPlugin {
+  configure(options: { apiKey: string; endpoint: string; model: string; systemPrompt: string }): Promise<void>
   hasPermission(): Promise<{ granted: boolean }>
   requestPermission(): Promise<void>
   show(): Promise<void>
@@ -12,6 +13,11 @@ const FloatingPet = registerPlugin<FloatingPetPlugin>('FloatingPet')
 
 export const floatingPet = {
   isSupported: () => Capacitor.getPlatform() === 'android',
+
+  async configure(options: { apiKey: string; endpoint: string; model: string; systemPrompt: string }) {
+    if (!this.isSupported()) return
+    await FloatingPet.configure(options)
+  },
 
   async hasPermission() {
     if (!this.isSupported()) return true

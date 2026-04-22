@@ -11,6 +11,16 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 public class FloatingPetPlugin extends Plugin {
 
     @PluginMethod
+    public void configure(PluginCall call) {
+        String apiKey      = call.getString("apiKey", "");
+        String endpoint    = call.getString("endpoint", "https://api.openai.com/v1");
+        String model       = call.getString("model", "gpt-4o-mini");
+        String systemPrompt= call.getString("systemPrompt", "你是一个可爱的桌面宠物助手。回复简短自然，1-2句话。");
+        FloatingPetConfig.save(getContext(), apiKey, endpoint, model, systemPrompt);
+        call.resolve();
+    }
+
+    @PluginMethod
     public void hasPermission(PluginCall call) {
         boolean granted = Build.VERSION.SDK_INT < Build.VERSION_CODES.M
             || Settings.canDrawOverlays(getContext());

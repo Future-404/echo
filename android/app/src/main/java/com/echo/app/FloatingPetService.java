@@ -1,5 +1,7 @@
 package com.echo.app;
 
+import android.animation.AnimatorSet;
+import android.animation.ObjectAnimator;
 import android.app.*;
 import android.content.Context;
 import android.content.Intent;
@@ -8,6 +10,7 @@ import android.opengl.GLSurfaceView;
 import android.os.Build;
 import android.os.IBinder;
 import android.view.*;
+import android.view.animation.OvershootInterpolator;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import androidx.core.app.NotificationCompat;
@@ -32,7 +35,14 @@ public class FloatingPetService extends Service {
     private View overlayView;
     private GLSurfaceView glSurfaceView;
     private Live2DRenderer renderer;
-    private int touchMotionIdx = 0; // 轮流播放 special 动作 (Idle group index 4~6)
+    private ImageView fallbackImageView; // Live2D 不可用时的 fallback
+    private int touchMotionIdx = 0; // 轮流播放 special 动作
+
+    // 对话
+    private PetLlmClient llmClient;
+    private DialogueBubble bubble;
+    private final java.util.concurrent.ExecutorService executor =
+        java.util.concurrent.Executors.newSingleThreadExecutor();
 
     // 视线跟随
     private float gazeX = 0f, gazeY = 0f;
@@ -63,6 +73,9 @@ public class FloatingPetService extends Service {
             gazeX = 0f; gazeY = 0f;
             applyGaze();
         };
+        // 初始化 LLM 客户端和气泡
+        llmClient = new PetLlmClient(FloatingPetConfig.getSystemPrompt(this));
+        bubble = new DialogueBubble(this, (WindowManager) getSystemService(WINDOW_SERVICE));
         createOverlayWindow();
     }
 
@@ -78,6 +91,8 @@ public class FloatingPetService extends Service {
     @Override
     public void onDestroy() {
         sRunning = false;
+        executor.shutdownNow();
+        if (bubble != null) bubble.destroy();
         if (glSurfaceView != null) {
             try { glSurfaceView.onPause(); } catch (Exception ignored) {}
         }
@@ -153,6 +168,7 @@ public class FloatingPetService extends Service {
             ImageView img = new ImageView(this);
             img.setImageResource(R.mipmap.ic_launcher_round);
             img.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            fallbackImageView = img;
             container.addView(img, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT));
@@ -175,6 +191,8 @@ public class FloatingPetService extends Service {
                     params.x = initX + (int)(event.getRawX() - initTouchX);
                     params.y = initY + (int)(event.getRawY() - initTouchY);
                     try { windowManager.updateViewLayout(view, params); } catch (Exception ignored) {}
+                    // 同步气泡位置
+                    if (bubble != null) bubble.updatePosition(params.x, params.y, view.getWidth());
                     // 视线跟随：触摸点相对于悬浮窗中心的归一化坐标
                     if (renderer != null && glSurfaceView != null) {
                         float nx = ((event.getX() / view.getWidth()) * 2f - 1f);
@@ -219,11 +237,51 @@ public class FloatingPetService extends Service {
     }
 
     private void playTouchMotion() {
-        if (renderer == null || glSurfaceView == null) return;
-        // "" group: index 0~2=mtn_02~04, index 3~5=special_01~03
-        int idx = 3 + (touchMotionIdx % 3);
-        touchMotionIdx++;
-        glSurfaceView.queueEvent(() -> renderer.nativeStartMotion("", idx, 2));
+        if (renderer != null && glSurfaceView != null) {
+            // Live2D 可用：播放 special 动作
+            int idx = 3 + (touchMotionIdx % 3);
+            touchMotionIdx++;
+            glSurfaceView.queueEvent(() -> renderer.nativeStartMotion("", idx, 2));
+        } else if (fallbackImageView != null) {
+            // Fallback：弹跳缩放动画
+            AnimatorSet anim = new AnimatorSet();
+            ObjectAnimator scaleX = ObjectAnimator.ofFloat(fallbackImageView, "scaleX", 1f, 1.3f, 1f);
+            ObjectAnimator scaleY = ObjectAnimator.ofFloat(fallbackImageView, "scaleY", 1f, 1.3f, 1f);
+            scaleX.setInterpolator(new OvershootInterpolator(3f));
+            scaleY.setInterpolator(new OvershootInterpolator(3f));
+            anim.playTogether(scaleX, scaleY);
+            anim.setDuration(400);
+            anim.start();
+        }
+        // 同时触发 LLM 主动发言
+        triggerLlmGreeting();
+    }
+
+    private void triggerLlmGreeting() {
+        String apiKey = FloatingPetConfig.getApiKey(this);
+        if (apiKey.isEmpty()) return; // 未配置则跳过
+
+        String endpoint = FloatingPetConfig.getEndpoint(this);
+        String model = FloatingPetConfig.getModel(this);
+        // 更新 system prompt（可能已被 configure() 更新）
+        llmClient.setSystemPrompt(FloatingPetConfig.getSystemPrompt(this));
+
+        // 根据时间生成触发语
+        int hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY);
+        String trigger;
+        if (hour < 6)       trigger = "（用户在深夜点了你）";
+        else if (hour < 12) trigger = "（用户在早上点了你）";
+        else if (hour < 18) trigger = "（用户在下午点了你）";
+        else                trigger = "（用户在晚上点了你）";
+
+        bubble.startStream();
+        executor.execute(() ->
+            llmClient.chat(apiKey, endpoint, model, trigger, new PetLlmClient.StreamCallback() {
+                @Override public void onChunk(String delta) { bubble.appendChunk(delta); }
+                @Override public void onDone(String full)   { bubble.endStream(); }
+                @Override public void onError(String err)   { bubble.hide(); }
+            })
+        );
     }
 
     private void openApp() {
