@@ -41,6 +41,7 @@ public class FloatingPetService extends Service {
     // 对话
     private PetLlmClient llmClient;
     private DialogueBubble bubble;
+    private ChatInputOverlay inputOverlay;
     private final java.util.concurrent.ExecutorService executor =
         java.util.concurrent.Executors.newSingleThreadExecutor();
 
@@ -53,7 +54,8 @@ public class FloatingPetService extends Service {
     private float initTouchX, initTouchY;
     private long lastClickTime = 0;
     private static final long DOUBLE_CLICK_MS = 300;
-    private static final float DRAG_THRESHOLD = 20f; // 放宽阈值，避免轻触被误判为拖拽
+    private static final long LONG_PRESS_MS = 600;
+    private static final float DRAG_THRESHOLD = 20f;
 
     @Override public IBinder onBind(Intent intent) { return null; }
 
@@ -76,6 +78,7 @@ public class FloatingPetService extends Service {
         // 初始化 LLM 客户端和气泡
         llmClient = new PetLlmClient(FloatingPetConfig.getSystemPrompt(this));
         bubble = new DialogueBubble(this, (WindowManager) getSystemService(WINDOW_SERVICE));
+        inputOverlay = new ChatInputOverlay(this, (WindowManager) getSystemService(WINDOW_SERVICE));
         createOverlayWindow();
     }
 
@@ -93,6 +96,7 @@ public class FloatingPetService extends Service {
         sRunning = false;
         executor.shutdownNow();
         if (bubble != null) bubble.destroy();
+        if (inputOverlay != null) inputOverlay.dismiss();
         if (glSurfaceView != null) {
             try { glSurfaceView.onPause(); } catch (Exception ignored) {}
         }
@@ -179,6 +183,9 @@ public class FloatingPetService extends Service {
         overlayView = container;
     }
 
+    private final android.os.Handler mainHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private Runnable longPressRunnable;
+
     private void setupTouch(View view, WindowManager.LayoutParams params) {
         view.setOnTouchListener((v, event) -> {
             switch (event.getActionMasked()) {
@@ -186,14 +193,24 @@ public class FloatingPetService extends Service {
                     initX = params.x; initY = params.y;
                     initTouchX = event.getRawX(); initTouchY = event.getRawY();
                     gazeHandler.removeCallbacks(gazeResetRunnable);
+                    // 长按检测
+                    longPressRunnable = () -> {
+                        float dx = Math.abs(initTouchX - initTouchX); // 已在 DOWN 时记录，MOVE 会取消
+                        onLongPress(params.x, params.y);
+                    };
+                    mainHandler.postDelayed(longPressRunnable, LONG_PRESS_MS);
                     return true;
                 case MotionEvent.ACTION_MOVE:
+                    float mdx = Math.abs(event.getRawX() - initTouchX);
+                    float mdy = Math.abs(event.getRawY() - initTouchY);
+                    if (mdx > DRAG_THRESHOLD || mdy > DRAG_THRESHOLD) {
+                        // 超过拖拽阈值，取消长按
+                        if (longPressRunnable != null) { mainHandler.removeCallbacks(longPressRunnable); longPressRunnable = null; }
+                    }
                     params.x = initX + (int)(event.getRawX() - initTouchX);
                     params.y = initY + (int)(event.getRawY() - initTouchY);
                     try { windowManager.updateViewLayout(view, params); } catch (Exception ignored) {}
-                    // 同步气泡位置
                     if (bubble != null) bubble.updatePosition(params.x, params.y, view.getWidth());
-                    // 视线跟随：触摸点相对于悬浮窗中心的归一化坐标
                     if (renderer != null && glSurfaceView != null) {
                         float nx = ((event.getX() / view.getWidth()) * 2f - 1f);
                         float ny = -((event.getY() / view.getHeight()) * 2f - 1f);
@@ -203,9 +220,13 @@ public class FloatingPetService extends Service {
                     }
                     return true;
                 case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    boolean wasLongPress = longPressRunnable == null; // 已触发则为 null
+                    if (longPressRunnable != null) { mainHandler.removeCallbacks(longPressRunnable); longPressRunnable = null; }
                     float dx = Math.abs(event.getRawX() - initTouchX);
                     float dy = Math.abs(event.getRawY() - initTouchY);
-                    if (dx < DRAG_THRESHOLD && dy < DRAG_THRESHOLD) {
+                    if (!wasLongPress && event.getActionMasked() == MotionEvent.ACTION_UP
+                            && dx < DRAG_THRESHOLD && dy < DRAG_THRESHOLD) {
                         long now = System.currentTimeMillis();
                         if (now - lastClickTime < DOUBLE_CLICK_MS) {
                             openApp(); lastClickTime = 0;
@@ -214,13 +235,40 @@ public class FloatingPetService extends Service {
                             playTouchMotion();
                         }
                     }
-                    // 手指抬起后 1.5s 视线归零
                     gazeHandler.removeCallbacks(gazeResetRunnable);
                     gazeHandler.postDelayed(gazeResetRunnable, 1500);
                     return true;
             }
             return false;
         });
+    }
+
+    private void onLongPress(int petX, int petY) {
+        longPressRunnable = null; // 标记已触发
+        lastClickTime = 0; // 防止长按后触发单击
+        if (inputOverlay.isShowing()) {
+            inputOverlay.dismiss();
+        } else {
+            inputOverlay.show(petX, petY, this::sendUserMessage);
+        }
+    }
+
+    private void sendUserMessage(String text) {
+        String apiKey = FloatingPetConfig.getApiKey(this);
+        if (apiKey.isEmpty()) { bubble.show("未配置 API Key"); return; }
+        llmClient.setSystemPrompt(FloatingPetConfig.getSystemPrompt(this));
+        bubble.startStream();
+        executor.execute(() ->
+            llmClient.chat(apiKey, FloatingPetConfig.getEndpoint(this),
+                FloatingPetConfig.getModel(this), text, new PetLlmClient.StreamCallback() {
+                    @Override public void onChunk(String delta) { bubble.appendChunk(delta); }
+                    @Override public void onDone(String full)   { bubble.endStream(); }
+                    @Override public void onError(String err)   {
+                        android.util.Log.e("FloatingPet", "LLM error: " + err);
+                        bubble.show("对话失败: " + err);
+                    }
+                })
+        );
     }
 
     private void applyGaze() {
