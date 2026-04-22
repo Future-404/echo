@@ -193,11 +193,15 @@ public class FloatingPetService extends Service {
                     initX = params.x; initY = params.y;
                     initTouchX = event.getRawX(); initTouchY = event.getRawY();
                     gazeHandler.removeCallbacks(gazeResetRunnable);
+                    // 视线跟随：按下时立即更新
+                    if (renderer != null && glSurfaceView != null && view.getWidth() > 0) {
+                        gazeX = Math.max(-1f, Math.min(1f, (event.getX() / view.getWidth()) * 2f - 1f));
+                        gazeY = Math.max(-1f, Math.min(1f, -((event.getY() / view.getHeight()) * 2f - 1f)));
+                        applyGaze();
+                    }
+                    android.util.Log.d("FloatingPet", "DOWN: nativeAvailable=" + Live2DRenderer.nativeAvailable + " renderer=" + (renderer != null));
                     // 长按检测
-                    longPressRunnable = () -> {
-                        float dx = Math.abs(initTouchX - initTouchX); // 已在 DOWN 时记录，MOVE 会取消
-                        onLongPress(params.x, params.y);
-                    };
+                    longPressRunnable = () -> onLongPress(params.x, params.y);
                     mainHandler.postDelayed(longPressRunnable, LONG_PRESS_MS);
                     return true;
                 case MotionEvent.ACTION_MOVE:
