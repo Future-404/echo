@@ -53,7 +53,7 @@ public class FloatingPetService extends Service {
     private float initTouchX, initTouchY;
     private long lastClickTime = 0;
     private static final long DOUBLE_CLICK_MS = 300;
-    private static final float DRAG_THRESHOLD = 10f;
+    private static final float DRAG_THRESHOLD = 20f; // 放宽阈值，避免轻触被误判为拖拽
 
     @Override public IBinder onBind(Intent intent) { return null; }
 
@@ -237,36 +237,41 @@ public class FloatingPetService extends Service {
     }
 
     private void playTouchMotion() {
-        if (renderer != null && glSurfaceView != null) {
-            // Live2D 可用：播放 special 动作
+        android.util.Log.d("FloatingPet", "playTouchMotion: nativeAvailable=" + Live2DRenderer.nativeAvailable
+            + " renderer=" + renderer + " fallback=" + fallbackImageView);
+        if (Live2DRenderer.nativeAvailable && renderer != null && glSurfaceView != null) {
             int idx = 3 + (touchMotionIdx % 3);
             touchMotionIdx++;
             glSurfaceView.queueEvent(() -> renderer.nativeStartMotion("", idx, 2));
-        } else if (fallbackImageView != null) {
-            // Fallback：弹跳缩放动画
+        }
+        // fallback 动画：无论 Live2D 是否可用都执行（给用户视觉反馈）
+        View target = fallbackImageView != null ? fallbackImageView : overlayView;
+        if (target != null) {
             AnimatorSet anim = new AnimatorSet();
-            ObjectAnimator scaleX = ObjectAnimator.ofFloat(fallbackImageView, "scaleX", 1f, 1.3f, 1f);
-            ObjectAnimator scaleY = ObjectAnimator.ofFloat(fallbackImageView, "scaleY", 1f, 1.3f, 1f);
+            ObjectAnimator scaleX = ObjectAnimator.ofFloat(target, "scaleX", 1f, 1.2f, 1f);
+            ObjectAnimator scaleY = ObjectAnimator.ofFloat(target, "scaleY", 1f, 1.2f, 1f);
             scaleX.setInterpolator(new OvershootInterpolator(3f));
             scaleY.setInterpolator(new OvershootInterpolator(3f));
             anim.playTogether(scaleX, scaleY);
-            anim.setDuration(400);
+            anim.setDuration(300);
             anim.start();
         }
-        // 同时触发 LLM 主动发言
         triggerLlmGreeting();
     }
 
     private void triggerLlmGreeting() {
         String apiKey = FloatingPetConfig.getApiKey(this);
-        if (apiKey.isEmpty()) return; // 未配置则跳过
+        android.util.Log.d("FloatingPet", "triggerLlmGreeting: apiKey=" + (apiKey.isEmpty() ? "EMPTY" : "***"));
+        if (apiKey.isEmpty()) {
+            // 未配置时显示提示气泡
+            bubble.show("未配置 API Key，请在 Echo 设置中配置后重启桌宠");
+            return;
+        }
 
         String endpoint = FloatingPetConfig.getEndpoint(this);
         String model = FloatingPetConfig.getModel(this);
-        // 更新 system prompt（可能已被 configure() 更新）
         llmClient.setSystemPrompt(FloatingPetConfig.getSystemPrompt(this));
 
-        // 根据时间生成触发语
         int hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY);
         String trigger;
         if (hour < 6)       trigger = "（用户在深夜点了你）";
@@ -279,7 +284,10 @@ public class FloatingPetService extends Service {
             llmClient.chat(apiKey, endpoint, model, trigger, new PetLlmClient.StreamCallback() {
                 @Override public void onChunk(String delta) { bubble.appendChunk(delta); }
                 @Override public void onDone(String full)   { bubble.endStream(); }
-                @Override public void onError(String err)   { bubble.hide(); }
+                @Override public void onError(String err)   {
+                    android.util.Log.e("FloatingPet", "LLM error: " + err);
+                    bubble.show("对话失败: " + err);
+                }
             })
         );
     }
