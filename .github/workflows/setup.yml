@@ -40,13 +40,23 @@ jobs:
 
       - name: Build frontend
         run: npm ci && npm run build
-
-      - name: Deploy Worker + Assets
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          workingDirectory: echo-storage/cloudflare
-          wranglerVersion: '4.4.0'
+     - name: Install Wrangler
+     run: npm install -g wrangler@4.4.0
+     - name: Debug Wrangler
+  working-directory: echo-storage/cloudflare
+  env:
+    CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  run: |
+    echo "===== Current Directory ====="
+    pwd
+    echo "===== Files ====="
+    ls -la
+    echo "===== Wrangler Version ====="
+    wrangler --version
+    echo "===== Who Am I ====="
+    wrangler whoami
+    echo "===== Deploy ====="
+    wrangler deploy
 
       - name: Set AUTH_TOKEN as Worker secret
         run: |
